@@ -1,8 +1,8 @@
 extends PanelContainer
 
-const VtsTracker = preload("./vts_tracker.gd")
+const SocketTracker = preload("res://lib/tracking/net/socket_tracker.gd")
 
-var tracker: VtsTracker
+var tracker: SocketTracker
 
 func _ready() -> void:
 	print(IP.get_local_addresses())
@@ -13,19 +13,19 @@ func _ready() -> void:
 	tracker.connection_status.connect(
 		func (status):
 			match status:
-				VtsTracker.ConnectionStatus.OFF:
+				SocketTracker.ConnectionStatus.OFF:
 					%ActiveIndicator.text = "Off"
 					%ActiveIndicator.modulate = Color.RED
-				VtsTracker.ConnectionStatus.ON:
+				SocketTracker.ConnectionStatus.ON:
 					%ActiveIndicator.text = "On"
 					%ActiveIndicator.modulate = Color.WHITE
-				VtsTracker.ConnectionStatus.WAIT:
+				SocketTracker.ConnectionStatus.WAIT:
 					%ActiveIndicator.text = "Waiting..."
 					%ActiveIndicator.modulate = Color.WHITE
 	)
 	
 func _on_connect_pressed() -> void:
-	tracker.host = %Hostname.text
+	tracker.host = "*"
 	tracker.port = %Port.value
 	tracker.start()
 	
