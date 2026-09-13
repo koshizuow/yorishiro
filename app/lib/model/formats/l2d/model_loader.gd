@@ -9,6 +9,11 @@ func model_format() -> StringName:
 func supported_extension() -> Array[String]:
 	return [".model3.json", ".moc3"]
 
+func mime_type() -> String:
+	if OS.has_feature("macos"):
+		return "application/vnd.live2d.moc3"
+	return "application/vnd.live2d.model3+json"
+
 func strategy() -> Script:
 	return preload("./model.gd")
 

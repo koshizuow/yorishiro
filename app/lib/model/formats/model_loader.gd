@@ -10,4 +10,7 @@ const VtModel = preload("res://lib/model/vt_model.gd")
 
 @abstract func supported_extension() -> Array[String]
 
+func mime_type() -> String:
+	return ""
+
 @abstract func strategy() -> Script

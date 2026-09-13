@@ -15,6 +15,7 @@ func _ready() -> void:
 		%ModelBrowser.add_filter(
 			",".join(fmt.supported_extension().map(func (e): return "*%s" % e)),
 			fmt.model_format(),
+			fmt.mime_type(),
 		)
 	
 	group = %CameraBtn.button_group
