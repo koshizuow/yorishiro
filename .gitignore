@@ -12,3 +12,6 @@ wheels/
 # Downloaded models and captured data
 models/
 data/
+
+# Written to the working directory by the Ryzen AI VitisAI EP compiler
+original-*-signature.txt
