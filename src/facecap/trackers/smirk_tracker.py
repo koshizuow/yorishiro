@@ -5,9 +5,11 @@ values. SMIRK's expression encoder runs on ncnn (Vulkan when available). Until t
 is wired in, only the outputs that map directly to ARKit come from SMIRK.
 """
 
+from dataclasses import replace
+
 import numpy as np
 
-from ..backends.ncnn_backend import NcnnBackend
+from ..backends.factory import open_model
 from ..frame import ARKIT52_INDEX
 from ..research.smirk import SMIRK_DIR, postprocess, preprocess
 from .base import Tracker, TrackerInfo, TrackResult
@@ -24,16 +26,17 @@ class SmirkTracker(Tracker):
         description="SMIRK expression encoder (FLAME). Direct outputs only until FLAME is installed",
         license="MIT code, needs FLAME (non-commercial, user download)",
         commercial_use=False,
-        runtime="ncnn Vulkan FP16 (FaceMesh-V2 + SMIRK)",
+        runtime="FaceMesh-V2 + SMIRK",
         coverage=("jawOpen", "eyeBlinkLeft", "eyeBlinkRight"),
     )
 
-    def __init__(self, gpu: bool = True, fp16: bool = True):
-        param, model = SMIRK_DIR / "smirk_expression.ncnn.param", SMIRK_DIR / "smirk_expression.ncnn.bin"
-        if not param.exists():
-            raise SystemExit("SMIRK ncnn model missing. Run: uv run python tools/export_smirk.py")
-        self.base = FaceMeshGpuTracker(gpu=gpu, fp16=fp16)
-        self.backend = NcnnBackend(param, model, gpu=gpu, fp16=fp16)
+    def __init__(self, runtime: str = "vulkan"):
+        stem = SMIRK_DIR / "smirk_expression"
+        if not stem.with_suffix(".onnx").exists():
+            raise SystemExit("SMIRK model missing. Run: uv run python tools/export_smirk.py")
+        self.base = FaceMeshGpuTracker(runtime=runtime)
+        self.backend = open_model(stem, runtime)
+        self.info = replace(self.info, runtime=f"{self.backend.name} (FaceMesh-V2 + SMIRK)")
 
     def process(self, bgr: np.ndarray, timestamp_ms: int) -> TrackResult | None:
         res = self.base.process(bgr, timestamp_ms)

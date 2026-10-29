@@ -93,8 +93,8 @@ class Recorder:
 
 def run_preview(camera: int, width: int, height: int, record_dir: Path | None = None,
                 seconds: float | None = None, guided: bool = False, avatar: bool = True,
-                tracker_name: str = "mediapipe") -> None:
-    tracker = create_tracker(tracker_name)
+                tracker_name: str = "mediapipe", runtime: str | None = None) -> None:
+    tracker = create_tracker(tracker_name, runtime)
     info = tracker.info
     covered = set(info.coverage)
     print(f"tracker {info.name}: {info.description}\n  license: {info.license}"

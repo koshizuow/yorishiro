@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 
-from ..backends.ncnn_backend import NcnnBackend
+from ..backends.factory import open_model
 from ..models import MODEL_DIR
 from . import detector as det
 from . import landmarks as lmk
@@ -14,13 +14,13 @@ PRESENCE_LOGIT = 0.0  # sigmoid 0.5, same default as MediaPipe's min tracking co
 
 
 class FaceMesh:
-    def __init__(self, gpu: bool = True, fp16: bool = True):
-        need = [MP_DIR / f"{n}.ncnn.{e}" for n in ("face_detector", "face_landmarks") for e in ("param", "bin")]
+    def __init__(self, runtime: str = "vulkan"):
+        need = [MP_DIR / f"{n}.{e}" for n in ("face_detector", "face_landmarks") for e in ("onnx", "ncnn.bin")]
         if not all(p.exists() for p in need):
-            raise SystemExit("MediaPipe ncnn models missing. Run: uv run python tools/export_mediapipe.py")
-        # The detector runs rarely and is cheaper on CPU than the GPU dispatch.
-        self.detector = NcnnBackend(need[0], need[1], gpu=False, fp16=False)
-        self.landmarker = NcnnBackend(need[2], need[3], gpu=gpu, fp16=fp16)
+            raise SystemExit("MediaPipe models missing. Run: uv run python tools/export_mediapipe.py")
+        # The detector runs rarely and is cheaper on CPU than a GPU or NPU dispatch.
+        self.detector = open_model(MP_DIR / "face_detector", "ncnn-cpu")
+        self.landmarker = open_model(MP_DIR / "face_landmarks", runtime)
         self.roi = None
         self.detections = 0
 

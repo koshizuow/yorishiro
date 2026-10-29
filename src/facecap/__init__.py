@@ -21,6 +21,9 @@ def main() -> None:
         p.add_argument("--no-avatar", dest="avatar", action="store_false",
                        help="skip the ICT-FaceKit head preview")
         p.add_argument("--tracker", default="mediapipe", help="tracker plugin, see `facecap trackers`")
+        p.add_argument("--runtime", default=None,
+                       help="inference runtime for trackers that support it: vulkan (default), "
+                            "vulkan-fp32, ncnn-cpu, ort-cpu, npu")
     sub.choices["record"].add_argument("--seconds", type=float, default=10.0)
     sub.choices["record"].add_argument("--out", type=Path, default=None)
     sub.choices["record"].add_argument(
@@ -41,10 +44,12 @@ def main() -> None:
     from . import app
 
     if args.cmd == "preview":
-        app.run_preview(args.camera, *args.size, avatar=args.avatar, tracker_name=args.tracker)
+        app.run_preview(args.camera, *args.size, avatar=args.avatar, tracker_name=args.tracker,
+                        runtime=args.runtime)
     elif args.cmd == "record":
         out = args.out or PROJECT_ROOT / "data" / "recordings" / datetime.now().strftime("%Y%m%d-%H%M%S")
         app.run_preview(args.camera, *args.size, record_dir=out, seconds=args.seconds,
-                        guided=args.guided, avatar=args.avatar, tracker_name=args.tracker)
+                        guided=args.guided, avatar=args.avatar, tracker_name=args.tracker,
+                        runtime=args.runtime)
     elif args.cmd == "golden":
         app.run_golden(args.recording)

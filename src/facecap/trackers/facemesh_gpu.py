@@ -1,4 +1,6 @@
-"""MediaPipe FaceMesh-V2 on ncnn Vulkan + ICT solver. No TFLite, landmarks run on the GPU."""
+"""MediaPipe FaceMesh-V2 on a selectable runtime (Vulkan GPU by default) + ICT solver. No TFLite."""
+
+from dataclasses import replace
 
 import numpy as np
 
@@ -12,17 +14,18 @@ from .base import Tracker, TrackerInfo, TrackResult
 
 class FaceMeshGpuTracker(Tracker):
     info = TrackerInfo(
-        name="facemesh-gpu",
-        description="FaceMesh-V2 landmarks on ncnn Vulkan, ICT fitting, iris gaze",
+        name="facemesh",
+        description="FaceMesh-V2 landmarks, ICT fitting, iris gaze",
         license="Apache-2.0 (MediaPipe models, PINTO conversion) + MIT (ICT-FaceKit)",
         commercial_use=True,
-        runtime="ncnn Vulkan FP16 + numpy solver",
+        runtime="FaceMesh-V2 + numpy solver",
         coverage=FIT_COVERAGE + GAZE_SHAPES,
     )
 
-    def __init__(self, gpu: bool = True, fp16: bool = True):
-        self.mesh = FaceMesh(gpu=gpu, fp16=fp16)
+    def __init__(self, runtime: str = "vulkan"):
+        self.mesh = FaceMesh(runtime=runtime)
         self.fitter = MediaPipePointFitter(ensure_ict_facekit())
+        self.info = replace(self.info, runtime=f"{self.mesh.landmarker.name} + numpy solver")
 
     def process(self, bgr: np.ndarray, timestamp_ms: int) -> TrackResult | None:
         landmarks = self.mesh.process(bgr)
