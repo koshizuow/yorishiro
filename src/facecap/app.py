@@ -12,6 +12,7 @@ from .capture import Camera
 from .frame import FRAME_DIM
 from .models import FACE_LANDMARKER_URL
 from .pose import ypr_to_rotation
+from .processing import FrameSmoother, NeutralCalibration
 from .registry import create_tracker
 from .trackers.mediapipe_ref import MediaPipeTracker
 from .viz import blendshape_panel, draw_banner, draw_hud, draw_landmarks, pose_lines
@@ -106,7 +107,9 @@ def run_preview(camera: int, width: int, height: int, record_dir: Path | None = 
     last_ts = -1
     last_frame = None
     last_res = None
-    neutral_rot = np.eye(3)
+    calibration = NeutralCalibration()
+    smoother = FrameSmoother()
+    smoothing = True
     render_ms = 0.0
     try:
         with Camera(camera, width, height) as cam:
@@ -136,15 +139,19 @@ def run_preview(camera: int, width: int, height: int, record_dir: Path | None = 
                 view = img.copy()
                 if res:
                     draw_landmarks(view, res.landmarks)
-                    last_frame = res.frame
                     last_res = res
+                    last_frame = calibration(res.frame)
+                    if smoothing:
+                        last_frame = smoother(last_frame)
                 view = cv2.flip(view, 1)
                 view = cv2.resize(view, (round(view.shape[1] * VIEW_H / view.shape[0]), VIEW_H),
                                   interpolation=cv2.INTER_AREA)
                 hud = [f"{info.name} ({info.runtime}){'' if info.commercial_use else '  NON-COMMERCIAL'}",
-                       stats.text] + pose_lines(res.frame if res else None)
+                       stats.text] + pose_lines(last_frame if res else None)
+                hud.append(f"smoothing {'on' if smoothing else 'off'}   "
+                           f"neutral {'set' if calibration.neutral is not None else 'not set, press c'}")
                 if renderer:
-                    hud.append(f"avatar {render_ms:4.1f} ms   [c] calibrate neutral   [q] quit")
+                    hud.append(f"avatar {render_ms:4.1f} ms   [c] calibrate  [s] smoothing  [q] quit")
                 if recorder:
                     hud.append(f"REC {len(recorder.timestamps)}")
                 draw_hud(view, hud)
@@ -154,7 +161,7 @@ def run_preview(camera: int, width: int, height: int, record_dir: Path | None = 
                 tiles = [view]
                 if renderer:
                     t_render = time.perf_counter()
-                    tiles.append(_render_avatar(renderer, head, last_frame, neutral_rot))
+                    tiles.append(_render_avatar(renderer, head, last_frame))
                     render_ms = 0.9 * render_ms + 100 * (time.perf_counter() - t_render)
                 tiles.append(blendshape_panel(last_frame.blendshapes if last_frame else None, VIEW_H,
                                               covered=covered))
@@ -162,9 +169,15 @@ def run_preview(camera: int, width: int, height: int, record_dir: Path | None = 
                 key = cv2.waitKey(1) & 0xFF
                 if key in (27, ord("q")):
                     break
-                if key == ord("c") and last_frame is not None:
-                    neutral_rot = ypr_to_rotation(last_frame.head_rotation)
+                if key == ord("c") and last_res is not None:
                     tracker.calibrate(last_res)
+                    res_after = tracker.process(img, ts + 1)  # re-read so the neutral matches the new tracker state
+                    last_ts = ts + 1
+                    calibration.set((res_after or last_res).frame)
+                    smoother.reset()
+                if key == ord("s"):
+                    smoothing = not smoothing
+                    smoother.reset()
                 if not _window_open():
                     break
     finally:
@@ -183,12 +196,10 @@ def _window_open() -> bool:
         return False
 
 
-def _render_avatar(renderer: HeadRenderer, head, frame, neutral_rot: np.ndarray) -> np.ndarray:
+def _render_avatar(renderer: HeadRenderer, head, frame) -> np.ndarray:
     if frame is None:
         return renderer.render(np.zeros(len(head.names), np.float32), np.eye(3))
-    # Left-multiply: the neutral offset comes from camera placement, so remove it in camera space.
-    rot = neutral_rot.T @ ypr_to_rotation(frame.head_rotation)
-    return renderer.render(head.weights_from_arkit(frame.blendshapes), rot)
+    return renderer.render(head.weights_from_arkit(frame.blendshapes), ypr_to_rotation(frame.head_rotation))
 
 
 def run_golden(rec_dir: Path) -> Path:

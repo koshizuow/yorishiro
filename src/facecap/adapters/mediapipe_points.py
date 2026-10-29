@@ -28,7 +28,8 @@ FIT_COVERAGE = tuple(n for n in ARKIT52 if n != "tongueOut" and n not in GAZE_SH
 # Iris centers and eye corners, subject's side. Iris offset in eye widths that reads as a full look.
 LEFT_EYE = dict(iris=473, inner=362, outer=263)
 RIGHT_EYE = dict(iris=468, inner=133, outer=33)
-GAZE_FULL_X, GAZE_FULL_Y = 0.18, 0.10
+# Vertical is noisier (lids cover the iris), so it needs a larger offset for a full look.
+GAZE_FULL_X, GAZE_FULL_Y = 0.18, 0.14
 
 
 def load_canonical() -> np.ndarray:
