@@ -13,6 +13,7 @@ from .frame import FRAME_DIM
 from .models import FACE_LANDMARKER_URL
 from .pose import ypr_to_rotation
 from .processing import FrameSmoother, NeutralCalibration
+from .sinks.link import LinkSink
 from .registry import create_tracker
 from .trackers.mediapipe_ref import MediaPipeTracker
 from .viz import blendshape_panel, draw_banner, draw_hud, draw_landmarks, pose_lines
@@ -93,8 +94,9 @@ class Recorder:
 
 def run_preview(camera: int, width: int, height: int, record_dir: Path | None = None,
                 seconds: float | None = None, guided: bool = False, avatar: bool = True,
-                tracker_name: str = "mediapipe", runtime: str | None = None) -> None:
+                tracker_name: str = "mediapipe", runtime: str | None = None, link: bool = False) -> None:
     tracker = create_tracker(tracker_name, runtime)
+    sink = LinkSink() if link else None
     info = tracker.info
     covered = set(info.coverage)
     print(f"tracker {info.name}: {info.description}\n  license: {info.license}"
@@ -143,6 +145,8 @@ def run_preview(camera: int, width: int, height: int, record_dir: Path | None = 
                     last_frame = calibration(res.frame)
                     if smoothing:
                         last_frame = smoother(last_frame)
+                if sink:
+                    sink.send(last_frame if res else None, ts)
                 view = cv2.flip(view, 1)
                 view = cv2.resize(view, (round(view.shape[1] * VIEW_H / view.shape[0]), VIEW_H),
                                   interpolation=cv2.INTER_AREA)
@@ -182,6 +186,8 @@ def run_preview(camera: int, width: int, height: int, record_dir: Path | None = 
                     break
     finally:
         tracker.close()
+        if sink:
+            sink.close()
         if renderer:
             renderer.close()
         cv2.destroyAllWindows()
