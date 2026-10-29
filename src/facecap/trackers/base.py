@@ -20,6 +20,7 @@ class TrackResult:
     frame: FaceFrame
     landmarks: np.ndarray  # (478, 3) MediaPipe-normalized image coords, used for overlay
     matrix: np.ndarray | None = None  # optional (4, 4) model -> camera transform
+    aligned: np.ndarray | None = None  # optional tracker-internal points kept for calibration
 
 
 class Tracker:

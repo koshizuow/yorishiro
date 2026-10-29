@@ -36,6 +36,8 @@ def main() -> None:
         for name, target in sorted(available_trackers().items()):
             print(f"{name:16s} {target}")
         return
+    import cv2
+    cv2.setNumThreads(1)  # its worker pool spins after tiny warps and burns ~10 ms CPU per frame
     from . import app
 
     if args.cmd == "preview":

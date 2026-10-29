@@ -8,6 +8,7 @@ from .trackers.base import Tracker
 BUILTIN_TRACKERS = {
     "mediapipe": "facecap.trackers.mediapipe_ref:MediaPipeTracker",
     "mediapipe-fit": "facecap.trackers.mediapipe_fit:MediaPipeFitTracker",
+    "facemesh-gpu": "facecap.trackers.facemesh_gpu:FaceMeshGpuTracker",
     "smirk": "facecap.trackers.smirk_tracker:SmirkTracker",
 }
 
