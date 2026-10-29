@@ -86,13 +86,13 @@ unique_name_in_owner = true
 title = "Open a File"
 file_mode = 0
 access = 2
-filters = PackedStringArray("*.profile;OpenVT Profile;")
+filters = PackedStringArray("*.profile;Yorishiro Profile;")
 use_native_dialog = true
 
 [node name="ProfileSaveDialog" type="FileDialog" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/ProfileManagement" unique_id=420434750]
 unique_name_in_owner = true
 access = 2
-filters = PackedStringArray("*.profile;OpenVT Profile;")
+filters = PackedStringArray("*.profile;Yorishiro Profile;")
 use_native_dialog = true
 
 [node name="HBoxContainer5" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=1326649490]
@@ -301,7 +301,7 @@ layout_mode = 2
 [node name="NDIName" type="LineEdit" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/NetworkWebcam" unique_id=1368655428]
 unique_name_in_owner = true
 layout_mode = 2
-text = "OpenVT"
+text = "Yorishiro"
 editable = false
 
 [node name="HBoxContainer" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=285867131]

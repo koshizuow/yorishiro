@@ -37,7 +37,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_t0mli")
-title = "open-vt (Controls)"
+title = "Yorishiro (Controls)"
 
 [node name="Bg" type="CanvasLayer" parent="." unique_id=1349299431]
 unique_name_in_owner = true

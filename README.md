@@ -1,3 +1,11 @@
+# Yorishiro
+
+Yorishiro is a Linux VTubing app built on [OpenVT](https://github.com/erodozer/open-vt) by erodozer (MIT),
+paired with the GPU accelerated `yorishiro-tracker` face tracking engine.
+The upstream OpenVT README follows.
+
+---
+
 <p align="center">
   <img src="branding/monochrome.svg" width="180" />
 </p>
