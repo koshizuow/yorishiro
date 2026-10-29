@@ -17,7 +17,7 @@ from .registry import create_tracker
 from .trackers.mediapipe_ref import MediaPipeTracker
 from .viz import blendshape_panel, draw_banner, draw_hud, draw_landmarks, pose_lines
 
-WINDOW = "facecap"
+WINDOW = "Yorishiro tracker"
 VIEW_H = 540
 
 # (label, on-screen instruction). Directions are the subject's own left/right.

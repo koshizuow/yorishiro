@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from torch import nn
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from facecap.research.smirk import INPUT_SIZE, N_EXP, SMIRK_DIR  # noqa: E402
+from yorishiro_tracker.research.smirk import INPUT_SIZE, N_EXP, SMIRK_DIR  # noqa: E402
 
 
 class ExpressionEncoder(nn.Module):

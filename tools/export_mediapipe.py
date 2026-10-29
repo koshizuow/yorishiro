@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from facecap.models import MODEL_DIR, ensure_face_landmarker  # noqa: E402
+from yorishiro_tracker.models import MODEL_DIR, ensure_face_landmarker  # noqa: E402
 
 OUT = MODEL_DIR / "mediapipe"
 PINTO_URL = "https://s3.ap-northeast-2.wasabisys.com/pinto-model-zoo/410_FaceMeshV2/resources.tar.gz"

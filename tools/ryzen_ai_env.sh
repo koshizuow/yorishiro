@@ -1,8 +1,8 @@
-# Source this to run facecap with --runtime npu inside a Ryzen AI 1.8 venv on Ubuntu with distro XRT
+# Source this to run yorishiro-tracker with --runtime npu inside a Ryzen AI 1.8 venv on Ubuntu with distro XRT
 # (libxrt-npu2). Needs RLIMIT_MEMLOCK unlimited, check with `ulimit -l`.
 #   source ~/ryzen-ai-venv/bin/activate && source tools/ryzen_ai_env.sh
 
-: "${XRT_SHIM:=$HOME/.cache/facecap/xrt-shim}"
+: "${XRT_SHIM:=$HOME/.cache/yorishiro/xrt-shim}"
 : "${UV_PY312_LIB:=$(python -c 'import sys; print(sys.base_prefix)')/lib}"
 
 # VitisAI EP loads $XILINX_XRT/lib/libxrt_core.so.2, distro XRT lives in the multiarch dir.

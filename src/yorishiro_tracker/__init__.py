@@ -11,7 +11,7 @@ def _size(text: str) -> tuple[int, int]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="facecap")
+    parser = argparse.ArgumentParser(prog="yorishiro-tracker")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     for name in ("preview", "record"):
@@ -20,7 +20,7 @@ def main() -> None:
         p.add_argument("--size", type=_size, default=(1280, 720), help="WxH")
         p.add_argument("--no-avatar", dest="avatar", action="store_false",
                        help="skip the ICT-FaceKit head preview")
-        p.add_argument("--tracker", default="mediapipe", help="tracker plugin, see `facecap trackers`")
+        p.add_argument("--tracker", default="mediapipe", help="tracker plugin, see `yorishiro-tracker trackers`")
         p.add_argument("--runtime", default=None,
                        help="inference runtime for trackers that support it: vulkan (default), "
                             "vulkan-fp32, ncnn-cpu, ort-cpu, npu")
