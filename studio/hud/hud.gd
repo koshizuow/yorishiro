@@ -2,6 +2,7 @@ extends "res://ui/popout_panel.gd"
 
 var open
 var group: ButtonGroup
+var model_browser_opened := false
 
 @onready var stage = get_tree().get_first_node_in_group("system:stage")
 @onready var popup_bg = %Bg
@@ -136,6 +137,11 @@ func _on_screenshot_btn_pressed() -> void:
 	toast.alert("Screenshot saved: %s" % filename)
 	
 func _on_model_btn_pressed() -> void:
+	if not model_browser_opened:
+		model_browser_opened = true
+		var models_dir = ModelManager.formats["l2d"].model_directory()
+		DirAccess.make_dir_recursive_absolute(models_dir)
+		%ModelBrowser.current_dir = ProjectSettings.globalize_path(models_dir)
 	%ModelBrowser.show()
 
 func _on_model_browser_file_selected(path: String) -> void:

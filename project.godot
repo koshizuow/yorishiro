@@ -40,6 +40,7 @@ BlueprintManager="*uid://dridhda34w6dx"
 BlendRegistry="*uid://dmhw76skp73u3"
 WindowManager="*uid://bl4pt68qhf3tn"
 Preferences="*res://lib/preferences.gd"
+Automation="*res://lib/automation.gd"
 
 [display]
 
