@@ -18,7 +18,7 @@ func load_graph(model: VtModel, path: String = model.modelmeta.openvt_parameters
 			graph.name = profile
 			add_child(graph)
 			_deserialize(graph, model, graphs[profile])
-			if graph.get_child_count() > 0:
+			if _has_actions(graph):
 				valid_graphs.append(graph)
 			remove_child(graph)
 	else: # assume the file itself is a single blueprint
@@ -26,11 +26,15 @@ func load_graph(model: VtModel, path: String = model.modelmeta.openvt_parameters
 		graph.name = data.get("name", "Blueprint")
 		add_child(graph)
 		_deserialize(graph, model, data)
-		if graph.get_child_count() > 0:
+		if _has_actions(graph):
 			valid_graphs.append(graph)
 		remove_child(graph)
-		
+
 	return valid_graphs
+
+# the template has non-action children, so child count alone never reads as empty
+func _has_actions(graph: Blueprint) -> bool:
+	return graph.get_children().any(func (c): return c is VtAction)
 
 func _deserialize(graph: Blueprint, model: VtModel, data: Dictionary):
 	graph.process_mode = PROCESS_MODE_INHERIT if data.get("enabled", true) else PROCESS_MODE_DISABLED

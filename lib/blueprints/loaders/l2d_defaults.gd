@@ -60,7 +60,7 @@ const DEFAULT_BINDINGS = {
 			"smoothing": 15
 		},
 		{
-			"name": "ParamBrowLForm",
+			"name": "ParamBrowRForm",
 			"value_range": Vector2(-1, 1),
 			"smoothing": 15
 		}
@@ -118,6 +118,11 @@ const DEFAULT_BINDINGS = {
 		{
 			"name": "ParamMouthOpen",
 			"value_range": Vector2(0, 2.1),
+		},
+		# Cubism standard models (Hiyori and most VTS models) use ParamMouthOpenY
+		{
+			"name": "ParamMouthOpenY",
+			"value_range": Vector2(0, 1),
 		},
 	],
 	"MouthX": [

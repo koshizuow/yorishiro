@@ -26,6 +26,10 @@ func _ready() -> void:
 	
 	face_trackers.add_item("iOS BlendShapes (VTS)")
 	face_trackers.set_item_metadata(face_trackers.item_count - 1, preload("res://lib/tracking/camera/vts_blendshapes/vts_tracker.gd"))
+
+	# appended last so saved selections (stored by index) keep pointing at the same tracker
+	face_trackers.add_item("Yorishiro tracker (GPU)")
+	face_trackers.set_item_metadata(face_trackers.item_count - 1, preload("res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd"))
 	
 	for tracker in tracking_system.get_children():
 		var config = tracker.create_config()

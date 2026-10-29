@@ -266,7 +266,8 @@ func _build_parameter_graph(model: VtModel, vtube_data: Dictionary) -> Blueprint
 ## adapts bindings from VTS into our action graph
 func load_graph(model: VtModel, path: String = model.modelmeta.studio_parameters) -> Array[Blueprint]:
 	# load vts hotkey settings
-	if not path:
+	# the path is always set, even without a .vtube.json. Empty graphs here would block the L2D defaults
+	if not path or not FileAccess.file_exists(path):
 		return []
 	var vtube_data = Files.read_json(model.modelmeta.studio_parameters)
 	
