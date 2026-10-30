@@ -132,14 +132,22 @@ func _load_tracker_list():
 	if not FileAccess.file_exists(cmd):
 		return
 	var thread = Thread.new()
+	# the panel may be freed before the list arrives, so the result goes through a weak reference
+	var panel = weakref(self)
+	var deliver = Callable(get_script(), "_deliver_trackers")
 	thread.start(func ():
 		var out = []
 		OS.execute(cmd, ["trackers", "--json"], out)
-		_fill_trackers.call_deferred(out[0] if out else "", thread)
+		deliver.call_deferred(panel, out[0] if out else "", thread)
 	)
 
-func _fill_trackers(json: String, thread: Thread):
+static func _deliver_trackers(panel: WeakRef, json: String, thread: Thread):
 	thread.wait_to_finish()
+	var me = panel.get_ref()
+	if me:
+		me._fill_trackers(json)
+
+func _fill_trackers(json: String):
 	var list = JSON.parse_string(json)
 	# the list loads on a thread, the tracker may have been switched away and freed meanwhile
 	if typeof(list) != TYPE_ARRAY or not is_inside_tree() or not is_instance_valid(tracker):

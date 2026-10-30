@@ -3,6 +3,7 @@
 Run: uv run python tools/export_mediapipe.py
 Detector: tflite2onnx from the face_landmarker.task bundle.
 Landmarks: PINTO model zoo 410_FaceMeshV2 ONNX (Apache-2.0), tflite2onnx cannot handle its fp16 weights.
+Blendshapes: tools/mixer_tflite_to_onnx.py from the bundle, run on ONNX Runtime CPU (under 1 ms).
 """
 
 import re
@@ -14,6 +15,8 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from mixer_tflite_to_onnx import convert as convert_mixer  # noqa: E402
 from yorishiro_tracker.models import MODEL_DIR, ensure_face_landmarker  # noqa: E402
 
 OUT = MODEL_DIR / "mediapipe"
@@ -58,6 +61,9 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(ensure_face_landmarker()) as z:
         z.extract("face_detector.tflite", OUT)
+        z.extract("face_blendshapes.tflite", OUT)
+    convert_mixer(OUT / "face_blendshapes.tflite", OUT / "face_blendshapes.onnx")
+    print(f"wrote {OUT / 'face_blendshapes.onnx'}")
     det_onnx = OUT / "face_detector.onnx"
     subprocess.run(["tflite2onnx", str(OUT / "face_detector.tflite"), str(det_onnx)], check=True)
     pnnx(det_onnx, "[1,3,128,128]")

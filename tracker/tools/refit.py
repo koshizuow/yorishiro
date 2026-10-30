@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_trackers import sessions  # noqa: E402
 
 from yorishiro_tracker.adapters import mediapipe_points  # noqa: E402
+from yorishiro_tracker.adapters.mediapipe_blendshapes import MediaPipeBlendshapes, merge  # noqa: E402
 from yorishiro_tracker.adapters.mediapipe_points import MediaPipePointFitter  # noqa: E402
 from yorishiro_tracker.avatar.ict import ensure_ict_facekit  # noqa: E402
 from yorishiro_tracker.frame import ARKIT52  # noqa: E402
@@ -64,6 +65,7 @@ ROBUST_C = 0.0
 
 JOINT_ROUNDS = 0
 CALIB = "first"
+MP_MOUTH = True  # as FaceMeshGpuTracker: mouth and jaw from MediaPipe's blendshape model
 
 
 def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
@@ -73,6 +75,7 @@ def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
     values = d["values"].copy()
     w, h = meta["size"]
     head = ensure_ict_facekit()
+    mp = MediaPipeBlendshapes() if MP_MOUTH else None
     for frames in sessions(meta):
         fitter = MediaPipePointFitter(head)
         faces, window = 0, None
@@ -100,6 +103,8 @@ def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
                 bs, aligned = joint_expressions(fitter, aligned, JOINT_ROUNDS)
             else:
                 bs = fitter.expressions(aligned)
+            if mp is not None:
+                bs = merge(bs, mp(lms[i], w, h))
             values[i, :52] = bs + fitter.gaze(aligned)
     return values, {k: d[k] for k in d.files if k != "values"}
 
@@ -132,9 +137,11 @@ def main():
     ap.add_argument("--calib", default="first", choices=["first", "single", "window"],
                     help="neutral: first face, serve's old single frame at SETTLE_FACES, or serve's window median")
     ap.add_argument("--joint", type=int, default=0, help="rounds of joint rigid + expression refinement")
+    ap.add_argument("--ict-mouth", action="store_true", help="mouth from the ICT solve, not MediaPipe's model")
     ap.add_argument("--robust", type=float, default=0.0, help="Cauchy scale (ICT cm) for joint re-alignment weights")
     a = ap.parse_args()
-    global JOINT_ROUNDS, ROBUST_C, CALIB
+    global JOINT_ROUNDS, ROBUST_C, CALIB, MP_MOUTH
+    MP_MOUTH = not a.ict_mouth
     JOINT_ROUNDS = a.joint
     CALIB = a.calib
     ROBUST_C = a.robust
