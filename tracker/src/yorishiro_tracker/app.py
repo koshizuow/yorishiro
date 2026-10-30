@@ -21,29 +21,44 @@ from .viz import blendshape_panel, draw_banner, draw_hud, draw_landmarks, pose_l
 WINDOW = "Yorishiro tracker"
 VIEW_H = 540
 
-# (label, on-screen instruction). Directions are the subject's own left/right.
+# (label, on-screen instruction, seconds). Directions are the subject's own left/right. The first neutral is
+# long enough for serve's calibration window (30 settling faces + 24) at low frame rates. Every label is a
+# neutral face unless it asks for an expression, so the pose steps measure false expressions. The later
+# steps cover what one recording could not settle: frowns, looking down at a keyboard (browDown vs pitch),
+# expressions held while turning (pose leakage with a real expression), talking.
 GUIDE = (
-    ("neutral", "Look straight at the camera, neutral face"),
-    ("head_left", "Turn your head to YOUR left"),
-    ("head_right", "Turn your head to YOUR right"),
-    ("head_up", "Tilt your head up"),
-    ("head_down", "Tilt your head down"),
-    ("roll_left", "Tilt head toward YOUR left shoulder"),
-    ("roll_right", "Tilt head toward YOUR right shoulder"),
-    ("eyes_left", "Head still, eyes to YOUR left"),
-    ("eyes_right", "Head still, eyes to YOUR right"),
-    ("eyes_up", "Head still, eyes up"),
-    ("eyes_down", "Head still, eyes down"),
-    ("blink", "Close both eyes"),
-    ("wink_left", "Close only YOUR left eye"),
-    ("wink_right", "Close only YOUR right eye"),
-    ("jaw_open", "Open your mouth wide"),
-    ("smile", "Big smile"),
-    ("brows_up", "Raise your eyebrows"),
-    ("pucker", "Pucker your lips (kiss)"),
-    ("cheek_puff", "Puff your cheeks"),
+    ("neutral", "Look straight at the camera, neutral face, keep still", 6.0),
+    ("head_left", "Turn your head to YOUR left", 3.0),
+    ("head_right", "Turn your head to YOUR right", 3.0),
+    ("head_up", "Tilt your head up", 3.0),
+    ("head_down", "Tilt your head down", 3.0),
+    ("roll_left", "Tilt head toward YOUR left shoulder", 3.0),
+    ("roll_right", "Tilt head toward YOUR right shoulder", 3.0),
+    ("eyes_left", "Head still, eyes to YOUR left", 3.0),
+    ("eyes_right", "Head still, eyes to YOUR right", 3.0),
+    ("eyes_up", "Head still, eyes up", 3.0),
+    ("eyes_down", "Head still, eyes down", 3.0),
+    ("blink", "Close both eyes", 3.0),
+    ("wink_left", "Close only YOUR left eye", 3.0),
+    ("wink_right", "Close only YOUR right eye", 3.0),
+    ("jaw_open", "Open your mouth wide", 3.0),
+    ("smile", "Big smile", 3.0),
+    ("brows_up", "Raise your eyebrows", 3.0),
+    ("frown", "Frown: pull your brows down and together", 3.0),
+    ("pucker", "Pucker your lips (kiss)", 3.0),
+    ("cheek_puff", "Puff your cheeks", 3.0),
+    ("rest", "Neutral face, look at the camera", 3.0),
+    ("look_down", "Look down at your keyboard, neutral face", 4.0),
+    ("look_down_frown", "Still looking at the keyboard, frown", 3.0),
+    ("look_down_smile", "Still looking at the keyboard, smile", 3.0),
+    ("turn_neutral", "Neutral face, slowly turn left and right", 5.0),
+    ("turn_smile", "Keep smiling, slowly turn left and right", 5.0),
+    ("turn_frown", "Keep frowning, slowly turn left and right", 5.0),
+    ("nod_neutral", "Neutral face, nod slowly", 4.0),
+    ("talk", "Talk normally, count from one to ten", 6.0),
+    ("talk_turn", "Keep talking, turn your head left and right", 6.0),
 )
-GUIDE_SECONDS = 3.0
+GUIDE_ENDS = tuple(sum(g[2] for g in GUIDE[:k + 1]) for k in range(len(GUIDE)))
 
 
 class Stats:
@@ -129,7 +144,7 @@ def run_preview(camera: int, width: int, height: int, record_dir: Path | None = 
 
                 step = None
                 if guided:
-                    i_step = int(ts / 1000 / GUIDE_SECONDS)
+                    i_step = next((k for k, e in enumerate(GUIDE_ENDS) if ts / 1000 < e), len(GUIDE))
                     if i_step >= len(GUIDE):
                         break
                     step = GUIDE[i_step]
@@ -160,7 +175,7 @@ def run_preview(camera: int, width: int, height: int, record_dir: Path | None = 
                     hud.append(f"REC {len(recorder.timestamps)}")
                 draw_hud(view, hud)
                 if step:
-                    left = GUIDE_SECONDS - (ts / 1000) % GUIDE_SECONDS
+                    left = GUIDE_ENDS[i_step] - ts / 1000
                     draw_banner(view, f"{step[1]}  ({left:.0f})")
                 tiles = [view]
                 if renderer:
