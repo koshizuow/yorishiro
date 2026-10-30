@@ -51,7 +51,21 @@ BROWS = np.array([336, 296, 334, 293, 300, 285, 295, 282, 283, 276,
                   107, 66, 105, 63, 70, 55, 65, 52, 53, 46])
 BROW_SHAPES = tuple(n for n in ICT_SHAPES if n.startswith("brow"))
 BROW_UP_SHAPES = tuple(n for n in BROW_SHAPES if not n.startswith("browDown"))
+# cheekSquint is solved on the cheeks alone (points from cheekPoints, between the lower lids and the mouth
+# corners, outside the nose wings): in the full solve smiles barely moved it (CREMA-D happy d 0.20, the
+# user's smile 0.05), regional 1.94 and 0.55. Head turns still add up to 0.19 on a neutral face (0.10
+# before), now a third of a smile. A regional noseSneer changed nothing and is not used.
+CHEEK_SHAPES = tuple(n for n in ICT_SHAPES if n.startswith("cheekSquint"))
 REGIONAL = True
+
+
+def cheek_points(canonical: np.ndarray) -> np.ndarray:
+    x, y = canonical[:, 0], canonical[:, 1]
+    lid_y = canonical[[374, 145], 1].mean()
+    mouth_y = canonical[[61, 291], 1].mean()
+    wing_x = np.abs(canonical[[64, 294], 0]).mean()
+    eye_outer_x = np.abs(canonical[[33, 263], 0]).mean()
+    return np.nonzero((y < lid_y + 0.3) & (y > mouth_y) & (np.abs(x) > wing_x) & (np.abs(x) < eye_outer_x * 1.15))[0]
 # Experiment, off until a recording with frowns and looking down settles it. browDown from the brow height,
 # like the lids: the regional solve still traded it against browInnerUp
 # (jitter up on the user's recording, CREMA-D anger read as a brow raise). Height is measured from a point
@@ -86,9 +100,13 @@ class MediaPipePointFitter:
         self.fit_rms_68 = corr.rms_68
         active = np.array([not n.startswith("eyeLook") for n in ICT_SHAPES])
         self.solver = IctSolver(head, self.ict_idx, active)
-        self.brow_rows = np.nonzero(np.isin(self.src_idx, BROWS))[0]
-        brow_active = np.array([n in BROW_SHAPES for n in ICT_SHAPES])
-        self.brow_solver = IctSolver(head, self.ict_idx[self.brow_rows], brow_active)
+        # regional solves: (rows of src_idx, shapes taken from it, solver over the region's shapes)
+        self.regions = []
+        for points, shapes, taken in ((BROWS, BROW_SHAPES, BROW_UP_SHAPES),
+                                      (cheek_points(load_canonical()), CHEEK_SHAPES, CHEEK_SHAPES)):
+            rows = np.nonzero(np.isin(self.src_idx, points))[0]
+            solver = IctSolver(head, self.ict_idx[rows], np.array([n in shapes for n in ICT_SHAPES]))
+            self.regions.append((rows, np.array([n in taken for n in ICT_SHAPES]), solver))
         # brow height drop at browDown = 1, measured on the reference with ICT's shape added
         to_ict = dict(zip(self.src_idx, self.ict_idx))
         self.brow_eye_weight, self.brow_down_full = {}, {}
@@ -118,7 +136,8 @@ class MediaPipePointFitter:
         self.lid_neutral = {side: _lid_gap(aligned, side) for side in LIDS}
         self.brow_neutral = {side: self._brow_height(aligned, side) for side in BROW_HEIGHT}
         self.solver.w[:] = 0
-        self.brow_solver.w[:] = 0
+        for _, _, solver in self.regions:
+            solver.w[:] = 0
         self.calibrated = True
 
     def calibrate_many(self, aligned: list[np.ndarray]) -> None:
@@ -135,9 +154,9 @@ class MediaPipePointFitter:
         disp = aligned[self.src_idx] - self.reference[self.src_idx]
         w = self.solver.solve(disp)
         if REGIONAL:
-            # the full solve keeps its brow shapes so brow motion is not explained by other shapes
-            up = np.array([n in BROW_UP_SHAPES for n in ICT_SHAPES])
-            w = np.where(up, self.brow_solver.solve(disp[self.brow_rows]), w)
+            # the full solve keeps these shapes too, so a region's motion is not explained by other shapes
+            for rows, taken, solver in self.regions:
+                w = np.where(taken, solver.solve(disp[rows]), w)
         bs = np.zeros(52, dtype=np.float32)
         for k, v in zip(self.arkit_of_shape, w):
             bs[k] = max(bs[k], v)  # browInnerUp and cheekPuff come from two ICT shapes

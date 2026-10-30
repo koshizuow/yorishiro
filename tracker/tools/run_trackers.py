@@ -5,7 +5,7 @@
 
 Writes <rec>/eval/<name>.npz with names (output channels), values (frames x channels), detected, ms
 (wall time of the tracker call per frame), cpu_s (process CPU time over the run) and, for our trackers,
-landmarks (478 MediaPipe points, float16) so solver changes can be tried without rerunning the networks.
+landmarks (478 MediaPipe points, float32: float16 moved refitted blendshapes by up to 0.3) so solver changes can be tried without rerunning the networks.
 
 A recording is split into sessions, each with a fresh tracker that calibrates its neutral like serve does,
 the way a user starts the app and sits still first: one session for a plain recording. For CREMA-D (clip names 1001_IEO_ANG_HI.flv) one session per
@@ -116,7 +116,7 @@ def run(rec: Path, spec: str):
     out_dir = rec / "eval"
     out_dir.mkdir(exist_ok=True)
     tag = spec.replace(":", "-")
-    extra = {} if name == "osf" else {"landmarks": landmarks.astype(np.float16)}
+    extra = {} if name == "osf" else {"landmarks": landmarks}
     np.savez_compressed(out_dir / f"{tag}.npz", names=np.array(names), values=values, detected=detected,
                         ms=ms, cpu_s=cpu_s, labels=np.array(meta.get("labels") or [""] * n), **extra)
     print(f"{tag}: {detected.sum()}/{n} faces, median {np.median(ms):.2f} ms, CPU {cpu_s:.1f} s")

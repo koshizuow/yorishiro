@@ -107,10 +107,6 @@ def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
                     window = []
                 if window is not None:
                     window.append(aligned)
-                    if len(window) == CALIBRATE_FACES:
-                        fitter.calibrate_many(window)
-                        window = None
-                        aligned, _ = fitter.realign(aligned)
             if JOINT_ROUNDS:
                 bs, aligned = joint_expressions(fitter, aligned, JOINT_ROUNDS)
             else:
@@ -118,6 +114,13 @@ def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
             if mp is not None:
                 bs = merge(bs, mp(lm, w, h))
             values[i, :52] = bs + fitter.gaze(aligned)
+            # as run_trackers and serve: the frame that completes the window is output first, then
+            # calibrate_window re-solves the window, which leaves the solver's warm start where serve's is
+            if window is not None and len(window) == CALIBRATE_FACES:
+                fitter.calibrate_many(window)
+                for a in window:
+                    fitter.expressions(fitter.realign(a)[0])
+                window = None
     return values, {k: d[k] for k in d.files if k != "values"}
 
 
