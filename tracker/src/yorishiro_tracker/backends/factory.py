@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .base import Backend
 
-RUNTIMES = ("vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu", "npu")
+RUNTIMES = ("vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu", "cuda", "tensorrt", "npu")
 
 
 def open_model(stem: Path, runtime: str) -> Backend:
@@ -15,6 +15,12 @@ def open_model(stem: Path, runtime: str) -> Backend:
     if runtime == "ort-cpu":
         from .ort_backend import OrtCpuBackend
         return OrtCpuBackend(stem.with_suffix(".onnx"))
+    if runtime == "cuda":
+        from .nvidia import CudaBackend
+        return CudaBackend(stem)
+    if runtime == "tensorrt":
+        from .nvidia import TensorRtBackend
+        return TensorRtBackend(stem)
     if runtime == "npu":
         from .npu import NpuBackend
         return NpuBackend(stem)

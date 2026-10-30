@@ -14,15 +14,20 @@ dependencies = [
     "moderngl>=5.13.0",
     "ncnn>=1.0.20261020",
     "numpy>=2.5.4",
-    "onnxruntime>=1.31.1",
     "opencv-contrib-python>=5.0.0.93",
 ]
 
 [project.scripts]
 yorishiro-tracker = "yorishiro_tracker:main"
 
-# Dev-only tooling: load research .pt weights and export ONNX / ncnn. Not used at runtime.
+# ONNX Runtime comes in two builds that install the same `onnxruntime` module, so exactly one of these
+# groups is synced. CPU is the default. On an NVIDIA machine: uv sync --no-group ort-cpu --group ort-nvidia
+# (CUDA 13 and cuDNN come as pip wheels, the driver must support CUDA 13).
 [dependency-groups]
+ort-cpu = ["onnxruntime>=1.31.1"]
+ort-nvidia = ["onnxruntime-gpu[cuda,cudnn]>=1.31.1", "tensorrt-cu13-libs>=10.16,<11"]  # ORT 1.31 loads libnvinfer.so.10
+
+# Dev-only tooling: load research .pt weights and export ONNX / ncnn. Not used at runtime.
 dev = [
     "torch",
     "timm",
@@ -33,13 +38,23 @@ dev = [
     "tflite2onnx>=0.4.1",
 ]
 
+[tool.uv]
+default-groups = ["dev", "ort-cpu"]
+conflicts = [[{ group = "ort-cpu" }, { group = "ort-nvidia" }]]
+
 [tool.uv.sources]
+tensorrt-cu13-libs = [{ index = "nvidia" }]
 torch = [{ index = "pytorch-cpu" }]
 torchvision = [{ index = "pytorch-cpu" }]
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
 explicit = true
 
 [build-system]

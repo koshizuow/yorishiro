@@ -7,7 +7,7 @@ const DATA_PORT = 39570
 const CONTROL_PORT = 39571
 ## an already running tracker (started by hand for development) is used if it speaks up within this time
 const ADOPT_WAIT_SEC = 1.5
-const RUNTIMES = ["vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu"]
+const RUNTIMES = ["vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu", "cuda", "tensorrt"]  # cuda, tensorrt: NVIDIA, tracker synced with the ort-nvidia group
 const LOG_LINES = 200
 const SETTINGS_PATH = "user://yorishiro_tracker.json"
 
