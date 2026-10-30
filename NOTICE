@@ -43,6 +43,46 @@ Data that is not part of this repository
   Face tracking models (MediaPipe, ICT-FaceKit and others) are downloaded at
   run time and keep their own licenses. The tracker reports which models allow
   commercial use.
+
+Models the default tracker (facemesh) uses, all commercially usable
+
+  MediaPipe Face Landmarker   Google, Apache-2.0
+    https://storage.googleapis.com/mediapipe-models/face_landmarker/
+    The face_landmarker.task bundle holds the face detector, FaceMesh-V2 and
+    Blendshapes V2. Yorishiro changes their format, not their weights:
+    - face detector: tflite2onnx to ONNX, then pnnx to ncnn
+      (tracker/tools/export_mediapipe.py, a channel Pad op is rewritten
+      for ncnn).
+    - FaceMesh-V2: the ONNX conversion from PINTO model zoo 410_FaceMeshV2
+      (Apache-2.0, https://github.com/PINTO0309/PINTO_model_zoo), then pnnx
+      to ncnn.
+    - Blendshapes V2: converted to ONNX by tracker/tools/mixer_tflite_to_onnx.py
+      (fp16 weights stored as fp32, 1x1 convolutions as MatMul).
+    Training data per Google's model cards: FaceMesh-V2 on Google's own
+    smartphone photos taken through an AR app, depth from synthetic data;
+    Blendshapes V2 on samples generated from multi-view lab captures fitted
+    with Google's GHUM face model. The data is not distributed.
+  ICT-FaceKit                 USC Institute for Creative Technologies, MIT
+    https://github.com/ICT-VGL/ICT-FaceKit
+    Neutral head and 53 ARKit-named expression shapes, used by the expression
+    solver and the preview avatar.
+
+Code adapted from MediaPipe (Apache-2.0)
+
+  tracker/src/yorishiro_tracker/adapters/landmark_smoother.py follows
+  MediaPipe's LandmarksSmoothingCalculator and OneEuroFilter and uses the
+  Face Landmarker's smoothing settings. adapters/mediapipe_blendshapes.py
+  copies the landmark subset and output order of face_blendshapes_graph.cc.
+  mediapipe_ncnn/ reimplements MediaPipe's face detector decoding and
+  landmark ROI handling. Copyright Google LLC, Apache-2.0.
+
+Evaluation only, not used by the tracker and not distributed
+
+  OpenSeeFace (BSD-2-Clause) and Intel Open Model Zoo models (Apache-2.0) run
+  in their own environments for comparison (tracker/tools/osf_worker.py,
+  tracker/tools/omz_worker.py). Research datasets (for example CREMA-D, ODbL)
+  are used for evaluation only, never for training (see the tracker's
+  design notes).
   Live2D sample models and the Live2D Cubism SDK are not included and are not
   redistributed. Users download them and accept Live2D's terms themselves.
   Yorishiro renders Live2D models with Ayagami and does not ship Live2D Cubism
