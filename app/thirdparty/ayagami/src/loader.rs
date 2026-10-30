@@ -156,6 +156,11 @@ impl AyagamiLoader {
             if vtx_count < 3 {
                 continue;
             }
+            // some models ship art meshes with vertices but no triangles (Hiyori has one), and Godot
+            // rejects an empty index array with four errors per mesh. Nothing to draw, so skip it.
+            if artmesh.indices_slice().is_empty() {
+                continue;
+            }
 
             let mut ary = VarArray::new();
             ary.resize(mesh::ArrayType::MAX.ord() as usize, &Variant::nil());
