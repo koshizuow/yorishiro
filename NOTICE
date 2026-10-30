@@ -1,0 +1,46 @@
+Yorishiro
+Copyright (c) 2026-present Tzu-Hsien Kao and Yorishiro contributors
+
+Yorishiro is an independent project. It is NOT the upstream OpenVT or Ayagami
+project and is not endorsed by their authors. Please report problems with
+Yorishiro to the Yorishiro project, not to the upstream projects.
+
+Licensing by directory
+
+  app/      MIT, see app/LICENSE.txt.
+            A fork of OpenVT (https://github.com/erodozer/open-vt),
+            Copyright (c) 2025-present erodozer, MIT. The fork point is
+            upstream commit 8ca92ac, later Yorishiro changes are listed in the
+            git history. Some changes were adapted from upstream pull requests
+            and keep their original authors in git.
+  tracker/  Apache-2.0, see tracker/LICENSE.
+  tools/    Same license as the component they belong to (app MIT, tracker
+            Apache-2.0).
+
+Third-party components used by app/ (git submodules, unmodified)
+
+  Ayagami (ayagami-gd)  https://github.com/AyagamiDev/ayagami-gd
+                        MIT, Copyright (c) The Ayagami Project Contributors
+  gd-virtualcamera      https://github.com/erodozer/gd-virtualcamera
+                        The Unlicense (public domain)
+  godot-keylogger       https://github.com/erodozer/godot-keylogger
+                        MIT, Copyright (c) 2025-present erodozer
+  godot-vrm             https://github.com/V-Sekai/godot-vrm
+                        MIT, sample models carry their own licenses
+  Godot Engine          https://godotengine.org, MIT. Yorishiro currently
+                        needs the Ayagami patched 4.7.1 build.
+
+Copies of these licenses are placed in app/license/ by app/build_dependencies.sh.
+
+Data that is not part of this repository
+
+  Face tracking models (MediaPipe, ICT-FaceKit and others) are downloaded at
+  run time and keep their own licenses. The tracker reports which models allow
+  commercial use.
+  Live2D sample models and the Live2D Cubism SDK are not included and are not
+  redistributed. Users download them and accept Live2D's terms themselves.
+  Yorishiro renders Live2D models with Ayagami and does not ship Live2D Cubism
+  Core.
+
+"Live2D" and "Cubism" are trademarks of Live2D Inc. "VTube Studio" is a
+trademark of its respective owner. Yorishiro is not affiliated with them.

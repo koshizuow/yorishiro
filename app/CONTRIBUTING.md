@@ -1,30 +1,32 @@
-# Godot Standards
+# Contributing to Yorishiro
 
-## GDScript internal, Rust external
+## Relationship with upstream projects
 
-OpenVT attempts to use as much out of the box functionality of Godot as possible with low overhead and dependencies, as it's already a rather feature rich runtime.
-As such, GDScript is the primary language of the codebase of OpenVT itself.
+Yorishiro started as a fork of [OpenVT](https://github.com/erodozer/open-vt) and uses
+[Ayagami](https://github.com/AyagamiDev/ayagami-gd) for Live2D rendering. It is an independent
+project. Report Yorishiro problems to Yorishiro, not to the upstream projects. See `NOTICE` at the
+repository root for licensing.
 
-When integrating with native libraries, Godot-Rust is the preferred tool of choice.  Such integrations should be general purpose enough to be developed outside of OpenVT and depended on.  The /thirdparty directory holds git submodules to various external dependencies that are built and loaded into the /addons folder of the project.
+- OpenVT does not accept contributions written, analyzed or reviewed with AI agents. Yorishiro is
+  developed with AI assistance, so changes from this repository must not be submitted to OpenVT.
+  Fixes adopted from upstream keep their original authors in git.
+- Ayagami follows strict clean-room rules. Yorishiro developers have read Live2D Cubism SDK code
+  (the SDK is used as a local reference renderer for testing), so Yorishiro does not contribute to
+  Ayagami and keeps its submodule unmodified. Live2D features that Ayagami lacks are implemented in
+  the app from public file format documentation, never by copying SDK code.
+- Internal names inherited from OpenVT (for example `VtModel` and `.ovt.json` model settings) are
+  kept on purpose. They keep model files compatible and make upstream fixes easy to adopt.
+  User visible names, identifiers sent to other apps and links must say Yorishiro.
 
-## Minimum engine version, Engine patching
+## Godot standards
 
-The codebase will generally target the latest stable 4.x series Godot runtimes to edit the project.  Due to necessary patches against Godot for rendering models, at least version 4.7.1 is required.
+GDScript is the primary language of the app. Native integrations use godot-rust and live in
+`thirdparty/` as git submodules, built into `addons/` by `build_dependencies.sh`.
 
-Unless absolutely necessary, such as with the Ayagami patches, the project should strive not to rely on custom engine builds.  This lowers the maintenance complexity and lowers the overhead for making contributions.
+The app needs Godot 4.7.1 with the Ayagami engine patches (upstream PR godotengine/godot#116686).
+Avoid relying on other custom engine changes.
 
-# AI models and agents
+## Live2D material
 
-Please do not use AI agents to contribute to this project, neither directly or indirectly. Examples of forbidden conduct include using an AI agent to do any of the following:
-
-- Author any code related to this project
-- Analyze this repository's code
-- Review code intended for contribution
-
-Any attempts to contribute that ignore or circumvent these rules will result in immediate rejection, and the user barred from further contributions.
-
-# Do it for your Oshi
-
-OpenVT is a project born out of the love of vtubers and respect for its human community of hard working creators.  Building software for their sake using AI agents spits in the face of those same creators.  To give them ethically built tools that empower their artistry is the highest priority of OpenVT.
-
-There's no pressure to implement anything as fast as possible, it's not a race.  If you wish to contribute, take the time to learn and build with your own imagination and skills, even if for no other sake than to make your oshi proud.
+Never commit Live2D Cubism SDK files or Live2D sample models. They are downloaded by each user
+under Live2D's own terms.
