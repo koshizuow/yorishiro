@@ -12,10 +12,15 @@
 ##   --dump-above=<a,b>     ... and the visible meshes drawn on top of them
 ##   --unmask=<a,b>, --raise=<a,b>  before each hotkey shot, draw these meshes without their mask, or on top
 ##   --print-params=<a,b>   model parameters printed after each pose (default: angles, eyes, mouth open)
+##   --fixed-clock          blink, breathing and smoothing count frames instead of wall time, random seed 1.
+##                          With Godot's --fixed-fps 60 the same run gives the same screenshots
 ##   --quit                 exit after the screenshot
 extends Node
 
 const CameraTracker = preload("res://lib/tracking/camera/camera_tracker.gd")
+const Clock = preload("res://lib/utils/clock.gd")
+
+var _pose_tracker
 const TRACKERS = {
 	"yorishiro": "res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd",
 	"openseeface": "res://lib/tracking/camera/openseeface/osf_tracker.gd",
@@ -28,6 +33,8 @@ func _ready() -> void:
 		args[kv[0]] = kv[1] if kv.size() > 1 else ""
 	if args.is_empty():
 		return
+	if args.has("fixed-clock"):
+		seed(1)
 	# wait for the main scene so the stage exists
 	await get_tree().process_frame
 	var stage = get_tree().get_first_node_in_group("system:stage")
@@ -38,7 +45,13 @@ func _ready() -> void:
 		if model == null:
 			push_error("[automation] could not load model %s" % args["model"])
 		else:
-			stage.spawn_model(model)
+			# loading takes a varying number of frames, so count waits and the fixed clock from the end of it
+			await stage.spawn_model(model)
+			Clock.origin_frame = Engine.get_process_frames()
+
+	if args.has("poses"):
+		# hold the model still from the start, the saved tracker could still be feeding it otherwise
+		_pose_tracker = get_tree().get_first_node_in_group("system:tracking").activate_tracker(CameraTracker.new())
 
 	if args.has("tracker"):
 		# the settings panel restores the saved tracker a frame after startup, go after it
@@ -166,7 +179,7 @@ func _debug_meshes_after(args: Dictionary, model):
 ## each pose is held by a fixed tracker, updated every frame so its smoothing converges
 func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
 	var poses: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(args["poses"]))
-	var tracker = get_tree().get_first_node_in_group("system:tracking").activate_tracker(CameraTracker.new())
+	var tracker = _pose_tracker
 	var names: Array = args.get("print-params", "ParamAngleX,ParamAngleZ,ParamEyeLOpen,ParamEyeROpen,ParamMouthOpenY").split(",")
 	for pose in poses:
 		for i in int(args.get("pose-frames", "90")):

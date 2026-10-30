@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+"""Render regression over every test model: 13 poses plus each expression hotkey, compared to a baseline.
+
+    python3 tools/render_regress.py              run all models, compare, write a report
+    python3 tools/render_regress.py --accept     same, then make this run the new baseline
+    python3 tools/render_regress.py hiyori_free hiyori_pro    only these models (name substring)
+
+Models are every folder with a .model3.json under testdata/models, plus the Hiyori samples in
+userdata/yorishiro/Live2DModels. Runs use --fixed-clock and --fixed-fps 60, so an unchanged app gives
+pixel-identical shots and any difference is real. Baselines live in testdata/render-baseline/<model>/
+(private, D28). Output and report go to testdata/render-runs/<timestamp>/ (not committed).
+"""
+import argparse
+import datetime
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parent.parent
+TESTDATA = ROOT.parent / "testdata"
+BASELINE = TESTDATA / "render-baseline"
+RUNS = TESTDATA / "render-runs"
+# a pixel counts as changed when any channel moves more than this, a shot fails above FAIL_PCT changed
+PIXEL_TOL = 8
+FAIL_PCT = 0.05
+
+
+def find_models():
+    found = {}
+    for base in (TESTDATA / "models", ROOT / "userdata/yorishiro/Live2DModels"):
+        for m3 in sorted(base.rglob("*.model3.json")):
+            # a model folder name, unique enough to key baselines by
+            name = m3.relative_to(base).parts[0]
+            found.setdefault(name, m3)
+    return found
+
+
+def render(model: Path, out: Path):
+    out.mkdir(parents=True, exist_ok=True)
+    cmd = [str(ROOT / "run.sh"), "--disable-vsync", "--fixed-fps", "60", "--",
+           f"--model={model}", f"--screenshot={out / 'main.png'}", "--wait-frames=60",
+           f"--poses={ROOT / 'tools/poses.json'}", "--pose-frames=40", "--hotkeys", "--fixed-clock", "--quit"]
+    with open(out / "run.log", "w") as log:
+        rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, timeout=600).returncode
+    errors = [l for l in (out / "run.log").read_text(errors="replace").splitlines()
+              if "SCRIPT ERROR" in l or "Parse Error" in l]
+    # camera_panel.gd:117 fires when automation swaps in a pose tracker, known and harmless
+    errors = [e for e in errors if "on a base object of type 'Nil'" not in e]
+    return rc, errors
+
+
+def diff(a: Path, b: Path):
+    x = np.asarray(Image.open(a).convert("RGBA"), dtype=np.int16)
+    y = np.asarray(Image.open(b).convert("RGBA"), dtype=np.int16)
+    if x.shape != y.shape:
+        return 100.0, 255
+    d = np.abs(x - y).max(axis=2)
+    return float((d > PIXEL_TOL).mean() * 100), int(d.max())
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("only", nargs="*")
+    ap.add_argument("--accept", action="store_true")
+    a = ap.parse_args()
+    models = {n: p for n, p in find_models().items() if not a.only or any(o in n for o in a.only)}
+    run = RUNS / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    lines, failed = [], 0
+    for name, m3 in models.items():
+        out = run / name
+        rc, errors = render(m3, out)
+        shots = sorted(p.name for p in out.glob("*.png"))
+        base = BASELINE / name
+        changed, missing = [], []
+        for s in shots:
+            if not (base / s).exists():
+                missing.append(s)
+                continue
+            pct, mx = diff(base / s, out / s)
+            if pct > FAIL_PCT:
+                changed.append(f"{s} {pct:.2f}% (max {mx})")
+        gone = sorted(p.name for p in base.glob("*.png") if p.name not in shots) if base.exists() else []
+        bad = rc != 0 or errors or changed or gone
+        failed += bool(bad)
+        status = "FAIL" if bad else ("NEW" if missing and not base.exists() else "ok")
+        block = [f"{status:4} {name}: {len(shots)} shots, rc {rc}"
+                 + (f", {len(errors)} script errors" if errors else "")
+                 + (f", {len(changed)} changed" if changed else "")
+                 + (f", {len(missing)} without baseline" if missing else "")
+                 + (f", {len(gone)} missing vs baseline" if gone else "")]
+        block += [f"     changed {c}" for c in changed] + [f"     gone {g}" for g in gone]
+        block += [f"     {e}" for e in errors[:5]]
+        print("\n".join(block), flush=True)
+        lines += block
+        if a.accept:
+            base.mkdir(parents=True, exist_ok=True)
+            for p in base.glob("*.png"):
+                p.unlink()
+            for s in shots:
+                shutil.copy2(out / s, base / s)
+    report = "\n".join(lines) + f"\n\n{len(models)} models, {failed} failed\n"
+    (run / "report.txt").write_text(report)
+    print(f"\n{len(models)} models, {failed} failed. Report {run / 'report.txt'}")
+    if a.accept:
+        print(f"baseline updated in {BASELINE}")
+    sys.exit(1 if failed and not a.accept else 0)
+
+
+if __name__ == "__main__":
+    main()

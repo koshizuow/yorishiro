@@ -1,5 +1,7 @@
 extends "../vt_action.gd"
 
+const Clock = preload("res://lib/utils/clock.gd")
+
 @export var curve: Curve
 
 var blinking: float
@@ -21,7 +23,7 @@ var speed: float :
 
 var progress: float :
 	get():
-		var now = Time.get_ticks_msec()
+		var now = Clock.msec()
 		if now > blinking - (speed * 2):
 			return 1.0 - curve.sample_baked(
 				inverse_lerp(
@@ -70,7 +72,7 @@ func get_value(_slot) -> float:
 	return progress
 
 func _process(_delta: float) -> void:
-	var now = Time.get_ticks_msec()
+	var now = Clock.msec()
 	if blinking < now:
 		blinking = now + randf_range(frequency.x, frequency.y) + speed
 	

@@ -4,15 +4,15 @@
 extends "./tracker.gd"
 
 var _previous = {}
-var _previous_msec: float = Time.get_ticks_msec()
-var _latest_msec: float = Time.get_ticks_msec()
+var _previous_msec: float = Clock.msec()
+var _latest_msec: float = Clock.msec()
 
 var fps: float = 0.0
 
 @export_range(0.0, 1.0) var smoothing: float = 0.2
 
 ## get fps blended parameters for stabilization
-func parameters(time: float = Time.get_ticks_msec()) -> Dictionary:
+func parameters(time: float = Clock.msec()) -> Dictionary:
 	# blend ranges based on sample rate
 	# we always blend with a 1 update delay
 	# two updates in the same millisecond made this 0 / 0, and the NaN stuck in every smoothing node after it
@@ -32,7 +32,7 @@ func parameters(time: float = Time.get_ticks_msec()) -> Dictionary:
 	return output
 	
 func update(updated_parameters: Dictionary):
-	var now: float = Time.get_ticks_msec()
+	var now: float = Clock.msec()
 	_previous = _parameters
 	_previous_msec = _latest_msec
 	_latest_msec = now

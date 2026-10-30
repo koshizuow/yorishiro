@@ -4,6 +4,8 @@
 
 extends RefCounted
 
+const Clock = preload("res://lib/utils/clock.gd")
+
 var min_cutoff: float
 var beta: float
 var d_cutoff: float
@@ -25,7 +27,7 @@ func alpha(rate: float, cutoff: float) -> float:
 	
 	return 1.0 / (1.0 + tau / te)
 
-func filter(value, time: float = Time.get_unix_time_from_system()) -> float:
+func filter(value, time: float = Clock.unix()) -> float:
 	if min_cutoff < 0:
 		return value
 		

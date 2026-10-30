@@ -141,7 +141,8 @@ func _load_tracker_list():
 func _fill_trackers(json: String, thread: Thread):
 	thread.wait_to_finish()
 	var list = JSON.parse_string(json)
-	if typeof(list) != TYPE_ARRAY or not is_inside_tree():
+	# the list loads on a thread, the tracker may have been switched away and freed meanwhile
+	if typeof(list) != TYPE_ARRAY or not is_inside_tree() or not is_instance_valid(tracker):
 		return
 	_model.clear()
 	for t in list:

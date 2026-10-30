@@ -1,5 +1,7 @@
 extends "../vt_action.gd"
 
+const Clock = preload("res://lib/utils/clock.gd")
+
 @export var curve: Curve
 
 var frequency: float :
@@ -11,7 +13,7 @@ var frequency: float :
 var progress: float :
 	get():
 		var time = pingpong(
-			fmod(Time.get_ticks_msec(), frequency * 2), frequency
+			fmod(Clock.msec(), frequency * 2), frequency
 		) / frequency
 		return curve.sample_baked(time)
 

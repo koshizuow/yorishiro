@@ -1,12 +1,14 @@
 extends "./parameter_value_provider.gd"
 
+const Clock = preload("res://lib/utils/clock.gd")
+
 var expression_library: Dictionary
 var weights: Dictionary
 var fades: Dictionary = {}
 var order: Array[StringName] = []
 
 func queue_expression(expression_name: StringName, fade: float, reverse: bool):
-	var start = Time.get_unix_time_from_system()
+	var start = Clock.unix()
 	var end = start + fade
 
 	var fade_time = {
@@ -90,7 +92,7 @@ func _get_property_list() -> Array[Dictionary]:
 	return properties
 
 func update(inputs: Dictionary):
-	var now: float = Time.get_unix_time_from_system()
+	var now: float = Clock.unix()
 	
 	#apply expressions to parameters, with the parameter value being the set by the most recently activated expression
 	var modified = {}

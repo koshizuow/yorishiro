@@ -1,5 +1,7 @@
 extends Node
 
+const Clock = preload("res://lib/utils/clock.gd")
+
 var _parameters = {}
 
 func create_config() -> Node:
@@ -8,7 +10,7 @@ func create_config() -> Node:
 func reset():
 	update({})
 
-func parameters(_time: float = Time.get_ticks_msec()) -> Dictionary:
+func parameters(_time: float = Clock.msec()) -> Dictionary:
 	return _parameters
 
 func update(updated_parameters: Dictionary):

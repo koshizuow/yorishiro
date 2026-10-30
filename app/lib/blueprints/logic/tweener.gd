@@ -1,5 +1,7 @@
 extends VtAction
 
+const Clock = preload("res://lib/utils/clock.gd")
+
 var duration: float = 1.0 :
 	get():
 		return %Duration.value
@@ -15,7 +17,7 @@ var _changed: float = 0
 var a : float = 0.0 :
 	set(v):
 		_prev = a
-		_changed = Time.get_ticks_msec()
+		_changed = Clock.msec()
 		a = v
 
 var b : float = 0.0
@@ -75,7 +77,7 @@ func _process(_delta: float) -> void:
 	var before = b
 	b = Tween.interpolate_value(
 		_prev, a - _prev,
-		clamp((Time.get_ticks_msec() - _changed) / 1000.0, 0, duration),
+		clamp((Clock.msec() - _changed) / 1000.0, 0, duration),
 		duration, transition, easing
 	)
 	if before != b:
