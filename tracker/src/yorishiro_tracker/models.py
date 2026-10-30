@@ -1,0 +1,32 @@
+import urllib.request
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+MODEL_DIR = PROJECT_ROOT / "models"
+
+FACE_LANDMARKER_URL = (
+    "https://storage.googleapis.com/mediapipe-models/face_landmarker/"
+    "face_landmarker/float16/1/face_landmarker.task"
+)
+CANONICAL_FACE_URL = (
+    "https://raw.githubusercontent.com/google-ai-edge/mediapipe/master/"
+    "mediapipe/modules/face_geometry/data/canonical_face_model.obj"
+)
+
+
+def _download(url: str, path: Path) -> Path:
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".part")
+        print(f"Downloading {url}")
+        urllib.request.urlretrieve(url, tmp)
+        tmp.rename(path)
+    return path
+
+
+def ensure_face_landmarker() -> Path:
+    return _download(FACE_LANDMARKER_URL, MODEL_DIR / "face_landmarker.task")
+
+
+def ensure_canonical_face_model() -> Path:
+    return _download(CANONICAL_FACE_URL, MODEL_DIR / "canonical_face_model.obj")

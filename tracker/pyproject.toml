@@ -1,0 +1,47 @@
+[project]
+name = "yorishiro-tracker"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Tzu-Hsien Kao", email = "jasonkao0810@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mediapipe>=1.2.0",
+    "moderngl>=5.13.0",
+    "ncnn>=1.0.20261020",
+    "numpy>=2.5.4",
+    "onnxruntime>=1.31.1",
+    "opencv-contrib-python>=5.0.0.93",
+]
+
+[project.scripts]
+yorishiro-tracker = "yorishiro_tracker:main"
+
+# Dev-only tooling: load research .pt weights and export ONNX / ncnn. Not used at runtime.
+[dependency-groups]
+dev = [
+    "torch",
+    "timm",
+    "onnx",
+    "pnnx",
+    "gdown",
+    "torchvision>=0.29.2",
+    "tflite2onnx>=0.4.1",
+]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
