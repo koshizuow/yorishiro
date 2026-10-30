@@ -15,3 +15,4 @@ models/
 
 # Written to the working directory by the Ryzen AI VitisAI EP compiler
 original-*-signature.txt
+.venv-*
