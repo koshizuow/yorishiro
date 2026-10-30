@@ -4,7 +4,8 @@
     (names: any registered tracker, optionally name:runtime, and osf for OpenSeeFace)
 
 Writes <rec>/eval/<name>.npz with names (output channels), values (frames x channels), detected, ms
-(wall time of the tracker call per frame) and cpu_s (process CPU time over the run).
+(wall time of the tracker call per frame), cpu_s (process CPU time over the run) and, for our trackers,
+landmarks (478 MediaPipe points, float16) so solver changes can be tried without rerunning the networks.
 
 A recording is split into sessions, each with a fresh tracker, the way a user starts the app and sits
 still first: one session for a plain recording. For CREMA-D (clip names 1001_IEO_ANG_HI.flv) one session per
@@ -74,6 +75,7 @@ def run(rec: Path, spec: str):
     else:
         names = FRAME_NAMES
         values = np.zeros((n, len(names)), np.float32)
+        landmarks = np.zeros((n, 478, 3), np.float32)
         detected = np.zeros(n, bool)
         ms = np.zeros(n, np.float32)
         cpu0 = time.process_time()
@@ -94,6 +96,7 @@ def run(rec: Path, spec: str):
                     ms[i] = (time.perf_counter() - t0) * 1000
                     if res is not None:
                         values[i] = res.frame.to_vector()
+                        landmarks[i] = res.landmarks
                         detected[i] = True
             finally:
                 tracker.close()
@@ -101,8 +104,9 @@ def run(rec: Path, spec: str):
     out_dir = rec / "eval"
     out_dir.mkdir(exist_ok=True)
     tag = spec.replace(":", "-")
+    extra = {} if name == "osf" else {"landmarks": landmarks.astype(np.float16)}
     np.savez_compressed(out_dir / f"{tag}.npz", names=np.array(names), values=values, detected=detected,
-                        ms=ms, cpu_s=cpu_s, labels=np.array(meta.get("labels") or [""] * n))
+                        ms=ms, cpu_s=cpu_s, labels=np.array(meta.get("labels") or [""] * n), **extra)
     print(f"{tag}: {detected.sum()}/{n} faces, median {np.median(ms):.2f} ms, CPU {cpu_s:.1f} s")
 
 
