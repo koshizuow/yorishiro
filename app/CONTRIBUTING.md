@@ -10,10 +10,13 @@ repository root for licensing.
 - OpenVT does not accept contributions written, analyzed or reviewed with AI agents. Yorishiro is
   developed with AI assistance, so changes from this repository must not be submitted to OpenVT.
   Fixes adopted from upstream keep their original authors in git.
-- Ayagami follows strict clean-room rules. Yorishiro developers have read Live2D Cubism SDK code
-  (the SDK is used as a local reference renderer for testing), so Yorishiro does not contribute to
-  Ayagami and keeps its submodule unmodified. Live2D features that Ayagami lacks are implemented in
-  the app from public file format documentation, never by copying SDK code.
+- Ayagami follows strict clean-room rules. Yorishiro developers have read Live2D Cubism SDK code,
+  so Yorishiro does not contribute to Ayagami and keeps its submodule unmodified. Live2D features
+  that Ayagami lacks are implemented in the app from public file format documentation, never by
+  copying SDK code.
+- Do not use the Live2D Cubism SDK, its output or its sample models to test or tune Yorishiro
+  rendering. The SDK license forbids using its derivative works and output files with competing
+  software. Rendering tests use Yorishiro's own screenshots.
 - Internal names inherited from OpenVT (for example `VtModel` and `.ovt.json` model settings) are
   kept on purpose. They keep model files compatible and make upstream fixes easy to adopt.
   User visible names, identifiers sent to other apps and links must say Yorishiro.

@@ -20,7 +20,10 @@ Licensing by directory
 Third-party components used by app/ (git submodules, unmodified)
 
   Ayagami (ayagami-gd)  https://github.com/AyagamiDev/ayagami-gd
-                        MIT, Copyright (c) The Ayagami Project Contributors
+                        MIT, Copyright (c) The Ayagami Project Contributors.
+                        Statically links the Ayagami core library
+                        (https://github.com/AyagamiDev/ayagami), MIT or
+                        Apache-2.0.
   gd-virtualcamera      https://github.com/erodozer/gd-virtualcamera
                         The Unlicense (public domain)
   godot-keylogger       https://github.com/erodozer/godot-keylogger
@@ -31,6 +34,9 @@ Third-party components used by app/ (git submodules, unmodified)
                         needs the Ayagami patched 4.7.1 build.
 
 Copies of these licenses are placed in app/license/ by app/build_dependencies.sh.
+The native addons also statically link Rust crates from crates.io, for example
+godot-rust (MPL-2.0). A complete list of their licenses must be generated and
+shipped with any binary release.
 
 Data that is not part of this repository
 
