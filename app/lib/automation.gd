@@ -7,6 +7,7 @@
 ##   --burst-every=<n>      frames between burst shots, default 60
 ##   --poses=<json>         instead of a camera, hold each named pose ({"name": {"FaceAngleX": 30}}) and
 ##                          save <name>_<pose>.png after --pose-frames (default 90) frames
+##   --print-params=<a,b>   model parameters printed after each pose (default: angles, eyes, mouth open)
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -100,6 +101,7 @@ func _open_panel(which: String):
 func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
 	var poses: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(args["poses"]))
 	var tracker = get_tree().get_first_node_in_group("system:tracking").activate_tracker(CameraTracker.new())
+	var names: Array = args.get("print-params", "ParamAngleX,ParamAngleZ,ParamEyeLOpen,ParamEyeROpen,ParamMouthOpenY").split(",")
 	for pose in poses:
 		for i in int(args.get("pose-frames", "90")):
 			tracker.update(poses[pose])
@@ -107,7 +109,6 @@ func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
 		var shot = "%s_%s.png" % [path.get_basename(), pose]
 		var err = viewport.get_texture().get_image().save_png(shot)
 		var model = get_tree().get_first_node_in_group("system:stage").active_model
-		print("[automation] pose %s -> %s, ParamAngleX %s ParamAngleZ %s ParamEyeLOpen %s ParamEyeROpen %s ParamMouthOpenY %s" % ([
-			shot, error_string(err)] + ["ParamAngleX", "ParamAngleZ", "ParamEyeLOpen", "ParamEyeROpen", "ParamMouthOpenY"].map(
-				func (q): return model.get("parameters/%s" % q) if model else null)))
+		print("[automation] pose %s -> %s, %s" % [shot, error_string(err), " ".join(names.map(
+			func (q): return "%s %s" % [q, model.get("parameters/%s" % q) if model else null]))])
 		tracker.reset()
