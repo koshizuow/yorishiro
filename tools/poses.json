@@ -1,0 +1,15 @@
+{
+  "neutral": {},
+  "turn_left": {"FaceAngleX": -30},
+  "turn_right": {"FaceAngleX": 30},
+  "look_up": {"FaceAngleY": 30},
+  "look_down": {"FaceAngleY": -30},
+  "tilt": {"FaceAngleZ": 30},
+  "mouth_open_smile": {"MouthOpen": 1, "MouthSmile": 1},
+  "mouth_open_frown": {"MouthOpen": 1, "MouthSmile": 0},
+  "eyes_closed": {"EyeOpenLeft": 0, "EyeOpenRight": 0},
+  "wink_left": {"EyeOpenLeft": 0, "EyeOpenRight": 1},
+  "gaze_corner": {"EyeLeftX": 1, "EyeRightX": 1, "EyeLeftY": 1, "EyeRightY": 1},
+  "brows_up_cheek_tongue": {"Brows": 1, "CheekPuff": 1, "TongueOut": 1, "MouthOpen": 0.6},
+  "combined_extreme": {"FaceAngleX": 30, "FaceAngleY": -30, "FaceAngleZ": -30, "MouthOpen": 1, "EyeOpenLeft": 0, "FacePositionX": 15}
+}

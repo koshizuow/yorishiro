@@ -3,9 +3,14 @@
 ##   --tracker=<name>       activate a tracking input, e.g. yorishiro
 ##   --screenshot=<png>     save the stage after --wait-frames rendered frames
 ##   --wait-frames=<n>      default 90, lets physics and tracking settle
+##   --burst=<n>            after the screenshot, n more (<name>_01.png ...) with the tracked pose
+##   --burst-every=<n>      frames between burst shots, default 60
+##   --poses=<json>         instead of a camera, hold each named pose ({"name": {"FaceAngleX": 30}}) and
+##                          save <name>_<pose>.png after --pose-frames (default 90) frames
 ##   --quit                 exit after the screenshot
 extends Node
 
+const CameraTracker = preload("res://lib/tracking/camera/camera_tracker.gd")
 const TRACKERS = {
 	"yorishiro": "res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd",
 	"openseeface": "res://lib/tracking/camera/openseeface/osf_tracker.gd",
@@ -54,6 +59,17 @@ func _ready() -> void:
 		if path:
 			var err = viewport.get_texture().get_image().save_png(path)
 			print("[automation] screenshot %s -> %s" % [path, error_string(err)])
+			if args.has("poses"):
+				await _shoot_poses(args, viewport, path)
+			for b in int(args.get("burst", "0")):
+				for i in int(args.get("burst-every", "60")):
+					await RenderingServer.frame_post_draw
+				var shot = "%s_%02d.png" % [path.get_basename(), b + 1]
+				err = viewport.get_texture().get_image().save_png(shot)
+				var tp = get_tree().get_first_node_in_group("system:tracking").parameters
+				print("[automation] burst %s -> %s, %.0f fps, FaceAngleX %.1f FaceAngleY %.1f FaceAngleZ %.1f EyeOpenLeft %.2f MouthOpen %.2f MouthSmile %.2f" % [
+					shot, error_string(err), Engine.get_frames_per_second(), tp.get("FaceAngleX", 0.0), tp.get("FaceAngleY", 0.0),
+					tp.get("FaceAngleZ", 0.0), tp.get("EyeOpenLeft", 0.0), tp.get("MouthOpen", 0.0), tp.get("MouthSmile", 0.0)])
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
@@ -79,3 +95,19 @@ func _open_panel(which: String):
 		return
 	button.button_pressed = true
 	button.owner._open_panel(button.get_node(button.get_meta("panel")))
+
+## each pose is held by a fixed tracker, updated every frame so its smoothing converges
+func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
+	var poses: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(args["poses"]))
+	var tracker = get_tree().get_first_node_in_group("system:tracking").activate_tracker(CameraTracker.new())
+	for pose in poses:
+		for i in int(args.get("pose-frames", "90")):
+			tracker.update(poses[pose])
+			await RenderingServer.frame_post_draw
+		var shot = "%s_%s.png" % [path.get_basename(), pose]
+		var err = viewport.get_texture().get_image().save_png(shot)
+		var model = get_tree().get_first_node_in_group("system:stage").active_model
+		print("[automation] pose %s -> %s, ParamAngleX %s ParamAngleZ %s ParamEyeLOpen %s ParamEyeROpen %s ParamMouthOpenY %s" % ([
+			shot, error_string(err)] + ["ParamAngleX", "ParamAngleZ", "ParamEyeLOpen", "ParamEyeROpen", "ParamMouthOpenY"].map(
+				func (q): return model.get("parameters/%s" % q) if model else null)))
+		tracker.reset()

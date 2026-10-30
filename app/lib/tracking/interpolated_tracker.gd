@@ -15,10 +15,9 @@ var fps: float = 0.0
 func parameters(time: float = Time.get_ticks_msec()) -> Dictionary:
 	# blend ranges based on sample rate
 	# we always blend with a 1 update delay
-	var progress: float = clampf(
-		(time - _latest_msec) / (_latest_msec - _previous_msec),
-		0.0, 1.0
-	)
+	# two updates in the same millisecond made this 0 / 0, and the NaN stuck in every smoothing node after it
+	var interval := _latest_msec - _previous_msec
+	var progress: float = 1.0 if interval <= 0.0 else clampf((time - _latest_msec) / interval, 0.0, 1.0)
 	#progress = 1.0
 	
 	var output = {}

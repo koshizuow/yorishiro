@@ -50,6 +50,8 @@ var background_color: Color = Color.BLACK :
 		background_color = color
 
 var active_model: VtModel
+## the last model asked for, a slower earlier load is dropped when it finishes
+var _requested_model: VtModel
 @onready var canvas = %ModelLayer
 @onready var capture_viewport = %SubViewport
 @onready var camera_3d = %Camera3D
@@ -75,6 +77,7 @@ func spawn_model(model: VtModel):
 	if model == null:
 		push_warning("invalid model attempted to load")
 		return
+	_requested_model = model
 	
 	var prev_model
 	if active_model != null:
@@ -97,6 +100,13 @@ func spawn_model(model: VtModel):
 	canvas.add_child(model)
 	
 	await model.loaded
+	
+	# another spawn started while this one loaded (the saved model at startup and a model picked
+	# or passed with --model right away), both stayed on stage before
+	if model != _requested_model:
+		canvas.remove_child(model)
+		model.queue_free()
+		return
 	
 	if model.is_queued_for_deletion():
 		get_tree().get_first_node_in_group("system:alert").alert("Unable to load model")	
@@ -121,7 +131,7 @@ func spawn_model(model: VtModel):
 
 	# TODO if model had items pinned to it, load them in as well
 	model_changed.emit(active_model)
-	if prev_model != null:
+	if prev_model != null and not prev_model.is_queued_for_deletion():
 		prev_model.queue_free()
 
 func spawn_item(item: VtItem, animate = true, reposition = true):
