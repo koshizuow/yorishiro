@@ -9,9 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
-# Downloaded models and captured data
+# Downloaded models and captured data (data may be a symlink to private storage, see YORISHIRO_DATA)
 models/
-data/
+/data
 
 # Written to the working directory by the Ryzen AI VitisAI EP compiler
 original-*-signature.txt

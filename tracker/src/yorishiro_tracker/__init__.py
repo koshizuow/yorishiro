@@ -2,7 +2,7 @@ import argparse
 from datetime import datetime
 from pathlib import Path
 
-from .models import PROJECT_ROOT
+from .models import RECORDINGS_DIR
 
 
 def _size(text: str) -> tuple[int, int]:
@@ -92,7 +92,7 @@ def main() -> None:
         app.run_preview(args.camera, *args.size, avatar=args.avatar, tracker_name=args.tracker,
                         runtime=args.runtime, link=args.link)
     elif args.cmd == "record":
-        out = args.out or PROJECT_ROOT / "data" / "recordings" / datetime.now().strftime("%Y%m%d-%H%M%S")
+        out = args.out or RECORDINGS_DIR / datetime.now().strftime("%Y%m%d-%H%M%S")
         app.run_preview(args.camera, *args.size, record_dir=out, seconds=args.seconds,
                         guided=args.guided, avatar=args.avatar, tracker_name=args.tracker,
                         runtime=args.runtime)

@@ -1,8 +1,12 @@
+import os
 import urllib.request
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MODEL_DIR = PROJECT_ROOT / "models"
+# Recordings hold people's faces, so they can live outside the source tree.
+DATA_DIR = Path(os.environ.get("YORISHIRO_DATA") or PROJECT_ROOT / "data")
+RECORDINGS_DIR = DATA_DIR / "recordings"
 
 FACE_LANDMARKER_URL = (
     "https://storage.googleapis.com/mediapipe-models/face_landmarker/"
