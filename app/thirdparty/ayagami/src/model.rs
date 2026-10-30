@@ -453,11 +453,21 @@ impl INode2D for AyagamiModel {
         }
 
         // check if attempting to set a value on the internal ayagami driver
-        if let (Some(pose), Some(key), Ok(v)) = (
+        if let (Some(pose), Some(key), Ok(mut v)) = (
             self.pose.as_mut(),
             param_to_key(property).as_ref(),
             value.try_to::<f32>(),
         ) {
+            // keep the last good value, a NaN would stay in the deformers
+            if !v.is_finite() {
+                return true;
+            }
+            // VTS mappings routinely drive parameters past their range (one test model's ParamMouthOpenY
+            // 0..1 gets -0.3..2.7). Past the last keyform the meshes extrapolate and warp, so
+            // hold values inside the range the model was made for.
+            if let Some((_, p)) = self.pose_map.get(key) {
+                v = v.clamp(p.min, p.max);
+            }
             if let Some(p) = pose.get_mut_flattened(key) {
                 *p = Value::opaque(v);
                 return true;
