@@ -53,17 +53,30 @@ func _notification(what: int) -> void:
 func write_data(path = active_file):
 	Files.write_json(path, _data)
 	Files.write_json(APP_SETTINGS_PATH, {
-		"profile": _portable(active_file),
+		"profile": portable(active_file),
 		"debug": debug,
 	})
 	_dirty = false
 
-## user:// form for profiles inside the data folder, so moving that folder keeps them
-func _portable(path: String) -> String:
+## user:// form for paths inside the data folder, so moving that folder keeps them
+func portable(path: String) -> String:
 	var user_dir = ProjectSettings.globalize_path("user://")
 	if path.begins_with(user_dir):
 		return "user://" + path.trim_prefix(user_dir).trim_prefix("/")
 	return path
+
+## absolute path for a stored path. Paths saved under Godot's default
+## app_userdata/<name>/ folder are remapped into the current user:// folder.
+func resolve(path: String) -> String:
+	var absolute = ProjectSettings.globalize_path(path)
+	if FileAccess.file_exists(absolute):
+		return absolute
+	var m = RegEx.create_from_string("/app_userdata/[^/]+/(.+)$").search(absolute)
+	if m:
+		var moved = ProjectSettings.globalize_path("user://" + m.get_string(1))
+		if FileAccess.file_exists(moved):
+			return moved
+	return absolute
 
 ## Used on application load.  Loads global settings and restores last used profile
 func restore_app():

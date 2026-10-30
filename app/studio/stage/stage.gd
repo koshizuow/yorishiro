@@ -192,15 +192,19 @@ func load_settings(data):
 	
 	if "active_model" in data:
 		await get_tree().process_frame
+		var path = Preferences.resolve(data["active_model"])
+		if not FileAccess.file_exists(path):
+			push_warning("last used model is gone: ", data["active_model"])
+			return
 		var mm = get_tree().get_first_node_in_group("system:model")
-		var model = mm.make_model(data["active_model"])
+		var model = mm.make_model(path)
 		if model:
 			spawn_model(model)
 	
 	
 func save_settings(data):
 	if active_model != null and active_model.modelmeta != null:
-		data["active_model"] = active_model.modelmeta.model
+		data["active_model"] = Preferences.portable(active_model.modelmeta.model)
 	
 	var window_settings = data.get("window", {})
 	window_settings["transparent"] = %Bg.visible
