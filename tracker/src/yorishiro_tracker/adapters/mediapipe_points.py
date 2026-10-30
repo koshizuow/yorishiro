@@ -42,6 +42,30 @@ LIDS = {"Left": ([386, 385, 387], [374, 380, 373], 362, 263),
 LID_CLOSED, LID_WIDE, LID_DEADBAND = 0.2, 1.35, 0.05
 
 
+# Brow contours, upper and lower edge, both sides. Brow raises are solved on these alone: in the full solve
+# brow shapes followed the rest of the face (browDown r -0.23 with the brow height on CREMA-D's neutral
+# clips, jitter 3 times the brow points' own). Regional: agreement with MediaPipe brows up 0.31 -> 0.48,
+# inner brows up 0.47 -> 0.71, CREMA-D still-face jitter halved. browDown stays on the full solve, the
+# regional one was worse (anger read as a raise).
+BROWS = np.array([336, 296, 334, 293, 300, 285, 295, 282, 283, 276,
+                  107, 66, 105, 63, 70, 55, 65, 52, 53, 46])
+BROW_SHAPES = tuple(n for n in ICT_SHAPES if n.startswith("brow"))
+BROW_UP_SHAPES = tuple(n for n in BROW_SHAPES if not n.startswith("browDown"))
+REGIONAL = True
+# Experiment, off until a recording with frowns and looking down settles it. browDown from the brow height,
+# like the lids: the regional solve still traded it against browInnerUp
+# (jitter up on the user's recording, CREMA-D anger read as a brow raise). Height is measured from a point
+# at the brows' own depth, a blend of the eye corners (behind the brows) and the lower forehead (in front):
+# from the eye corners alone, looking down read as browDown (0.11 eye widths per radian of pitch on the
+# user's recording, the forehead -0.07). The blend weight comes from the reference's depths (0.40 eye
+# corners), close to the 0.385 where the two cancel on that recording. A full browDown is the height drop
+# ICT's browDown shape makes. Eye corners only (weight 1): CREMA-D anger d -0.30 -> 0.80, disgust 0.68 ->
+# 1.59, but neutral faces looking down read up to 0.7. Depth blend: no pitch leak, anger 0.07, noisier.
+BROW_HEIGHT = {"Left": ([336, 296, 334, 293, 300], [362, 263], [151, 337, 299]),
+               "Right": ([107, 66, 105, 63, 70], [133, 33], [151, 108, 69])}
+BROW_DOWN_GEOMETRIC = False
+
+
 def load_canonical() -> np.ndarray:
     text = ensure_canonical_face_model().read_text()
     rows = [line.split()[1:4] for line in text.splitlines() if line.startswith("v ")]
@@ -62,6 +86,21 @@ class MediaPipePointFitter:
         self.fit_rms_68 = corr.rms_68
         active = np.array([not n.startswith("eyeLook") for n in ICT_SHAPES])
         self.solver = IctSolver(head, self.ict_idx, active)
+        self.brow_rows = np.nonzero(np.isin(self.src_idx, BROWS))[0]
+        brow_active = np.array([n in BROW_SHAPES for n in ICT_SHAPES])
+        self.brow_solver = IctSolver(head, self.ict_idx[self.brow_rows], brow_active)
+        # brow height drop at browDown = 1, measured on the reference with ICT's shape added
+        to_ict = dict(zip(self.src_idx, self.ict_idx))
+        self.brow_eye_weight, self.brow_down_full = {}, {}
+        for side, (brow, eye, forehead) in BROW_HEIGHT.items():
+            z = lambda idx: self.reference[idx, 2].mean()
+            self.brow_eye_weight[side] = (z(brow) - z(forehead)) / (z(eye) - z(forehead))
+            delta = head.deltas[ICT_SHAPES.index(f"browDown_{side[0]}")]
+            moved = self.reference.copy()
+            for m in brow + eye + forehead:
+                moved[m] = moved[m] + delta[to_ict[m]]
+            self.brow_down_full[side] = self._brow_height(self.reference, side) - self._brow_height(moved, side)
+        self.brow_neutral = {side: self._brow_height(self.reference, side) for side in BROW_HEIGHT}
         self.arkit_of_shape = [ARKIT52_INDEX[ict_to_arkit(n)] for n in ICT_SHAPES]
         self.calibrated = False
         self.gaze_neutral = np.zeros(4)
@@ -77,7 +116,9 @@ class MediaPipePointFitter:
         self.reference = aligned[:468].copy()
         self.gaze_neutral = _iris_offsets(aligned)
         self.lid_neutral = {side: _lid_gap(aligned, side) for side in LIDS}
+        self.brow_neutral = {side: self._brow_height(aligned, side) for side in BROW_HEIGHT}
         self.solver.w[:] = 0
+        self.brow_solver.w[:] = 0
         self.calibrated = True
 
     def calibrate_many(self, aligned: list[np.ndarray]) -> None:
@@ -93,9 +134,17 @@ class MediaPipePointFitter:
         """ARKit 52 values for FIT_COVERAGE, zeros elsewhere."""
         disp = aligned[self.src_idx] - self.reference[self.src_idx]
         w = self.solver.solve(disp)
+        if REGIONAL:
+            # the full solve keeps its brow shapes so brow motion is not explained by other shapes
+            up = np.array([n in BROW_UP_SHAPES for n in ICT_SHAPES])
+            w = np.where(up, self.brow_solver.solve(disp[self.brow_rows]), w)
         bs = np.zeros(52, dtype=np.float32)
         for k, v in zip(self.arkit_of_shape, w):
             bs[k] = max(bs[k], v)  # browInnerUp and cheekPuff come from two ICT shapes
+        if BROW_DOWN_GEOMETRIC:
+            for side in BROW_HEIGHT:
+                drop = self.brow_neutral[side] - self._brow_height(aligned, side)
+                bs[ARKIT52_INDEX[f"browDown{side}"]] = np.clip(drop / self.brow_down_full[side], 0.0, 1.0)
         for side in LIDS:
             rel = _lid_gap(aligned, side) / max(self.lid_neutral[side], 1e-6)
             bs[ARKIT52_INDEX[f"eyeBlink{side}"]] = np.clip(
@@ -103,6 +152,13 @@ class MediaPipePointFitter:
             bs[ARKIT52_INDEX[f"eyeWide{side}"]] = np.clip(
                 (rel - 1 - LID_DEADBAND) / (LID_WIDE - 1 - LID_DEADBAND), 0.0, 1.0)
         return bs
+
+    def _brow_height(self, points: np.ndarray, side: str) -> float:
+        """Upper brow edge above a point at the brows' depth, in eye widths (aligned space, y up)."""
+        brow, eye, forehead = BROW_HEIGHT[side]
+        a = self.brow_eye_weight[side]
+        base = a * points[eye, 1].mean() + (1 - a) * points[forehead, 1].mean()
+        return float((points[brow, 1].mean() - base) / np.linalg.norm(points[eye[0]] - points[eye[1]]))
 
     def gaze(self, aligned: np.ndarray) -> np.ndarray:
         """eyeLook* values from iris landmarks, relative to the calibrated neutral."""

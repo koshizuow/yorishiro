@@ -149,12 +149,16 @@ def main():
     ap.add_argument("--calib", default="first", choices=["first", "single", "window"],
                     help="neutral: first face, serve's old single frame at SETTLE_FACES, or serve's window median")
     ap.add_argument("--joint", type=int, default=0, help="rounds of joint rigid + expression refinement")
+    ap.add_argument("--brow-down-height", action="store_true", help="experiment: browDown from the brow height")
+    ap.add_argument("--full-brows", action="store_true", help="brows from the full solve, not the brow points alone")
     ap.add_argument("--raw-landmarks", action="store_true", help="skip the landmark One Euro")
     ap.add_argument("--ict-mouth", action="store_true", help="mouth from the ICT solve, not MediaPipe's model")
     ap.add_argument("--robust", type=float, default=0.0, help="Cauchy scale (ICT cm) for joint re-alignment weights")
     a = ap.parse_args()
     global JOINT_ROUNDS, ROBUST_C, CALIB, MP_MOUTH, LM_SMOOTH
     LM_SMOOTH = not a.raw_landmarks
+    mediapipe_points.REGIONAL = not a.full_brows
+    mediapipe_points.BROW_DOWN_GEOMETRIC = a.brow_down_height
     MP_MOUTH = not a.ict_mouth
     JOINT_ROUNDS = a.joint
     CALIB = a.calib
