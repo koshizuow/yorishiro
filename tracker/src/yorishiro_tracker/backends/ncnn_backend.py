@@ -1,6 +1,11 @@
+import os
 from pathlib import Path
 
-import ncnn
+# ncnn's OpenMP workers (libgomp) otherwise spin after every layer: about 2 of 4 cores on an
+# i3-10105F, which starved the app's main loop to 10 fps. libgomp reads this when it loads, so it
+# has to be set before the import (opt.openmp_blocktime does nothing with libgomp).
+os.environ.setdefault("OMP_WAIT_POLICY", "PASSIVE")
+import ncnn  # noqa: E402
 import numpy as np
 
 _CPU_DEVICE_TYPE = 3  # ncnn GpuInfo.type(): 0 discrete, 1 integrated, 2 virtual, 3 cpu (llvmpipe)

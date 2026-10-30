@@ -6,5 +6,9 @@ set -e
 ROOT=$(cd "$(dirname "$0")" && pwd)
 GODOT=${GODOT:-"$ROOT/../tools/godot/godot.linuxbsd.editor.x86_64.llvm"}
 export XDG_DATA_HOME="$ROOT/userdata"
+# Under a zh_TW locale with many fonts installed, Godot's per-frame system font fallback lookup
+# took about 80 ms in fontconfig (app at 10 fps on the i3 desktop). The fontconfig language only
+# orders candidates, fallback still goes by the characters, so CJK text keeps rendering.
+export FC_LANG=${FC_LANG:-en}
 mkdir -p "$XDG_DATA_HOME/yorishiro/Live2DModels"
 exec "$GODOT" --path "$ROOT/app" "$@"
