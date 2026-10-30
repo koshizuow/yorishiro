@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://d30mduusp81ch"]
+
+[ext_resource type="Script" uid="uid://chylhx2226a48" path="res://ui/search/search.gd" id="1_224fo"]
+[ext_resource type="Texture2D" uid="uid://clbvp8v3ryv4q" path="res://ui/icons/magnifying-glass.svg" id="1_oavdf"]
+
+[node name="Search" type="HBoxContainer" unique_id=1218506196]
+size_flags_horizontal = 3
+script = ExtResource("1_224fo")
+
+[node name="ItemSearch" type="LineEdit" parent="." unique_id=2086101788]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Search..."
+
+[node name="TextureRect" type="Button" parent="." unique_id=439545460]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+theme_type_variation = &"ImageButton"
+disabled = true
+icon = ExtResource("1_oavdf")
+expand_icon = true
+
+[connection signal="visibility_changed" from="." to="." method="_on_visibility_changed"]
+[connection signal="text_changed" from="ItemSearch" to="." method="_on_item_search_text_changed"]

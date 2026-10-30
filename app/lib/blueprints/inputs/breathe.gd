@@ -1,0 +1,55 @@
+extends "../vt_action.gd"
+
+@export var curve: Curve
+
+var frequency: float :
+	get():
+		return %TimeScale.value
+	set(v):
+		%TimeScale.value = v
+
+var progress: float :
+	get():
+		var time = pingpong(
+			fmod(Time.get_ticks_msec(), frequency * 2), frequency
+		) / frequency
+		return curve.sample_baked(time)
+
+func get_type():
+	return &"breathe"
+	
+func serialize():
+	return {
+		"frequency": frequency,
+	}
+
+func deserialize(data):
+	frequency = data.get("frequency", 2000.0)
+	
+func get_input_slot_by_port(_port: int) -> int:
+	return -1
+	
+func get_input_port_by_name(_slot: StringName) -> int:
+	return -1
+
+func get_output_slot_by_port(port: int) -> int:
+	match port:
+		0:
+			return 0
+		_:
+			return -1
+
+func get_output_port_by_name(slot: StringName) -> int:
+	match slot.to_lower():
+		"value":
+			return 0
+		_:
+			return -1
+	
+func get_value(_slot):
+	return progress
+
+func _process(_delta: float) -> void:
+	slot_updated.emit(1)
+	if is_visible_in_tree():
+		%Value.value = progress

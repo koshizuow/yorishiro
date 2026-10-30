@@ -1,0 +1,14 @@
+.vscode/
+
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# build output
+bin/*
+license/*.md
+
+# development project samples
+Live2DModels/
+VrmModels/
+

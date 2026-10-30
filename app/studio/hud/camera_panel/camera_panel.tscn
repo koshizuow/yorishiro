@@ -1,0 +1,384 @@
+[gd_scene format=3 uid="uid://crwh7f50woqgu"]
+
+[ext_resource type="Script" uid="uid://ckj4kaun5h87" path="res://studio/hud/camera_panel/camera_panel.gd" id="1_qt06k"]
+[ext_resource type="Script" uid="uid://08yyvfky7ack" path="res://ui/accordion/accordion.gd" id="2_qv3m7"]
+[ext_resource type="Texture2D" uid="uid://cu5xqrskvsnf6" path="res://ui/icons/Image.svg" id="3_otsd8"]
+[ext_resource type="Texture2D" uid="uid://b5wce04p6od07" path="res://ui/icons/file.svg" id="3_rjjra"]
+[ext_resource type="Texture2D" uid="uid://rnym8fj5ywno" path="res://studio/hud/camera_panel/camera-web.svg" id="4_s4ccp"]
+
+[node name="CameraPanel" type="PanelContainer" unique_id=308808200 groups=["persist"]]
+custom_minimum_size = Vector2(480, 0)
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -288.0
+grow_horizontal = 0
+grow_vertical = 2
+script = ExtResource("1_qt06k")
+
+[node name="ScrollContainer" type="ScrollContainer" parent="." unique_id=471975231]
+layout_mode = 2
+vertical_scroll_mode = 2
+
+[node name="Accordion" type="VBoxContainer" parent="ScrollContainer" unique_id=875550209]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("2_qv3m7")
+metadata/_custom_type_script = "uid://08yyvfky7ack"
+
+[node name="Application Settings" type="PanelContainer" parent="ScrollContainer/Accordion" unique_id=303770428]
+layout_mode = 2
+theme_type_variation = &"SubPanelContainer"
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ScrollContainer/Accordion/Application Settings" unique_id=2115127700]
+layout_mode = 2
+
+[node name="ProfileManagement" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=850248186]
+layout_mode = 2
+
+[node name="ProfileActions" type="MenuButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/ProfileManagement" unique_id=1129629158]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+tooltip_text = "Currently opened profile for application settings.
+
+Certain actions may trigger autosaving, such as changing the active model or closing the application.
+
+Model settings, such as bindings, are stored alongside models separately from profiles, making them portable."
+icon = ExtResource("3_rjjra")
+flat = false
+icon_alignment = 1
+expand_icon = true
+item_count = 7
+popup/item_0/text = "Open"
+popup/item_0/id = 0
+popup/item_1/text = "Load Default Profile"
+popup/item_1/id = 1
+popup/item_2/id = 0
+popup/item_2/separator = true
+popup/item_3/text = "Save"
+popup/item_3/id = 2
+popup/item_4/text = "Save as..."
+popup/item_4/id = 3
+popup/item_5/id = 0
+popup/item_5/separator = true
+popup/item_6/text = "Clear Settings"
+popup/item_6/id = 4
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/ProfileManagement" unique_id=597944705]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+size_flags_vertical = 0
+text = "Profile"
+
+[node name="ProfileName" type="LineEdit" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/ProfileManagement" unique_id=892589661]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+editable = false
+
+[node name="ProfileOpenDialog" type="FileDialog" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/ProfileManagement" unique_id=1955077781]
+unique_name_in_owner = true
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.profile;Yorishiro Profile;")
+use_native_dialog = true
+
+[node name="ProfileSaveDialog" type="FileDialog" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/ProfileManagement" unique_id=420434750]
+unique_name_in_owner = true
+access = 2
+filters = PackedStringArray("*.profile;Yorishiro Profile;")
+use_native_dialog = true
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=1326649490]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer5" unique_id=969849029]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+text = "UI Theme"
+
+[node name="UITheme" type="OptionButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer5" unique_id=28770420]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+alignment = 2
+selected = 0
+item_count = 2
+popup/item_0/text = "Automata (Default)"
+popup/item_0/id = 0
+popup/item_1/text = "Dark"
+popup/item_1/id = 1
+
+[node name="HBoxContainer6" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=1557044063]
+visible = false
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer6" unique_id=413994176]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+text = "Application Scaling"
+
+[node name="ApplicationScale" type="OptionButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer6" unique_id=207671466]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+alignment = 2
+selected = 1
+item_count = 6
+popup/item_0/text = "0.5x"
+popup/item_0/id = 0
+popup/item_1/text = "1x"
+popup/item_1/id = 1
+popup/item_2/text = "1.5x"
+popup/item_2/id = 2
+popup/item_3/text = "2x"
+popup/item_3/id = 3
+popup/item_4/text = "3x"
+popup/item_4/id = 4
+popup/item_5/text = "4x"
+popup/item_5/id = 5
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=41078559]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer3" unique_id=1106244288]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+text = "Application FPS Limit"
+
+[node name="FPS" type="OptionButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer3" unique_id=406626487]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+alignment = 2
+selected = 0
+item_count = 3
+popup/item_0/text = "60"
+popup/item_0/id = 0
+popup/item_1/text = "30"
+popup/item_1/id = 1
+popup/item_2/text = "Max"
+popup/item_2/id = 2
+
+[node name="BackgroundMode" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=1400090515]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundMode" unique_id=2033207878]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+text = "Background"
+vertical_alignment = 1
+
+[node name="BackgroundModeSelector" type="OptionButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundMode" unique_id=1337679399]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+alignment = 2
+item_count = 4
+popup/item_0/text = "Default Grid"
+popup/item_0/id = 0
+popup/item_1/text = "Image"
+popup/item_1/id = 1
+popup/item_2/text = "Color"
+popup/item_2/id = 2
+popup/item_3/text = "Transparent"
+popup/item_3/id = 3
+
+[node name="BackgroundImage" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=229243433]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundImage" unique_id=1138513313]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+theme_type_variation = &"FieldLabel"
+text = "Image"
+vertical_alignment = 1
+
+[node name="BackgroundImageSelector" type="Button" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundImage" unique_id=1130538190]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+text = "..."
+icon = ExtResource("3_otsd8")
+text_overrun_behavior = 3
+clip_text = true
+expand_icon = true
+
+[node name="FileDialog" type="FileDialog" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundImage/BackgroundImageSelector" unique_id=1852201404]
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray(";Png;image/png", ";Jpeg;image/jpeg")
+use_native_dialog = true
+
+[node name="BackgroundColor" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=1057400813]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundColor" unique_id=587051148]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+theme_type_variation = &"FieldLabel"
+text = "Color"
+vertical_alignment = 1
+
+[node name="BackgroundColorSelector" type="ColorPickerButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundColor" unique_id=273394026]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
+text = "..."
+
+[node name="CameraFOV" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=682597613]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/CameraFOV" unique_id=549451558]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+text = "Camera FOV"
+vertical_alignment = 1
+
+[node name="FovDegrees" type="SpinBox" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/CameraFOV" unique_id=626464792]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+min_value = 1.0
+value = 10.0
+alignment = 2
+
+[node name="VirtualWebcam" type="VBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=1526479688]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="V4L2Toggle" type="CheckButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/VirtualWebcam" unique_id=1553025749]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Allows casting the stage to a virtual webcam on supported Operating Systems.
+
+On Linux this requires a V4l2 Loopback device to target."
+text = "Virtual Webcam"
+
+[node name="VirtualCameraDevice" type="OptionButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/VirtualWebcam" unique_id=370618489]
+unique_name_in_owner = true
+layout_mode = 2
+text_overrun_behavior = 5
+clip_text = true
+fit_to_longest_item = false
+
+[node name="NetworkWebcam" type="VBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=2087614332]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/NetworkWebcam" unique_id=642714933]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/NetworkWebcam/HBoxContainer" unique_id=1048819840]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Use microphone input on PC to affect certain
+mouth related tracking parameters"
+text = "NDI"
+
+[node name="NDIToggle" type="CheckButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/NetworkWebcam/HBoxContainer" unique_id=1565843818]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="NDIName" type="LineEdit" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/NetworkWebcam" unique_id=1368655428]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Yorishiro"
+editable = false
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=285867131]
+visible = false
+layout_mode = 2
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer" unique_id=2036456327]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+text = "Preview Background Color"
+
+[node name="PreviewBackgroundColor" type="ColorPickerButton" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer" unique_id=1497641771]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+edit_alpha = false
+
+[node name="Tracking" type="VBoxContainer" parent="ScrollContainer/Accordion" unique_id=1838035929]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SubPanelContainer"
+
+[node name="PanelContainer" type="PanelContainer" parent="ScrollContainer/Accordion/Tracking" unique_id=998928835]
+layout_mode = 2
+theme_type_variation = &"SubPanelContainer"
+
+[node name="FaceTracking" type="VBoxContainer" parent="ScrollContainer/Accordion/Tracking/PanelContainer" unique_id=1417364284]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="ScrollContainer/Accordion/Tracking/PanelContainer/FaceTracking" unique_id=874727003]
+layout_mode = 2
+
+[node name="Button" type="Button" parent="ScrollContainer/Accordion/Tracking/PanelContainer/FaceTracking/HBoxContainer" unique_id=1375984522]
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+theme_type_variation = &"ImageButton"
+icon = ExtResource("4_s4ccp")
+flat = true
+icon_alignment = 1
+expand_icon = true
+
+[node name="Label" type="Label" parent="ScrollContainer/Accordion/Tracking/PanelContainer/FaceTracking/HBoxContainer" unique_id=136993873]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Face Tracking"
+
+[node name="TrackingSource" type="OptionButton" parent="ScrollContainer/Accordion/Tracking/PanelContainer/FaceTracking/HBoxContainer" unique_id=1390170314]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+text_overrun_behavior = 5
+clip_text = true
+fit_to_longest_item = false
+
+[node name="Config" type="Control" parent="ScrollContainer/Accordion/Tracking/PanelContainer/FaceTracking" unique_id=790541110]
+layout_mode = 2
+
+[node name="Parameter Debug" type="PanelContainer" parent="ScrollContainer/Accordion" unique_id=1017556787]
+visible = false
+layout_mode = 2
+theme_type_variation = &"SubPanelContainer"
+
+[node name="ParameterList" type="VBoxContainer" parent="ScrollContainer/Accordion/Parameter Debug" unique_id=1268538435]
+unique_name_in_owner = true
+layout_mode = 2
+
+[connection signal="item_selected" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer5/UITheme" to="." method="_on_ui_theme_item_selected"]
+[connection signal="item_selected" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer6/ApplicationScale" to="." method="_on_application_scale_item_selected"]
+[connection signal="item_selected" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer3/FPS" to="." method="_on_fps_value_item_selected"]
+[connection signal="item_selected" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundMode/BackgroundModeSelector" to="." method="_on_background_mode_selected"]
+[connection signal="pressed" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundImage/BackgroundImageSelector" to="." method="_on_background_image_selector_pressed"]
+[connection signal="file_selected" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundImage/BackgroundImageSelector/FileDialog" to="." method="_on_background_file_selected"]
+[connection signal="color_changed" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundColor/BackgroundColorSelector" to="." method="_on_background_color_changed"]
+[connection signal="toggled" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/BackgroundColor/BackgroundColorSelector" to="." method="_on_transparency_toggle_toggled"]
+[connection signal="toggled" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/VirtualWebcam/V4L2Toggle" to="." method="_on_v4l2_toggled"]
+[connection signal="item_selected" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/VirtualWebcam/VirtualCameraDevice" to="." method="_on_loopback_item_selected"]
+[connection signal="color_changed" from="ScrollContainer/Accordion/Application Settings/VBoxContainer/HBoxContainer/PreviewBackgroundColor" to="." method="_on_preview_background_color_color_changed"]
+[connection signal="item_selected" from="ScrollContainer/Accordion/Tracking/PanelContainer/FaceTracking/HBoxContainer/TrackingSource" to="." method="_on_tracking_source_item_selected"]

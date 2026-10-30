@@ -1,0 +1,72 @@
+[gd_scene format=3 uid="uid://unvpk1s2sv57"]
+
+[ext_resource type="Script" uid="uid://b1rphv1mx5gvf" path="res://lib/tracking/camera/vts_blendshapes/vts_config.gd" id="1_qckmn"]
+
+[node name="VtsConfig" type="VBoxContainer" unique_id=1374717089 groups=["persist"]]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 278.0
+offset_bottom = 209.0
+script = ExtResource("1_qckmn")
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="." unique_id=1827472192]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer3" unique_id=1798834822]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Listening"
+
+[node name="ActiveIndicator" type="Label" parent="HBoxContainer3" unique_id=695715869]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Off"
+horizontal_alignment = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=997498802]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer" unique_id=934372694]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Hostname (Phone)"
+
+[node name="Hostname" type="LineEdit" parent="HBoxContainer" unique_id=1083077498]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+placeholder_text = "0.0.0.0"
+alignment = 2
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="." unique_id=1844645304]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer2" unique_id=828633715]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Port"
+
+[node name="Port" type="SpinBox" parent="HBoxContainer2" unique_id=1528815344]
+unique_name_in_owner = true
+layout_mode = 2
+min_value = 10000.0
+max_value = 65535.0
+value = 21412.0
+alignment = 2
+editable = false
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="." unique_id=1976487711]
+layout_mode = 2
+
+[node name="Connect" type="Button" parent="HBoxContainer4" unique_id=1649450394]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Connect to Mobile"
+
+[node name="Disconnect" type="Button" parent="HBoxContainer4" unique_id=759688804]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Disconnect"

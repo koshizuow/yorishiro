@@ -1,0 +1,88 @@
+[gd_scene format=3 uid="uid://cy5x4klaougwu"]
+
+[ext_resource type="Script" uid="uid://cjr68iypsu8xn" path="res://studio/hud/item_panel/scene_selector/scene_selector_popup.gd" id="1_lv7c4"]
+
+[node name="SceneSelector" type="Node" unique_id=783546590]
+script = ExtResource("1_lv7c4")
+
+[node name="FileDialog" type="FileDialog" parent="." unique_id=790921876]
+unique_name_in_owner = true
+oversampling_override = 1.0
+title = "Open a File"
+position = Vector2i(0, 36)
+visible = true
+file_mode = 0
+display_mode = 1
+access = 2
+filters = PackedStringArray("*.itemscene.json;VTube Studio Scene;")
+use_native_dialog = true
+
+[node name="ScenePreview" type="ConfirmationDialog" parent="." unique_id=551641385]
+unique_name_in_owner = true
+oversampling_override = 1.0
+title = "Scene Preview"
+initial_position = 2
+size = Vector2i(800, 600)
+theme_type_variation = &"FramedPopupPanel"
+ok_button_text = "Confirm Load"
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="ScenePreview" unique_id=219936190]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 792.0
+offset_bottom = 551.0
+
+[node name="PanelContainer" type="PanelContainer" parent="ScenePreview/VBoxContainer2" unique_id=65350916]
+layout_mode = 2
+theme_type_variation = &"SubPanelContainer"
+
+[node name="Metadata" type="GridContainer" parent="ScenePreview/VBoxContainer2/PanelContainer" unique_id=1219624543]
+layout_mode = 2
+columns = 2
+
+[node name="Label" type="Label" parent="ScenePreview/VBoxContainer2/PanelContainer/Metadata" unique_id=735129392]
+layout_mode = 2
+text = "Model"
+
+[node name="ModelName" type="LineEdit" parent="ScenePreview/VBoxContainer2/PanelContainer/Metadata" unique_id=1263987559]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "If the Scene has Pinned Items, they will be excluded if the active model does not match"
+placeholder_text = "Model Name"
+alignment = 2
+editable = false
+
+[node name="Label3" type="Label" parent="ScenePreview/VBoxContainer2/PanelContainer/Metadata" unique_id=1509926141]
+layout_mode = 2
+text = "Group"
+
+[node name="GroupName" type="LineEdit" parent="ScenePreview/VBoxContainer2/PanelContainer/Metadata" unique_id=1368452982]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Group Name"
+alignment = 2
+editable = false
+
+[node name="Label" type="Label" parent="ScenePreview/VBoxContainer2" unique_id=499948026]
+layout_mode = 2
+text = "Items"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="ScenePreview/VBoxContainer2" unique_id=854112892]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SceneItems" type="VBoxContainer" parent="ScenePreview/VBoxContainer2/ScrollContainer" unique_id=1119729265]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[connection signal="close_requested" from="FileDialog" to="." method="_on_close_requested"]
+[connection signal="file_selected" from="FileDialog" to="." method="_on_file_dialog_file_selected"]
+[connection signal="canceled" from="ScenePreview" to="." method="_on_close_requested"]
+[connection signal="close_requested" from="ScenePreview" to="ScenePreview" method="_on_close_requested"]
+[connection signal="confirmed" from="ScenePreview" to="." method="load_item_scene"]

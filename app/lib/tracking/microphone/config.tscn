@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://c46tldvl1obw4"]
+
+[ext_resource type="Script" uid="uid://c56hogbrqtpyg" path="res://lib/tracking/microphone/config.gd" id="1_ft4ar"]
+
+[node name="Config" type="PanelContainer" unique_id=2018821050 groups=["persist"]]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"SubPanelContainer"
+script = ExtResource("1_ft4ar")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=778146451]
+layout_mode = 2
+
+[node name="Enabled" type="CheckButton" parent="VBoxContainer" unique_id=448033292]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Use microphone input on PC to affect certain
+mouth related tracking parameters"
+text = "Sample Microphone"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=1938832296]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="VBoxContainer/HBoxContainer" unique_id=1952088007]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Input Device"
+
+[node name="DeviceList" type="OptionButton" parent="VBoxContainer/HBoxContainer" unique_id=2118679817]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text_overrun_behavior = 5
+clip_text = true
+fit_to_longest_item = false
+
+[connection signal="toggled" from="VBoxContainer/Enabled" to="." method="_on_enabled_toggled"]
+[connection signal="item_selected" from="VBoxContainer/HBoxContainer/DeviceList" to="." method="_on_device_list_item_selected"]

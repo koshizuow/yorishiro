@@ -1,0 +1,203 @@
+[gd_scene format=3 uid="uid://dgmc2ouh0pqwh"]
+
+[ext_resource type="Script" uid="uid://bbwsxqduu3dap" path="res://studio/hud/blueprint_editor/palette.gd" id="1_87dy3"]
+[ext_resource type="Texture2D" uid="uid://degtf3o1bgig0" path="res://lib/blueprints/inputs/keyboard.svg" id="1_mavpt"]
+[ext_resource type="PackedScene" uid="uid://uagdego7pt02" path="res://lib/blueprints/inputs/hotkey_action.tscn" id="2_87dy3"]
+[ext_resource type="Texture2D" uid="uid://cwws2r8ygckrj" path="res://lib/blueprints/inputs/sidebar-flip.svg" id="3_fo0kw"]
+[ext_resource type="PackedScene" uid="uid://bdn6bn1khac44" path="res://lib/blueprints/inputs/tracker_input.tscn" id="3_rtnke"]
+[ext_resource type="PackedScene" uid="uid://dwyu5dbc3akkx" path="res://lib/blueprints/inputs/screen_button.tscn" id="4_d27ip"]
+[ext_resource type="Texture2D" uid="uid://dvigbidly3vep" path="res://ui/icons/data-store.svg" id="4_rtnke"]
+[ext_resource type="Texture2D" uid="uid://bi47la4lgog0c" path="res://lib/blueprints/inputs/face-viewfinder.svg" id="5_5ng8c"]
+[ext_resource type="Texture2D" uid="uid://lto72ierstpg" path="res://lib/blueprints/logic/calculator-simple.svg" id="7_n4xfi"]
+[ext_resource type="Texture2D" uid="uid://dquygailhgfka" path="res://lib/blueprints/inputs/face-exhaling.svg" id="9_cbf0x"]
+[ext_resource type="Texture2D" uid="uid://cubucdwwnclkl" path="res://lib/blueprints/logic/bezier-curve.svg" id="10_d27ip"]
+[ext_resource type="PackedScene" uid="uid://dyittcs286rby" path="res://lib/blueprints/inputs/breathe.tscn" id="10_woji1"]
+[ext_resource type="PackedScene" uid="uid://ckixji58acmx6" path="res://lib/blueprints/logic/smoothing.tscn" id="11_d27ip"]
+[ext_resource type="Texture2D" uid="uid://cvwnn0nikv5uf" path="res://lib/blueprints/inputs/eye.svg" id="11_ssi51"]
+[ext_resource type="PackedScene" uid="uid://cxmvu0on3r7wd" path="res://lib/blueprints/inputs/blink.tscn" id="12_m3pyl"]
+[ext_resource type="Texture2D" uid="uid://cbriovdwq4va0" path="res://lib/blueprints/outputs/face-laugh-wink.svg" id="13_xs0xf"]
+[ext_resource type="PackedScene" uid="uid://cow7c85xiw0xr" path="res://lib/blueprints/outputs/toggle_expression.tscn" id="14_8pyru"]
+[ext_resource type="Texture2D" uid="uid://5tdoy1oehfjw" path="res://lib/blueprints/logic/toggle.svg" id="15_3fswu"]
+[ext_resource type="Texture2D" uid="uid://deu302jii4nsk" path="res://lib/blueprints/outputs/film-simple.svg" id="15_jnorj"]
+[ext_resource type="PackedScene" uid="uid://cui0dq6v2ni2w" path="res://lib/blueprints/logic/toggle_state.tscn" id="16_rtnke"]
+[ext_resource type="PackedScene" uid="uid://dcqnjvju4erad" path="res://lib/blueprints/outputs/play_animation.tscn" id="16_vs2tt"]
+[ext_resource type="Texture2D" uid="uid://dnoy3sguwj6m5" path="res://lib/blueprints/outputs/person-running.svg" id="17_3ghld"]
+[ext_resource type="PackedScene" uid="uid://c375vta43nviw" path="res://lib/blueprints/outputs/model_output.tscn" id="22_3fswu"]
+[ext_resource type="Texture2D" uid="uid://8gaavqi6yd7a" path="res://ui/icons/bone.svg" id="24_1nteg"]
+[ext_resource type="PackedScene" uid="uid://owuq1fj5j58k" path="res://lib/blueprints/outputs/skeleton_output.tscn" id="25_lyx3q"]
+
+[node name="Palette" type="FlowContainer" unique_id=42573514]
+offset_right = 48.0
+offset_bottom = 380.0
+size_flags_horizontal = 8
+size_flags_vertical = 8
+script = ExtResource("1_87dy3")
+
+[node name="AddTracker" type="MenuButton" parent="." unique_id=1248585394]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+icon = ExtResource("5_5ng8c")
+flat = false
+icon_alignment = 1
+expand_icon = true
+
+[node name="DataStore" type="MenuButton" parent="." unique_id=1921186289]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+icon = ExtResource("4_rtnke")
+flat = false
+icon_alignment = 1
+expand_icon = true
+item_count = 2
+popup/item_0/text = "Read from Store"
+popup/item_0/id = 0
+popup/item_1/text = "Write to Store"
+popup/item_1/id = 1
+metadata/action = ExtResource("3_rtnke")
+
+[node name="Hotkey" type="Button" parent="." unique_id=734898577]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+tooltip_text = "Add Hotkey Binding"
+focus_mode = 0
+icon = ExtResource("1_mavpt")
+icon_alignment = 1
+expand_icon = true
+metadata/action = ExtResource("2_87dy3")
+
+[node name="ScreenButton" type="Button" parent="." unique_id=422515698]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+tooltip_text = "Add Onscreen Button Binding"
+focus_mode = 0
+icon = ExtResource("3_fo0kw")
+icon_alignment = 1
+expand_icon = true
+metadata/action = ExtResource("4_d27ip")
+
+[node name="Breathe" type="Button" parent="." unique_id=1910577611]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+tooltip_text = "Add Breathe"
+focus_mode = 0
+icon = ExtResource("9_cbf0x")
+icon_alignment = 1
+expand_icon = true
+metadata/action = ExtResource("10_woji1")
+
+[node name="Blink" type="Button" parent="." unique_id=1625019620]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+tooltip_text = "Add Blink"
+focus_mode = 0
+icon = ExtResource("11_ssi51")
+icon_alignment = 1
+expand_icon = true
+metadata/action = ExtResource("12_m3pyl")
+
+[node name="Control" type="Control" parent="." unique_id=862103928]
+custom_minimum_size = Vector2(12, 12)
+layout_mode = 2
+
+[node name="Math" type="MenuButton" parent="." unique_id=330814102]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "Add Arithmetic"
+icon = ExtResource("7_n4xfi")
+flat = false
+icon_alignment = 1
+expand_icon = true
+
+[node name="Smoothing" type="MenuButton" parent="." unique_id=1571543179]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+tooltip_text = "Add Smoothing"
+focus_mode = 0
+icon = ExtResource("10_d27ip")
+flat = false
+icon_alignment = 1
+expand_icon = true
+item_count = 2
+popup/item_0/text = "Smoothing"
+popup/item_0/id = 0
+popup/item_1/text = "Tween"
+popup/item_1/id = 1
+metadata/action = ExtResource("11_d27ip")
+
+[node name="Toggler" type="MenuButton" parent="." unique_id=277692976]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+tooltip_text = "Add Toggle State"
+focus_mode = 0
+icon = ExtResource("15_3fswu")
+flat = false
+icon_alignment = 1
+expand_icon = true
+item_count = 2
+popup/item_0/text = "Single Toggle"
+popup/item_0/id = 0
+popup/item_1/text = "Toggle Group"
+popup/item_1/id = 1
+metadata/action = ExtResource("16_rtnke")
+
+[node name="Control2" type="Control" parent="." unique_id=815026235]
+custom_minimum_size = Vector2(12, 12)
+layout_mode = 2
+
+[node name="SetExpression" type="Button" parent="." unique_id=43236201]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+tooltip_text = "Change Expression"
+focus_mode = 0
+icon = ExtResource("13_xs0xf")
+icon_alignment = 1
+expand_icon = true
+metadata/action = ExtResource("14_8pyru")
+
+[node name="PlayAnimation" type="Button" parent="." unique_id=570096998]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 6
+tooltip_text = "Animation"
+focus_mode = 0
+icon = ExtResource("15_jnorj")
+icon_alignment = 1
+expand_icon = true
+metadata/action = ExtResource("16_vs2tt")
+
+[node name="ModelOutput" type="Button" parent="." unique_id=993683122]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "Set Model Parameter"
+icon = ExtResource("17_3ghld")
+expand_icon = true
+metadata/action = ExtResource("22_3fswu")
+
+[node name="BoneOutput" type="Button" parent="." unique_id=828024829]
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+tooltip_text = "Set Model Parameter"
+icon = ExtResource("24_1nteg")
+expand_icon = true
+metadata/action = ExtResource("25_lyx3q")
+metadata/is_3d = true
