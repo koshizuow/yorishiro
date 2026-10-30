@@ -48,7 +48,10 @@ func build_slots() -> void:
 	var old_input_mapping: Dictionary[int, String] = {}
 	var old_output_mapping: Dictionary[int, String] = {}
 	if graph:
-		existing_bindings = graph.get_connection_list_from_node(self.name)
+		# get_connection_list_from_node() errors for nodes that were never connected
+		existing_bindings = graph.connections.filter(
+			func (e): return e.from_node == self.name or e.to_node == self.name
+		)
 		
 		# determine existing named bindings based on current port positions
 		for e in existing_bindings:

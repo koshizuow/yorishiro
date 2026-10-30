@@ -107,7 +107,7 @@ func get_input_slot_by_port(port: int) -> int:
 	return port
 	
 func get_input_port_by_name(slot: StringName) -> int:
-	var node = get_node(NodePath(slot))
+	var node = get_node_or_null(NodePath(slot))
 	if node:
 		return node.get_index()
 	return -1
