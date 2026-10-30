@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from run_trackers import sessions  # noqa: E402
 
 from yorishiro_tracker.adapters import mediapipe_points  # noqa: E402
+from yorishiro_tracker.adapters.landmark_smoother import LandmarkSmoother  # noqa: E402
 from yorishiro_tracker.adapters.mediapipe_blendshapes import MediaPipeBlendshapes, merge  # noqa: E402
 from yorishiro_tracker.adapters.mediapipe_points import MediaPipePointFitter  # noqa: E402
 from yorishiro_tracker.avatar.ict import ensure_ict_facekit  # noqa: E402
@@ -65,6 +66,7 @@ ROBUST_C = 0.0
 
 JOINT_ROUNDS = 0
 CALIB = "first"
+LM_SMOOTH = True  # as FaceMeshGpuTracker: MediaPipe's landmark One Euro before fitting
 MP_MOUTH = True  # as FaceMeshGpuTracker: mouth and jaw from MediaPipe's blendshape model
 
 
@@ -76,13 +78,23 @@ def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
     w, h = meta["size"]
     head = ensure_ict_facekit()
     mp = MediaPipeBlendshapes() if MP_MOUTH else None
+    stamps = meta["timestamps_ms"]
     for frames in sessions(meta):
         fitter = MediaPipePointFitter(head)
+        smoother = LandmarkSmoother()
         faces, window = 0, None
+        ts, prev = 0, None
         for i in frames:
+            # timestamps as tools/run_trackers.py feeds them: sessions reorder clips
+            if prev is not None:
+                step = stamps[i] - stamps[prev]
+                ts += step if 0 < step < 200 else 33
+            prev = i
             if not det[i]:
+                smoother.reset()
                 continue
-            aligned, _ = fitter.align(lms[i], w, h)
+            lm = smoother(lms[i], ts / 1000) if LM_SMOOTH else lms[i]
+            aligned, _ = fitter.align(lm, w, h)
             if not fitter.calibrated:
                 fitter.calibrate(aligned)
             # the same neutral steps as serve: provisional first face, then at SETTLE_FACES one frame
@@ -104,7 +116,7 @@ def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
             else:
                 bs = fitter.expressions(aligned)
             if mp is not None:
-                bs = merge(bs, mp(lms[i], w, h))
+                bs = merge(bs, mp(lm, w, h))
             values[i, :52] = bs + fitter.gaze(aligned)
     return values, {k: d[k] for k in d.files if k != "values"}
 
@@ -137,10 +149,12 @@ def main():
     ap.add_argument("--calib", default="first", choices=["first", "single", "window"],
                     help="neutral: first face, serve's old single frame at SETTLE_FACES, or serve's window median")
     ap.add_argument("--joint", type=int, default=0, help="rounds of joint rigid + expression refinement")
+    ap.add_argument("--raw-landmarks", action="store_true", help="skip the landmark One Euro")
     ap.add_argument("--ict-mouth", action="store_true", help="mouth from the ICT solve, not MediaPipe's model")
     ap.add_argument("--robust", type=float, default=0.0, help="Cauchy scale (ICT cm) for joint re-alignment weights")
     a = ap.parse_args()
-    global JOINT_ROUNDS, ROBUST_C, CALIB, MP_MOUTH
+    global JOINT_ROUNDS, ROBUST_C, CALIB, MP_MOUTH, LM_SMOOTH
+    LM_SMOOTH = not a.raw_landmarks
     MP_MOUTH = not a.ict_mouth
     JOINT_ROUNDS = a.joint
     CALIB = a.calib
