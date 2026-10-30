@@ -68,9 +68,9 @@ SIGNATURES = {
 EMOTION_NAMES = {"HAP": "Happy", "ANG": "Angry", "SAD": "Sad", "FEA": "Fear", "DIS": "Disgust"}
 
 
-def load(rec: Path) -> dict:
+def load(rec: Path, sub: str = "") -> dict:
     out = {}
-    for f in sorted((rec / "eval").glob("*.npz")):
+    for f in sorted((rec / "eval" / sub).glob("*.npz")):
         d = np.load(f)
         names = [str(n) for n in d["names"]]
         chans = {n: d["values"][:, i] for i, n in enumerate(names)}

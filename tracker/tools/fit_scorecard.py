@@ -11,6 +11,11 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from compare_trackers import REFERENCE, clips, load  # noqa: E402
 
+
+def load_all(rec):
+    """Tracker runs plus refit experiments."""
+    return load(rec) | load(rec, "experiments")
+
 USER_SIGNALS = ("blink left", "blink right", "mouth open", "smile", "brows up", "brows down", "inner brows up",
                 "cheek squint", "nose sneer")
 CREMA = (("HAP", "eyes wide"), ("HAP", "cheek squint"), ("ANG", "brows down"), ("SAD", "inner brows up"),
@@ -43,7 +48,7 @@ def rise(rec, tr, emo, s):
 
 def main():
     user, crema, tags = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3:]
-    u, c = load(user), load(crema)
+    u, c = load_all(user), load_all(crema)
     print("user rec, r vs mediapipe".ljust(28) + "".join(t[:12].rjust(13) for t in tags))
     for s in USER_SIGNALS:
         print(f"  {s}".ljust(28) + "".join(f"{r(u[REFERENCE], u[t], s):+13.2f}" for t in tags))

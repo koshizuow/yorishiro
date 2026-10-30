@@ -53,8 +53,13 @@ func tracker_command() -> String:
 	var override = OS.get_environment("YORISHIRO_TRACKER")
 	if override:
 		return override
-	var app_dir = ProjectSettings.globalize_path("res://").trim_suffix("/")
-	return app_dir.get_base_dir().path_join("tracker/.venv/bin/yorishiro-tracker")
+	var tracker_dir = ProjectSettings.globalize_path("res://").trim_suffix("/").get_base_dir().path_join("tracker")
+	# NVIDIA machines keep the ORT GPU build in its own env: syncing the default CPU group into .venv
+	# (any plain `uv run`) removes onnxruntime-gpu's files, see tracker/pyproject.toml
+	var nvidia = tracker_dir.path_join(".venv-nvidia/bin/yorishiro-tracker")
+	if FileAccess.file_exists(nvidia):
+		return nvidia
+	return tracker_dir.path_join(".venv/bin/yorishiro-tracker")
 
 func start():
 	stop()

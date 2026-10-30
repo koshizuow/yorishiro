@@ -21,7 +21,10 @@ dependencies = [
 yorishiro-tracker = "yorishiro_tracker:main"
 
 # ONNX Runtime comes in two builds that install the same `onnxruntime` module, so exactly one of these
-# groups is synced. CPU is the default. On an NVIDIA machine: uv sync --no-group ort-cpu --group ort-nvidia
+# groups is synced. CPU is the default. On an NVIDIA machine put the GPU build in its own env, which the app
+# prefers when it exists:  UV_PROJECT_ENVIRONMENT=.venv-nvidia uv sync --no-group ort-cpu --group ort-nvidia
+# (switching groups inside .venv works too, but any later plain `uv run` syncs it back and the CPU package
+# removes onnxruntime-gpu's files)
 # (CUDA 13 and cuDNN come as pip wheels, the driver must support CUDA 13).
 [dependency-groups]
 ort-cpu = ["onnxruntime>=1.31.1"]

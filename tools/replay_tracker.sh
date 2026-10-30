@@ -3,6 +3,8 @@
 # YORISHIRO_RECORDING picks the recording, otherwise the newest one under $YORISHIRO_DATA/recordings
 # (default tracker/data/recordings).
 T=$(cd "$(dirname "$0")/../tracker" && pwd)
+# same env choice as the app: the NVIDIA one when it exists
+V=$T/.venv; [ -x "$T/.venv-nvidia/bin/yorishiro-tracker" ] && V=$T/.venv-nvidia
 if [ "$1" = "serve" ]; then
   REC=${YORISHIRO_RECORDING:-}
   if [ -z "$REC" ]; then
@@ -15,6 +17,6 @@ if [ "$1" = "serve" ]; then
     echo "replay_tracker: no recording found, set YORISHIRO_RECORDING or YORISHIRO_DATA" >&2
     exit 2
   fi
-  exec "$T/.venv/bin/yorishiro-tracker" "$@" --replay "${REC%/}" --loop
+  exec "$V/bin/yorishiro-tracker" "$@" --replay "${REC%/}" --loop
 fi
-exec "$T/.venv/bin/yorishiro-tracker" "$@"
+exec "$V/bin/yorishiro-tracker" "$@"

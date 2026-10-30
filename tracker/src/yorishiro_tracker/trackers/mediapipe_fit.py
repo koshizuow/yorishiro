@@ -4,11 +4,13 @@ Landmarks come from MediaPipe's TFLite graph, expressions come from fitting ICT-
 shapes instead of MediaPipe's own blendshape model. Gaze keeps MediaPipe's own values.
 """
 
+from dataclasses import replace
+
 import numpy as np
 
 from ..adapters.mediapipe_points import FIT_COVERAGE, MediaPipePointFitter
 from ..avatar.ict import ensure_ict_facekit
-from ..frame import ARKIT52
+from ..frame import ARKIT52, FaceFrame
 from .base import Tracker, TrackerInfo, TrackResult
 from .mediapipe_ref import MediaPipeTracker
 
@@ -45,6 +47,16 @@ class MediaPipeFitTracker(Tracker):
 
     def calibrate(self, result: TrackResult) -> None:
         self.fitter.calibrate(result.aligned)
+
+    def calibrate_window(self, results: list[TrackResult]) -> list[FaceFrame]:
+        self.fitter.calibrate_many([r.aligned for r in results])
+        out = []
+        for r in results:
+            aligned, _ = self.fitter.realign(r.aligned)
+            bs = r.frame.blendshapes.copy()
+            bs[FIT_MASK] = self.fitter.expressions(aligned)[FIT_MASK]
+            out.append(replace(r.frame, blendshapes=bs))
+        return out
 
     def close(self) -> None:
         self.mp.close()

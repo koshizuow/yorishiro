@@ -20,6 +20,15 @@ class NeutralCalibration:
         self.neutral = frame
         self._rot = ypr_to_rotation(frame.head_rotation)
 
+    def set_many(self, frames: list[FaceFrame]) -> None:
+        """Per-channel median over a window, the resting values without the blinks and words in it."""
+        med = lambda xs: np.median(np.stack(xs), axis=0).astype(np.float32)
+        self.set(replace(frames[-1], blendshapes=med([f.blendshapes for f in frames]),
+                         head_rotation=med([f.head_rotation for f in frames]),
+                         head_translation=med([f.head_translation for f in frames]),
+                         left_eye_rotation=med([f.left_eye_rotation for f in frames]),
+                         right_eye_rotation=med([f.right_eye_rotation for f in frames])))
+
     def __call__(self, frame: FaceFrame) -> FaceFrame:
         if self.neutral is None:
             return frame

@@ -34,5 +34,16 @@ class Tracker:
     def calibrate(self, result: TrackResult) -> None:
         """Capture the current frame as the neutral face. Optional."""
 
+    def calibrate_window(self, results: list[TrackResult]) -> list[FaceFrame]:
+        """Take the neutral from a stretch of frames instead of one, so a blink, a word or raised brows in
+        a single frame do not shift the whole session. Returns the window's frames expressed against the
+        new neutral (the app-side NeutralCalibration takes its resting values from them).
+
+        Default, for trackers whose output does not depend on the neutral: calibrate on the most typical
+        frame (closest to the per-channel median) and return the frames unchanged."""
+        vecs = np.array([r.frame.blendshapes for r in results])
+        self.calibrate(results[int(np.argmin(np.abs(vecs - np.median(vecs, axis=0)).sum(axis=1)))])
+        return [r.frame for r in results]
+
     def close(self) -> None:
         pass

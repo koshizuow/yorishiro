@@ -19,6 +19,9 @@ from .viz import draw_landmarks
 # The first frame uses the detector's crop, the landmark-based ROI needs about a second to settle.
 # A neutral taken before that reads normal open eyes as half closed.
 SETTLE_FACES = 30
+# the neutral is the median over this many faces (about 1.5 s at 16 fps, 0.8 s at 30), started once tracking
+# has settled and again on the app's calibrate command
+CALIBRATE_FACES = 24
 
 
 def _recording_frames(rec_dir: Path, loop: bool):
@@ -61,6 +64,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
     t0 = time.monotonic()
     last_ts, sent, t_report, faces, infer_ms, fps = -1, 0, t0, 0, 0.0, 0.0
     recalibrate = False
+    window: list | None = None  # results collected for a calibration in progress
+    calibrated = False
     try:
         for img in frames:
             for cmd in control.poll() if control else []:
@@ -79,13 +84,16 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
             if res is not None:
                 faces += 1
                 if faces == SETTLE_FACES or recalibrate:
-                    tracker.calibrate(res)
-                    last_ts = ts + 1
-                    res = tracker.process(img, last_ts) or res
-                    calibration.set(res.frame)
-                    smoother.reset()
-                    print("neutral recalibrated" + (" by the app" if recalibrate else " after tracking settled"))
+                    window = []
+                    print("collecting the neutral" + (" for the app" if recalibrate else " after tracking settled"))
                     recalibrate = False
+                if window is not None:
+                    window.append(res)
+                    if len(window) == CALIBRATE_FACES:
+                        calibration.set_many(tracker.calibrate_window(window))
+                        smoother.reset()
+                        window, calibrated = None, True
+                        print(f"neutral set from {CALIBRATE_FACES} frames")
                 elif calibration.neutral is None:  # provisional until tracking settles
                     calibration.set(res.frame)
                 frame = calibration(res.frame)
@@ -106,7 +114,6 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
                     return 0
                 fps = sent / (now - t_report)
                 sent, t_report = 0, now
-                calibrated = faces >= SETTLE_FACES
                 sink.status("running", "tracking" if res is not None else "no face in view", fps=round(fps, 1),
                             infer_ms=round(infer_ms, 1), face=res is not None, calibrated=calibrated, **info)
         if not replay:

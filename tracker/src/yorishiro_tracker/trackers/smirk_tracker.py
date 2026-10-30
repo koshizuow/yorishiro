@@ -10,7 +10,7 @@ from dataclasses import replace
 import numpy as np
 
 from ..backends.factory import open_model
-from ..frame import ARKIT52_INDEX
+from ..frame import ARKIT52_INDEX, FaceFrame
 from ..research.smirk import SMIRK_DIR, postprocess, preprocess
 from .base import Tracker, TrackerInfo, TrackResult
 from .facemesh_gpu import FaceMeshGpuTracker
@@ -53,6 +53,15 @@ class SmirkTracker(Tracker):
 
     def calibrate(self, result: TrackResult) -> None:
         self.base.calibrate(result)
+
+    def calibrate_window(self, results: list[TrackResult]) -> list[FaceFrame]:
+        keep = [ARKIT52_INDEX["jawOpen"]] + [ARKIT52_INDEX[n] for n in EYELID_TO_ARKIT]
+        out = []
+        for r, f in zip(results, self.base.calibrate_window(results)):
+            bs = f.blendshapes.copy()
+            bs[keep] = r.frame.blendshapes[keep]
+            out.append(replace(f, blendshapes=bs))
+        return out
 
     def close(self) -> None:
         self.base.close()

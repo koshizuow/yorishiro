@@ -3,8 +3,8 @@
     uv run python tools/refit.py data/recordings/<rec> [--src facemesh-tensorrt] [--tag fit-new]
     uv run python tools/refit.py data/recordings/crema-d-60 --explain ANG,HAP
 
-Writes <rec>/eval/<tag>.npz (head pose and gaze copied from the source run, expressions refitted with the
-current MediaPipePointFitter), so tools/compare_trackers.py puts it next to the trackers.
+Writes <rec>/eval/experiments/<tag>.npz (head pose and gaze copied from the source run, expressions refitted with the
+current MediaPipePointFitter), for tools/fit_scorecard.py.
 --explain prints, per CREMA-D emotion, the ARKit shapes that rise most over each actor's neutral clip.
 """
 
@@ -22,6 +22,7 @@ from yorishiro_tracker.adapters import mediapipe_points  # noqa: E402
 from yorishiro_tracker.adapters.mediapipe_points import MediaPipePointFitter  # noqa: E402
 from yorishiro_tracker.avatar.ict import ensure_ict_facekit  # noqa: E402
 from yorishiro_tracker.frame import ARKIT52  # noqa: E402
+from yorishiro_tracker.serve import CALIBRATE_FACES, SETTLE_FACES  # noqa: E402
 
 
 def joint_expressions(fitter, aligned: np.ndarray, rounds: int) -> np.ndarray:
@@ -62,6 +63,7 @@ ROBUST_C = 0.0
 
 
 JOINT_ROUNDS = 0
+CALIB = "first"
 
 
 def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
@@ -73,12 +75,27 @@ def refit(rec: Path, src: str) -> tuple[np.ndarray, dict]:
     head = ensure_ict_facekit()
     for frames in sessions(meta):
         fitter = MediaPipePointFitter(head)
+        faces, window = 0, None
         for i in frames:
             if not det[i]:
                 continue
             aligned, _ = fitter.align(lms[i], w, h)
             if not fitter.calibrated:
                 fitter.calibrate(aligned)
+            # the same neutral steps as serve: provisional first face, then at SETTLE_FACES one frame
+            # (single) or the median of CALIBRATE_FACES frames (window)
+            faces += 1
+            if CALIB == "single" and faces == SETTLE_FACES:
+                fitter.calibrate(aligned)
+            elif CALIB == "window":
+                if faces == SETTLE_FACES:
+                    window = []
+                if window is not None:
+                    window.append(aligned)
+                    if len(window) == CALIBRATE_FACES:
+                        fitter.calibrate_many(window)
+                        window = None
+                        aligned, _ = fitter.realign(aligned)
             if JOINT_ROUNDS:
                 bs, aligned = joint_expressions(fitter, aligned, JOINT_ROUNDS)
             else:
@@ -112,16 +129,21 @@ def main():
     ap.add_argument("--tag", default="fit-new")
     ap.add_argument("--explain", default="")
     ap.add_argument("--rigid", default="", help="comma separated MediaPipe indices to align on, instead of MP_RIGID")
+    ap.add_argument("--calib", default="first", choices=["first", "single", "window"],
+                    help="neutral: first face, serve's old single frame at SETTLE_FACES, or serve's window median")
     ap.add_argument("--joint", type=int, default=0, help="rounds of joint rigid + expression refinement")
     ap.add_argument("--robust", type=float, default=0.0, help="Cauchy scale (ICT cm) for joint re-alignment weights")
     a = ap.parse_args()
-    global JOINT_ROUNDS, ROBUST_C
+    global JOINT_ROUNDS, ROBUST_C, CALIB
     JOINT_ROUNDS = a.joint
+    CALIB = a.calib
     ROBUST_C = a.robust
     if a.rigid:
         mediapipe_points.MP_RIGID = np.array([int(x) for x in a.rigid.split(",")])
     values, rest = refit(a.rec, a.src)
-    np.savez_compressed(a.rec / "eval" / f"{a.tag}.npz", values=values, **rest)
+    out = a.rec / "eval" / "experiments"
+    out.mkdir(exist_ok=True)
+    np.savez_compressed(out / f"{a.tag}.npz", values=values, **rest)
     if a.explain:
         explain(a.rec, values, rest["detected"], a.explain.split(","))
 

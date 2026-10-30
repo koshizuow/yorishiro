@@ -7,8 +7,8 @@ Writes <rec>/eval/<name>.npz with names (output channels), values (frames x chan
 (wall time of the tracker call per frame), cpu_s (process CPU time over the run) and, for our trackers,
 landmarks (478 MediaPipe points, float16) so solver changes can be tried without rerunning the networks.
 
-A recording is split into sessions, each with a fresh tracker, the way a user starts the app and sits
-still first: one session for a plain recording. For CREMA-D (clip names 1001_IEO_ANG_HI.flv) one session per
+A recording is split into sessions, each with a fresh tracker that calibrates its neutral like serve does,
+the way a user starts the app and sits still first: one session for a plain recording. For CREMA-D (clip names 1001_IEO_ANG_HI.flv) one session per
 actor with their neutral clip first, so trackers that take the first face as neutral (facemesh,
 mediapipe-fit) and OpenSeeFace, which learns each feature's range as it goes, start from that actor's
 neutral face.
@@ -31,6 +31,7 @@ import numpy as np
 
 from yorishiro_tracker.frame import FRAME_NAMES
 from yorishiro_tracker.registry import create_tracker
+from yorishiro_tracker.serve import CALIBRATE_FACES, SETTLE_FACES
 
 ROOT = Path(__file__).resolve().parent.parent
 OSF_DIR = Path(os.environ.get("OSF_DIR", ROOT.parent.parent / "external" / "OpenSeeFace"))
@@ -85,6 +86,7 @@ def run(rec: Path, spec: str):
             # sessions reorder clips, MediaPipe's video mode needs increasing timestamps: keep each frame's
             # step from the one before it in the recording, 33 ms across a clip boundary
             ts = 0
+            faces, window = 0, None
             try:
                 for k, i in enumerate(frames):
                     if k:
@@ -95,6 +97,16 @@ def run(rec: Path, spec: str):
                     res = tracker.process(img, ts)
                     ms[i] = (time.perf_counter() - t0) * 1000
                     if res is not None:
+                        # serve's neutral: the tracker's provisional first face, then the median of
+                        # CALIBRATE_FACES frames once tracking has settled
+                        faces += 1
+                        if faces == SETTLE_FACES:
+                            window = []
+                        if window is not None:
+                            window.append(res)
+                            if len(window) == CALIBRATE_FACES:
+                                tracker.calibrate_window(window)
+                                window = None
                         values[i] = res.frame.to_vector()
                         landmarks[i] = res.landmarks
                         detected[i] = True
