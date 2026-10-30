@@ -53,16 +53,25 @@ func _notification(what: int) -> void:
 func write_data(path = active_file):
 	Files.write_json(path, _data)
 	Files.write_json(APP_SETTINGS_PATH, {
-		"profile": active_file,
+		"profile": _portable(active_file),
 		"debug": debug,
 	})
 	_dirty = false
+
+## user:// form for profiles inside the data folder, so moving that folder keeps them
+func _portable(path: String) -> String:
+	var user_dir = ProjectSettings.globalize_path("user://")
+	if path.begins_with(user_dir):
+		return "user://" + path.trim_prefix(user_dir).trim_prefix("/")
+	return path
 
 ## Used on application load.  Loads global settings and restores last used profile
 func restore_app():
 	var state = Files.read_json(APP_SETTINGS_PATH)
 	
 	var last_profile = state.get("profile", DEFAULT_PROFILE_PATH)
+	if not FileAccess.file_exists(last_profile):
+		last_profile = DEFAULT_PROFILE_PATH
 	change_profile(last_profile)
 
 ## loads data from a file and stores it in current app state
