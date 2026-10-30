@@ -27,6 +27,7 @@ func _ready():
 			var template: PackedScene = i.get_meta("action") 
 			var action: VtAction = template.instantiate()
 			_mapping[action.get_type()] = template
+			action.free()
 			var btn = i as Button
 			btn.pressed.connect(
 				func ():
