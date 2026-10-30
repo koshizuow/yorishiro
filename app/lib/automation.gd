@@ -38,18 +38,32 @@ func _ready() -> void:
 		tracking.activate_tracker(load(TRACKERS[args["tracker"]]).new())
 		print("[automation] tracker %s" % args["tracker"])
 
-	if args.has("screenshot"):
+	if args.has("screenshot") or args.has("screenshot-window"):
+		if args.has("open-panel"):
+			# the HUD restores its own state over the first frames, open the panel after that
+			for i in 15:
+				await get_tree().process_frame
+			_open_panel(args["open-panel"])
 		for i in int(args.get("wait-frames", "90")):
 			await RenderingServer.frame_post_draw
+		if args.has("screenshot-window"):
+			var werr = get_viewport().get_texture().get_image().save_png(args["screenshot-window"])
+			print("[automation] window screenshot %s -> %s" % [args["screenshot-window"], error_string(werr)])
 		var viewport = stage.capture_viewport if stage else get_viewport()
-		var path: String = args["screenshot"]
-		var err = viewport.get_texture().get_image().save_png(path)
-		print("[automation] screenshot %s -> %s" % [path, error_string(err)])
+		var path: String = args.get("screenshot", "")
+		if path:
+			var err = viewport.get_texture().get_image().save_png(path)
+			print("[automation] screenshot %s -> %s" % [path, error_string(err)])
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
 			print("[automation] tracker %s, FaceAngleX %s, EyeOpenLeft %s, MouthOpen %s" % [
 				tracking.get_node_or_null("FaceTracker"), p.get("FaceAngleX"), p.get("EyeOpenLeft"), p.get("MouthOpen")])
+			var face = tracking.get_node_or_null("FaceTracker")
+			if face and "status" in face:
+				print("[automation] tracker status %s" % JSON.stringify(face.status))
+				for line in face.log_lines:
+					print("[automation] tracker log: %s" % line)
 		if model:
 			print("[automation] graphs %s, ParamAngleX %s" % [
 				model.blueprints.map(func (g): return "%s(%d nodes, %s)" % [g.name, g.get_child_count(), g.process_mode]),
@@ -57,3 +71,11 @@ func _ready() -> void:
 
 	if args.has("quit"):
 		get_tree().quit()
+
+func _open_panel(which: String):
+	var button = get_tree().root.find_child("%sBtn" % which.capitalize(), true, false)
+	if button == null or not button.has_meta("panel"):
+		push_error("[automation] no panel button for %s" % which)
+		return
+	button.button_pressed = true
+	button.owner._open_panel(button.get_node(button.get_meta("panel")))

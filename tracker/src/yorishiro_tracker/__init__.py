@@ -48,14 +48,21 @@ def main() -> None:
     for p in (s, t):
         p.add_argument("--port", type=int, default=39570)
         p.add_argument("--no-mirror", dest="mirror", action="store_false")
+    s.add_argument("--control-port", type=int, default=39571, help="commands from the app, 0 to disable")
+    s.add_argument("--parent-pid", type=int, default=None, help="exit when this process is gone")
 
     g = sub.add_parser("golden", help="replay a recording through the MediaPipe reference")
     g.add_argument("recording", type=Path)
-    sub.add_parser("trackers", help="list available tracker plugins")
+    tr = sub.add_parser("trackers", help="list available tracker plugins")
+    tr.add_argument("--json", action="store_true", help="machine readable, for the app")
 
     args = parser.parse_args()
     if args.cmd == "trackers":
-        from .registry import available_trackers
+        from .registry import available_trackers, describe_trackers
+        if args.json:
+            import json
+            print(json.dumps(describe_trackers()))
+            return
         for name, target in sorted(available_trackers().items()):
             print(f"{name:16s} {target}")
         return
@@ -70,10 +77,15 @@ def main() -> None:
     cv2.setNumThreads(1)  # its worker pool spins after tiny warps and burns ~10 ms CPU per frame
     if args.cmd == "serve":
         from .serve import run_serve
-        from .sinks.link import LinkSink
-        run_serve(args.tracker, args.runtime, LinkSink(port=args.port, mirror=args.mirror), args.camera,
-                  args.size, args.replay, args.loop, args.smoothing)
-        return
+        from .sinks.link import LinkControl, LinkSink
+        sink = LinkSink(port=args.port, mirror=args.mirror)
+        try:
+            control = LinkControl(port=args.control_port) if args.control_port else None
+        except OSError as e:
+            sink.status("error", f"control port {args.control_port} busy, is another tracker running? ({e})")
+            raise SystemExit(2)
+        raise SystemExit(run_serve(args.tracker, args.runtime, sink, args.camera, args.size, args.replay,
+                                   args.loop, args.smoothing, control, args.parent_pid))
     from . import app
 
     if args.cmd == "preview":

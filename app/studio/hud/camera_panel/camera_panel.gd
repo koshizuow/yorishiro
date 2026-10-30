@@ -152,12 +152,20 @@ func load_settings(data: Dictionary):
 	
 	var tracking_system = get_tree().get_first_node_in_group("system:tracking")
 	if tracking_system:
-		var source = Collections.path(data, "trackers.source", 0)
+		var source = Collections.path(data, "trackers.source", _default_tracker_index())
 		await get_tree().process_frame
 		%TrackingSource.select(source)
 		tracking_system.activate_tracker(
 			%TrackingSource.get_selected_metadata().new()
 		)
+
+## new profiles start on the built-in Yorishiro tracker
+func _default_tracker_index() -> int:
+	var yorishiro = preload("res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd")
+	for i in %TrackingSource.item_count:
+		if %TrackingSource.get_item_metadata(i) == yorishiro:
+			return i
+	return 0
 	
 func save_settings(data: Dictionary):
 	var w = data.get("window", {})

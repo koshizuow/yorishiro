@@ -1,20 +1,29 @@
-"""Yorishiro link: one JSON datagram per frame to the Yorishiro app on localhost.
+"""Yorishiro link: datagrams between yorishiro-tracker and the Yorishiro app on localhost.
 
-{"v": 1, "t": ms, "found": bool,
- "head": [yaw, pitch, roll] deg, "pos": [x, y, z] m, "eyes": {"left": [yaw, pitch], "right": [...]} deg,
- "arkit": {name: 0..1}, "vts": {VTS style input: value}}
+Tracker to app (port 39570), one JSON object per datagram:
+  frame:   {"v": 1, "t": ms, "found": bool, "head": [yaw, pitch, roll] deg, "pos": [x, y, z] m,
+            "eyes": {"left": [yaw, pitch], "right": [...]} deg, "arkit": {name: 0..1}, "vts": {input: value}}
+  status:  {"v": 1, "type": "status", "state": "starting" | "running" | "error", "message": str, ...}
+  preview: {"v": 1, "type": "preview", "jpeg": base64}
+App to tracker (port 39571): {"cmd": "calibrate" | "preview", "on": bool} or {"cmd": "quit"}.
 
 Head, eyes and ARKit values are unmirrored (FaceFrame conventions). "vts" follows the mirror setting.
 """
 
+import base64
 import json
 import math
 import socket
+
+import cv2
+import numpy as np
 
 from ..adapters.vts_params import vts_params
 from ..frame import ARKIT52, FaceFrame
 
 DEFAULT_PORT = 39570
+CONTROL_PORT = 39571
+PREVIEW_WIDTH = 320
 
 
 class LinkSink:
@@ -22,6 +31,12 @@ class LinkSink:
         self.addr = (host, port)
         self.mirror = mirror
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def _send(self, msg: dict) -> None:
+        try:
+            self.sock.sendto(json.dumps(msg, separators=(",", ":")).encode(), self.addr)
+        except OSError:
+            pass  # nobody listening yet is normal
 
     def send(self, frame: FaceFrame | None, timestamp_ms: int) -> None:
         msg = {"v": 1, "t": timestamp_ms, "found": frame is not None}
@@ -34,10 +49,45 @@ class LinkSink:
                 arkit={n: round(float(v), 4) for n, v in zip(ARKIT52, frame.blendshapes)},
                 vts={k: round(v, 4) for k, v in vts_params(frame, self.mirror).items()},
             )
-        try:
-            self.sock.sendto(json.dumps(msg, separators=(",", ":")).encode(), self.addr)
-        except OSError:
-            pass  # nobody listening yet is normal
+        self._send(msg)
+
+    def status(self, state: str, message: str = "", **fields) -> None:
+        self._send({"v": 1, "type": "status", "state": state, "message": message, **fields})
+
+    def preview(self, bgr: np.ndarray, mirror: bool | None = None) -> None:
+        h, w = bgr.shape[:2]
+        small = cv2.resize(bgr, (PREVIEW_WIDTH, round(h * PREVIEW_WIDTH / w)), interpolation=cv2.INTER_AREA)
+        if self.mirror if mirror is None else mirror:
+            small = cv2.flip(small, 1)
+        ok, jpg = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        if ok:  # about 10 KB, well under one datagram
+            self._send({"v": 1, "type": "preview", "jpeg": base64.b64encode(jpg.tobytes()).decode()})
+
+    def close(self) -> None:
+        self.sock.close()
+
+
+class LinkControl:
+    """Non-blocking receiver for commands from the app."""
+
+    def __init__(self, host: str = "127.0.0.1", port: int = CONTROL_PORT):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((host, port))  # no SO_REUSEADDR, so a second tracker fails loudly
+        self.sock.setblocking(False)
+
+    def poll(self) -> list[dict]:
+        cmds = []
+        while True:
+            try:
+                data, _ = self.sock.recvfrom(4096)
+            except BlockingIOError:
+                return cmds
+            try:
+                cmd = json.loads(data)
+            except ValueError:
+                continue
+            if isinstance(cmd, dict):
+                cmds.append(cmd)
 
     def close(self) -> None:
         self.sock.close()

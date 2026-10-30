@@ -1,6 +1,8 @@
 """Headless tracking loop that feeds the Yorishiro app, plus a synthetic sender for sign checks."""
 
 import json
+import os
+import sys
 import time
 from pathlib import Path
 
@@ -11,7 +13,8 @@ from .capture import Camera
 from .frame import ARKIT52_INDEX, FaceFrame
 from .processing import FrameSmoother, NeutralCalibration
 from .registry import create_tracker
-from .sinks.link import LinkSink
+from .sinks.link import LinkControl, LinkSink
+from .viz import draw_landmarks
 
 # The first frame uses the detector's crop, the landmark-based ROI needs about a second to settle.
 # A neutral taken before that reads normal open eyes as half closed.
@@ -40,29 +43,49 @@ def _camera_frames(index: int, width: int, height: int):
 
 def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: int = 0,
               size: tuple[int, int] = (1280, 720), replay: Path | None = None, loop: bool = False,
-              smoothing: bool = True) -> None:
-    tracker = create_tracker(tracker_name, runtime)
+              smoothing: bool = True, control: LinkControl | None = None, parent_pid: int | None = None) -> int:
+    """Returns a process exit code. Every failure is also reported to the app as a status message."""
+    source = f"recording {replay.name}" if replay else f"camera {camera}"
+    sink.status("starting", f"loading tracker {tracker_name}", source=source)
+    try:
+        tracker = create_tracker(tracker_name, runtime)
+    except (Exception, SystemExit) as e:
+        return _fail(sink, f"tracker {tracker_name!r} failed to start: {e}")
+    info = {"tracker": tracker.info.name, "runtime": tracker.info.runtime, "source": source,
+            "commercial_use": tracker.info.commercial_use}
     print(f"tracker {tracker.info.name} ({tracker.info.runtime}) -> {sink.addr[0]}:{sink.addr[1]}")
     calibration = NeutralCalibration()
     smoother = FrameSmoother()
     frames = _recording_frames(replay, loop) if replay else _camera_frames(camera, *size)
+    preview_on, last_preview = True, 0.0
     t0 = time.monotonic()
-    last_ts, sent, t_report, faces = -1, 0, t0, 0
+    last_ts, sent, t_report, faces, infer_ms, fps = -1, 0, t0, 0, 0.0, 0.0
+    recalibrate = False
     try:
         for img in frames:
+            for cmd in control.poll() if control else []:
+                if cmd.get("cmd") == "calibrate":
+                    recalibrate = True
+                elif cmd.get("cmd") == "preview":
+                    preview_on = bool(cmd.get("on", True))
+                elif cmd.get("cmd") == "quit":
+                    return 0
             ts = max(int((time.monotonic() - t0) * 1000), last_ts + 1)
             last_ts = ts
+            t_infer = time.perf_counter()
             res = tracker.process(img, ts)
+            infer_ms = 0.9 * infer_ms + 100 * (time.perf_counter() - t_infer)
             frame = None
             if res is not None:
                 faces += 1
-                if faces == SETTLE_FACES:
+                if faces == SETTLE_FACES or recalibrate:
                     tracker.calibrate(res)
                     last_ts = ts + 1
                     res = tracker.process(img, last_ts) or res
                     calibration.set(res.frame)
                     smoother.reset()
-                    print("neutral recalibrated after tracking settled")
+                    print("neutral recalibrated" + (" by the app" if recalibrate else " after tracking settled"))
+                    recalibrate = False
                 elif calibration.neutral is None:  # provisional until tracking settles
                     calibration.set(res.frame)
                 frame = calibration(res.frame)
@@ -70,14 +93,52 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
                     frame = smoother(frame)
             sink.send(frame, ts)
             sent += 1
-            if time.monotonic() - t_report >= 5:
-                print(f"{sent / (time.monotonic() - t_report):.1f} fps")
-                sent, t_report = 0, time.monotonic()
+            now = time.monotonic()
+            if preview_on and now - last_preview >= 0.1:
+                last_preview = now
+                view = img.copy()
+                if res is not None:
+                    draw_landmarks(view, res.landmarks)
+                sink.preview(view)
+            if now - t_report >= 1:
+                if parent_pid and not _alive(parent_pid):
+                    print("app is gone, stopping")
+                    return 0
+                fps = sent / (now - t_report)
+                sent, t_report = 0, now
+                calibrated = faces >= SETTLE_FACES
+                sink.status("running", "tracking" if res is not None else "no face in view", fps=round(fps, 1),
+                            infer_ms=round(infer_ms, 1), face=res is not None, calibrated=calibrated, **info)
+        if not replay:
+            return _fail(sink, f"camera {camera} stopped delivering frames (unplugged or used by another app?)")
+        return 0
+    except RuntimeError as e:  # Camera() raises on open failure
+        return _fail(sink, f"{e}. Check that no other app uses it, or pick another camera.")
     except KeyboardInterrupt:
-        pass
+        return 0
     finally:
         tracker.close()
+        if control:
+            control.close()
         sink.close()
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _fail(sink: LinkSink, message: str) -> int:
+    print(f"error: {message}", file=sys.stderr)
+    for _ in range(3):  # repeat so an app that starts listening a moment later still sees it
+        sink.status("error", message)
+        time.sleep(0.3)
+    return 2
 
 
 def synthetic_frame(yaw=0.0, pitch=0.0, roll=0.0, eye_yaw=0.0, eye_pitch=0.0,
