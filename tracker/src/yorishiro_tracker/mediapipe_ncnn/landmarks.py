@@ -9,6 +9,16 @@ INPUT = 256
 ROI_SCALE = 1.5
 # Eye corners used for in-plane rotation, as in MediaPipe's face landmark ROI from landmarks.
 RIGHT_EYE_OUTER, LEFT_EYE_OUTER = 33, 263
+# Iris points 468..477 under a horizontal flip (centers 468 <-> 473, ring order reverses), read from the
+# model's own output on a flipped crop. The 468 mesh points pair up by the canonical model's x mirror.
+IRIS_MIRROR = (473, 476, 475, 474, 477, 468, 471, 470, 469, 472)
+
+
+def mirror_index(canonical: np.ndarray) -> np.ndarray:
+    """For each of the 478 landmarks, its counterpart in a horizontally flipped face."""
+    m = canonical * np.array([-1.0, 1.0, 1.0])
+    pairs = ((canonical[:, None] - m[None]) ** 2).sum(-1).argmin(1)
+    return np.concatenate([pairs, IRIS_MIRROR])
 
 
 def roi_from_landmarks(lm_px: np.ndarray) -> tuple[np.ndarray, float, float]:
@@ -38,6 +48,17 @@ def preprocess(bgr: np.ndarray, m: np.ndarray) -> np.ndarray:
     crop = cv2.warpAffine(bgr, m, (INPUT, INPUT), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
     rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
     return np.ascontiguousarray(rgb.transpose(2, 0, 1)[None])
+
+
+def flip_input(x: np.ndarray) -> np.ndarray:
+    return np.ascontiguousarray(x[..., ::-1])
+
+
+def unflip(raw: np.ndarray, mirror: np.ndarray) -> np.ndarray:
+    """Model output on a flipped crop back to the unflipped crop's points, (478, 3)."""
+    pts = raw.reshape(478, 3).copy()
+    pts[:, 0] = INPUT - pts[:, 0]
+    return pts[mirror]
 
 
 def postprocess(raw: np.ndarray, m: np.ndarray, width: int, height: int) -> np.ndarray:
