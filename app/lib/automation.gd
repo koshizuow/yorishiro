@@ -7,6 +7,7 @@
 ##   --burst-every=<n>      frames between burst shots, default 60
 ##   --poses=<json>         instead of a camera, hold each named pose ({"name": {"FaceAngleX": 30}}) and
 ##                          save <name>_<pose>.png after --pose-frames (default 90) frames
+##   --hotkeys              after the screenshot, toggle each expression hotkey and save <name>_hotkey_<expression>.png
 ##   --print-params=<a,b>   model parameters printed after each pose (default: angles, eyes, mouth open)
 ##   --quit                 exit after the screenshot
 extends Node
@@ -62,6 +63,8 @@ func _ready() -> void:
 			print("[automation] screenshot %s -> %s" % [path, error_string(err)])
 			if args.has("poses"):
 				await _shoot_poses(args, viewport, path)
+			if args.has("hotkeys"):
+				await _shoot_hotkeys(args, viewport, path)
 			for b in int(args.get("burst", "0")):
 				for i in int(args.get("burst-every", "60")):
 					await RenderingServer.frame_post_draw
@@ -96,6 +99,25 @@ func _open_panel(which: String):
 		return
 	button.button_pressed = true
 	button.owner._open_panel(button.get_node(button.get_meta("panel")))
+
+## presses every expression hotkey of the model's graphs once (on, shot, off), as the key would
+func _shoot_hotkeys(args: Dictionary, viewport: Viewport, path: String):
+	var model = get_tree().get_first_node_in_group("system:stage").active_model
+	var names: Array = args.get("print-params", "").split(",", false)
+	for graph in model.blueprints:
+		for node in graph.get_children():
+			if not ("expression" in node) or node.expression.is_empty():
+				continue
+			node.invoke_trigger(1)
+			for i in int(args.get("pose-frames", "90")):
+				await RenderingServer.frame_post_draw
+			var shot = "%s_hotkey_%s.png" % [path.get_basename(), node.expression]
+			var err = viewport.get_texture().get_image().save_png(shot)
+			print("[automation] hotkey %s -> %s, %s" % [shot, error_string(err), " ".join(names.map(
+				func (q): return "%s %s" % [q, model.get("parameters/%s" % q)]))])
+			node.invoke_trigger(1)
+			for i in int(args.get("pose-frames", "90")):
+				await RenderingServer.frame_post_draw
 
 ## each pose is held by a fixed tracker, updated every frame so its smoothing converges
 func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
