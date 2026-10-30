@@ -8,6 +8,9 @@
 ##   --poses=<json>         instead of a camera, hold each named pose ({"name": {"FaceAngleX": 30}}) and
 ##                          save <name>_<pose>.png after --pose-frames (default 90) frames
 ##   --hotkeys              after the screenshot, toggle each expression hotkey and save <name>_hotkey_<expression>.png
+##   --dump-meshes=<a,b>    after each pose or hotkey shot, print these art meshes as Godot draws them
+##   --dump-above=<a,b>     ... and the visible meshes drawn on top of them
+##   --unmask=<a,b>, --raise=<a,b>  before each hotkey shot, draw these meshes without their mask, or on top
 ##   --print-params=<a,b>   model parameters printed after each pose (default: angles, eyes, mouth open)
 ##   --quit                 exit after the screenshot
 extends Node
@@ -111,13 +114,54 @@ func _shoot_hotkeys(args: Dictionary, viewport: Viewport, path: String):
 			node.invoke_trigger(1)
 			for i in int(args.get("pose-frames", "90")):
 				await RenderingServer.frame_post_draw
+			_debug_meshes_before(args, model)
+			await RenderingServer.frame_post_draw
 			var shot = "%s_hotkey_%s.png" % [path.get_basename(), node.expression]
 			var err = viewport.get_texture().get_image().save_png(shot)
 			print("[automation] hotkey %s -> %s, %s" % [shot, error_string(err), " ".join(names.map(
 				func (q): return "%s %s" % [q, model.get("parameters/%s" % q)]))])
+			_debug_meshes_after(args, model)
 			node.invoke_trigger(1)
 			for i in int(args.get("pose-frames", "90")):
 				await RenderingServer.frame_post_draw
+
+## debugging aids for one mesh: --unmask and --raise change it before the shot, --dump-above and
+## --dump-meshes print what Godot draws (vertex bbox from the GPU copy, mask state, meshes on top)
+func _debug_meshes_before(args: Dictionary, model):
+	for mesh_name in args.get("unmask", "").split(",", false):
+		var mi = model.find_child(mesh_name, true, false)
+		mi.material = mi.material.duplicate()
+		mi.material.set_shader_parameter("has_mask", false)
+	for mesh_name in args.get("raise", "").split(",", false):
+		var mi = model.find_child(mesh_name, true, false)
+		mi.get_parent().move_child(mi, -1)
+
+func _debug_meshes_after(args: Dictionary, model):
+	for mesh_name in args.get("dump-above", "").split(",", false):
+		var target = model.find_child(mesh_name, true, false)
+		var box: AABB = target.mesh.get_aabb()
+		var rect = Rect2(box.position.x, box.position.y, box.size.x, box.size.y)
+		for other in target.get_parent().get_children():
+			if other.get_index() <= target.get_index() or not other.is_visible_in_tree() or other.self_modulate.a <= 0.0:
+				continue
+			var ob: AABB = other.mesh.get_aabb()
+			if rect.intersects(Rect2(ob.position.x, ob.position.y, ob.size.x, ob.size.y)):
+				print("[automation]   above %s: %s index %d alpha %s" % [mesh_name, other.name, other.get_index(), other.self_modulate.a])
+	for mesh_name in args.get("dump-meshes", "").split(",", false):
+		var mi = model.find_child(mesh_name, true, false)
+		if mi == null:
+			print("[automation]   %s missing" % mesh_name)
+			continue
+		var mat = mi.material
+		var verts: PackedVector2Array = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var vb := Rect2(verts[0], Vector2.ZERO)
+		for vv in verts:
+			vb = vb.expand(vv)
+		print("[automation]   %s mesh %s vertex bbox %s first %s" % [mesh_name, mi.mesh.get_rid(), vb, verts[0]])
+		print("[automation]   %s path %s index %d visible %s alpha %s has_mask %s mesh_offset %s mask_invert %s aabb %s" % [
+			mesh_name, model.get_path_to(mi), mi.get_index(), mi.is_visible_in_tree(), mi.self_modulate.a,
+			mat.get_shader_parameter("has_mask") if mat else null, mat.get_shader_parameter("mesh_offset") if mat else null,
+			mi.get_instance_shader_parameter("mask_invert"), mi.mesh.get_aabb() if mi.mesh else null])
 
 ## each pose is held by a fixed tracker, updated every frame so its smoothing converges
 func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
@@ -133,4 +177,5 @@ func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
 		var model = get_tree().get_first_node_in_group("system:stage").active_model
 		print("[automation] pose %s -> %s, %s" % [shot, error_string(err), " ".join(names.map(
 			func (q): return "%s %s" % [q, model.get("parameters/%s" % q) if model else null]))])
+		_debug_meshes_after(args, model)
 		tracker.reset()
