@@ -570,8 +570,9 @@ impl AyagamiLoader {
                         .to_string()
                         .as_str()
                     {
-                        "Multiply" => crate::expression::BlendMode::ADD,
-                        "Override" => crate::expression::BlendMode::OVERRIDE,
+                        "Multiply" => crate::expression::BlendMode::MULTIPLY,
+                        // exp3 spells it Overwrite, keep Override for files written by older tools
+                        "Overwrite" | "Override" => crate::expression::BlendMode::OVERRIDE,
                         _ => crate::expression::BlendMode::ADD,
                     };
                     track.bind_mut().amount = track_data.get("Value").unwrap().to();
