@@ -3,6 +3,7 @@ import mediapipe as mp
 import numpy as np
 from mediapipe.tasks.python import BaseOptions, vision
 
+from ..adapters.vts_params import mouth_gap
 from ..frame import ARKIT52, ARKIT52_INDEX, FaceFrame
 from ..models import ensure_face_landmarker
 from ..pose import eye_rotations_from_blendshapes, rotation_to_ypr
@@ -59,6 +60,7 @@ class MediaPipeTracker(Tracker):
             head_translation=(matrix[:3, 3] / 100.0).astype(np.float32),
             left_eye_rotation=left_eye,
             right_eye_rotation=right_eye,
+            mouth_gap=mouth_gap(landmarks, image.width, image.height),
         )
         return TrackResult(frame=frame, landmarks=landmarks, matrix=matrix)
 

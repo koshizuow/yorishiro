@@ -16,6 +16,20 @@ from ..frame import ARKIT52_INDEX, FaceFrame
 # Sign of each Live2D input relative to "screen right" / "up". Verified with screenshots in the app.
 SIGN = {"FaceAngleX": 1.0, "FaceAngleY": 1.0, "FaceAngleZ": 1.0, "EyeX": 1.0, "EyeY": 1.0, "MouthX": 1.0}
 EYE_FULL_DEG = 25.0
+# MouthOpen also follows the lips: talking and laughing part the lips with little jaw, where MediaPipe's
+# jawOpen stays near 0 (CREMA-D speech: half the frames with lips apart had jawOpen - mouthClose < 0.1, the
+# usual Live2D dead zone). Geometric bounds, not fitted: under 1.5% of the face height is closed lips,
+# about a quarter of it is a wide open mouth.
+LIP_GAP_CLOSED = 0.015
+LIP_GAP_OPEN = 0.22
+
+
+def mouth_gap(landmarks: np.ndarray, width: int, height: int) -> float:
+    """Inner lip gap over face height from MediaPipe-topology landmarks (normalized image coordinates)."""
+    scale = np.array([width, height, width], np.float32)
+    gap = np.linalg.norm((landmarks[13] - landmarks[14]) * scale)
+    face = np.linalg.norm((landmarks[10] - landmarks[152]) * scale)
+    return float(gap / face) if face > 1e-6 else 0.0
 
 
 def _bs(frame: FaceFrame, name: str) -> float:
@@ -48,6 +62,9 @@ def vts_params(frame: FaceFrame, mirror: bool = True) -> dict[str, float]:
     frown = (_bs(frame, "mouthFrownLeft") + _bs(frame, "mouthFrownRight")) / 2
     p["MouthSmile"] = 0.5 + 0.5 * (smile - frown)
     p["MouthOpen"] = _bs(frame, "jawOpen") - _bs(frame, "mouthClose")
+    if frame.mouth_gap is not None:
+        lips = (frame.mouth_gap - LIP_GAP_CLOSED) / (LIP_GAP_OPEN - LIP_GAP_CLOSED)
+        p["MouthOpen"] = max(p["MouthOpen"], lips)
     p["MouthX"] = SIGN["MouthX"] * s * (_bs(frame, "mouthLeft") - _bs(frame, "mouthRight"))
     p["Brows"] = 0.5 + 0.25 * (p["BrowLeftY"] + p["BrowRightY"])
     p["CheekPuff"] = _bs(frame, "cheekPuff")

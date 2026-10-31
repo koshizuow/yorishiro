@@ -46,6 +46,8 @@ class FaceFrame:
     head_translation: np.ndarray
     left_eye_rotation: np.ndarray
     right_eye_rotation: np.ndarray
+    # inner lip gap over face height (landmarks 13-14 over 10-152), None when the tracker has no landmarks
+    mouth_gap: float | None = None
 
     def to_vector(self) -> np.ndarray:
         return np.concatenate([
