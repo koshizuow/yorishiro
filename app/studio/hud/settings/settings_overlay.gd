@@ -43,7 +43,8 @@ func _init() -> void:
 	header.add_child(_tabs)
 	header.add_child(_language_selector())
 	var close := Button.new()
-	close.text = "✕"
+	close.icon = preload("res://ui/icons/xmark.svg")
+	close.flat = true
 	close.tooltip_text = "Close (Esc)"
 	close.pressed.connect(close_overlay)
 	header.add_child(close)

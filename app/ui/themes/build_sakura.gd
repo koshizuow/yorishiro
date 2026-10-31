@@ -27,6 +27,8 @@ const PANEL_RADIUS = 10
 var t := Theme.new()
 
 func _init() -> void:
+	# jf open 粉圓 (Huninn, SIL OFL 1.1, ui/fonts/OFL.txt), one weight; bold is a synthetic embolden
+	t.default_font = load("res://ui/fonts/Huninn-Regular.ttf")
 	t.default_font_size = 15
 	panels()
 	buttons()
@@ -282,6 +284,10 @@ func labels() -> void:
 func variations() -> void:
 	var v := func (name: String, base: String): t.set_type_variation(name, base)
 	v.call("BoldLabel", "Label")
+	var bold := FontVariation.new()
+	bold.base_font = t.default_font
+	bold.variation_embolden = 0.6
+	t.set_font("font", "BoldLabel", bold)
 	t.set_color("font_color", "BoldLabel", TEXT)
 	v.call("FieldLabel", "Label")
 	t.set_color("font_color", "FieldLabel", SUB)
