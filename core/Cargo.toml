@@ -1,0 +1,14 @@
+[package]
+name = "yorishiro-core"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Yorishiro's face tracking core: landmarks to ARKit 52 and VTube Studio style inputs (Phase B)"
+publish = false
+
+[dependencies]
+nalgebra = "0.33"
+npyz = { version = "0.8", features = ["npz"] }
+
+[profile.release]
+debug = 1
