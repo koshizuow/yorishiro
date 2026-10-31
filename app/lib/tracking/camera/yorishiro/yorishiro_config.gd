@@ -203,12 +203,18 @@ func _list_cameras() -> Array:
 		return cams
 	for dev in dir.get_directories():
 		var base = "/sys/class/video4linux/%s/" % dev
-		if FileAccess.get_file_as_string(base + "index").strip_edges() != "0":
+		if _sysfs_line(base + "index") != "0":
 			continue
-		var name = FileAccess.get_file_as_string(base + "name").strip_edges()
+		var name = _sysfs_line(base + "name")
 		cams.append([int(dev.trim_prefix("video")), "%s (%s)" % [name, dev]])
 	cams.sort_custom(func (a, b): return a[0] < b[0])
 	return cams
+
+## first line of a sysfs file. sysfs reports every file as 4096 bytes long, get_file_as_string reads that
+## much and decodes the bytes past the real end (Godot printed "Unicode parsing error" for each)
+static func _sysfs_line(path: String) -> String:
+	var f := FileAccess.open(path, FileAccess.READ)
+	return f.get_line().strip_edges() if f else ""
 
 func _load_tracker_list():
 	var cmd = tracker.tracker_command()

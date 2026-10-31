@@ -118,6 +118,8 @@ func follow_face(tracking_data: Dictionary, delta: float) -> Vector3:
 		)
 	var tau := maxf(movement_smoothing, 0.0) * 0.015
 	_face_offset = target if tau <= 0.0 else _face_offset.lerp(target, 1.0 - exp(-delta / tau))
+	if not is_inside_tree():  # tracking still reaches a model that is being swapped out
+		return Vector3.ZERO
 	var h := get_viewport_rect().size.y
 	return Vector3(_face_offset.x * h, _face_offset.y * h, maxf(_face_offset.z, -0.5))
 

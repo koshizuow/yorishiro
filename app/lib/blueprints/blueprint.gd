@@ -153,7 +153,8 @@ func _on_action(from_port: int, node: VtAction):
 	if not enabled:
 		return
 		
-	for conn in get_connection_list_from_node(node.name):
+	# not get_connection_list_from_node(): it errors for nodes that were never connected
+	for conn in connections:
 		if not (conn.from_node == node.name and conn.from_port == from_port):
 			continue
 			
