@@ -3,6 +3,9 @@ extends Node
 const Tracker = preload("res://lib/tracking/tracker.gd")
 
 var parameters = {}
+## whether the face tracker currently sees a face. Trackers that report a status with "face" (Yorishiro's)
+## decide it, others count as always seeing one
+var face_present := true
 
 signal tracker_changed(tracker: Tracker)
 signal parameters_updated(parameters: Dictionary, delta: float)
@@ -41,5 +44,10 @@ func _process(delta: float) -> void:
 		}, true
 	)
 	
+	var face = get_node_or_null("FaceTracker")
+	face_present = true
+	if face and "status" in face and face.status is Dictionary and face.status.has("face"):
+		face_present = bool(face.status.face)
+
 	parameters_updated.emit(parameters, delta)
 	

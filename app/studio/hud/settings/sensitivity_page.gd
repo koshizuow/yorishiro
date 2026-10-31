@@ -61,8 +61,34 @@ func refresh() -> void:
 		heading.text = p[1]
 		heading.theme_type_variation = &"BoldLabel"
 		_list.add_child(heading)
+		if p[0] == "EyeOpen":
+			_list.add_child(_eye_options(by_part[p[1]][0].tracker))
 		for chain in by_part[p[1]]:
 			_list.add_child(_row(chain))
+
+## VTS's eye options, kept on the tracking input node of the model's graph
+func _eye_options(tracker) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	var link := CheckButton.new()
+	link.name = "LinkEyes"
+	link.text = "Blink both eyes together"
+	link.tooltip_text = "Both eyes follow the more closed one. Steadier blinks, but no winks."
+	link.button_pressed = tracker.link_eyes
+	link.toggled.connect(func (on): tracker.link_eyes = on)
+	row.add_child(link)
+	var auto_label := Label.new()
+	auto_label.text = "Automatic blinking"
+	row.add_child(auto_label)
+	var auto := OptionButton.new()
+	auto.name = "AutoBlink"
+	for t in ["Off", "When the face is lost", "Always"]:
+		auto.add_item(t)
+	auto.select(tracker.auto_blink)
+	auto.tooltip_text = "Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you."
+	auto.item_selected.connect(func (i): tracker.auto_blink = i)
+	row.add_child(auto)
+	return row
 
 func _part(tracker_param: String) -> String:
 	for p in PARTS:

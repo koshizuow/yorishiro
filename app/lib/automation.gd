@@ -28,6 +28,8 @@
 ##                          save, reload the model and check it is still there, then delete it
 ##   --sensitivity-test=<param> after --open-panel=sensitivity, drag the range handles and the smoothing slider of
 ##                          that model parameter's row, check the graph, the mapping and that both survive a reload
+##   --eye-test             with the Yorishiro tracker running: toggle "blink both eyes together" and automatic
+##                          blinking on the tracking input, sample EyeOpenLeft/Right as the graph sees them for 8 s
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -131,6 +133,8 @@ func _ready() -> void:
 			await _hotkey_test(args["hotkey-test"])
 		if args.has("sensitivity-test"):
 			await _sensitivity_test(args["sensitivity-test"])
+		if args.has("eye-test"):
+			await _eye_test()
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
@@ -434,6 +438,39 @@ func _sensitivity_test(param: String):
 	check.call("after reload band %s smoothing %s" % [again[0].rangemap.a if again and again[0].rangemap else null,
 		again[0].smoothing.smoothing if again and again[0].smoothing else null],
 		again and again[0].rangemap and again[0].rangemap.a.distance_to(want) < span * 0.02 and again[0].smoothing and is_equal_approx(again[0].smoothing.smoothing, 0.4))
+
+func _eye_test():
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var tracker = null
+	for g in stage.active_model.blueprints:
+		for n in g.get_children():
+			if n.has_method("get_type") and n.get_type() == &"tracking_input" and "EyeOpenLeft" in n.values:
+				tracker = n
+	if tracker == null:
+		print("[automation] eye test: no tracking input with eyes")
+		return
+	var tracking = get_tree().get_first_node_in_group("system:tracking")
+	for mode in [["off", false, 0], ["linked", true, 0], ["auto always", false, 2]]:
+		tracker.link_eyes = mode[1]
+		tracker.auto_blink = mode[2]
+		var diffs := 0.0
+		var closes := 0
+		var was_closed := false
+		var frames := 0
+		var start := Time.get_ticks_msec()
+		while Time.get_ticks_msec() - start < 8000:
+			await get_tree().process_frame
+			frames += 1
+			var l: float = tracker.values.EyeOpenLeft
+			var r: float = tracker.values.EyeOpenRight
+			diffs = maxf(diffs, absf(l - r))
+			var closed := minf(l, r) < 0.3
+			if closed and not was_closed:
+				closes += 1
+			was_closed = closed
+		print("[automation] eye test %s: max |left-right| %.3f, %d closes in 8 s (%d frames, face %s)" % [mode[0], diffs, closes, frames, tracking.face_present])
+	tracker.link_eyes = false
+	tracker.auto_blink = 0
 
 func _open_panel(which: String):
 	# --open-panel names: model and item open the models page, camera the settings page, others by page id
