@@ -13,7 +13,10 @@ signal update_bg_color(color: Color)
 func _get_title():
 	return "Settings"
 
+const BackgroundStrip = preload("res://studio/hud/background_strip/background_strip.gd")
+
 func _ready() -> void:
+	_background_strip()
 	var face_trackers = %TrackingSource
 	var tracking_system = get_tree().get_first_node_in_group("system:tracking")
 	if OS.has_feature("openseeface") or OS.is_debug_build():
@@ -299,10 +302,26 @@ func _on_background_mode_selected(index: int) -> void:
 	if stage:
 		stage.background_mode = index
 	
+## thumbnails of the backgrounds under the mode picker (lib/background_library.gd)
+func _background_strip() -> void:
+	var strip := BackgroundStrip.new()
+	strip.picked.connect(func (mode: int, path: String):
+		%BackgroundModeSelector.select(mode)
+		_on_background_mode_selected(mode)
+		if path:
+			_on_background_file_selected(path))
+	strip.import_requested.connect(_on_background_image_selector_pressed)
+	var row: Node = %BackgroundModeSelector.get_parent()
+	row.get_parent().add_child(strip)
+	row.get_parent().move_child(strip, row.get_index() + 1)
+
 func _on_background_image_selector_pressed() -> void:
 	%BackgroundImageSelector/FileDialog.show()
 
 func _on_background_file_selected(path: String) -> void:
+	var local := ProjectSettings.localize_path(path)
+	if local.begins_with("user://"):
+		path = local
 	var stage = get_tree().get_first_node_in_group("system:stage")
 	if not stage:
 		return
@@ -310,6 +329,7 @@ func _on_background_file_selected(path: String) -> void:
 	stage.background_image = path
 	if stage.background_image != path:  # check if file is valid
 		return
+	BackgroundLibrary.add_imported(path)
 	%BackgroundImageSelector.text = path.get_file()
 	%BackgroundImageSelector.set_meta("filepath", path)
 

@@ -40,6 +40,7 @@ run eyes "$HIYORI" --eye-test --screenshot-window="$OUT/eyes.png"
 run cycle "$HIYORI" --cycle-models="$OUT/cycle" --pose-frames=40 --screenshot-window="$OUT/cycle.png"
 run pose3 "$PRO" --play-motion=hiyori_m06.motion3.json --screenshot="$OUT/pose3.png"
 run subpage "$HIYORI" --open-panel=model --press=Settings --screenshot-window="$OUT/subpage.png"
+run background "$HIYORI" --open-panel=settings --press=Bg_3 --screenshot-window="$OUT/background.png"
 run pipewire "$HIYORI" --open-panel=settings --press=PipeWireToggle --show=PipeWireToggle --screenshot-window="$OUT/pipewire.png"
 echo "== $fail failing, shots and logs in $OUT"
 exit $((fail > 0))
