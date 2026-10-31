@@ -406,3 +406,10 @@ Delete my version,Delete my version,刪除我的版本
 The expression needs a name.,The expression needs a name.,表情需要一個名稱。
 "The name cannot contain / \ : * ? "" < > |","The name cannot contain / \ : * ? "" < > |","名稱不能有 / \ : * ? "" < > |"
 The model already has an expression with this name.,The model already has an expression with this name.,模型已經有同名的表情。
+Lip sync from the microphone,Lip sync from the microphone,用麥克風對嘴型
+"Microphone level. The line is the noise gate: quieter than it, the mouth stays closed.","Microphone level. The line is the noise gate: quieter than it, the mouth stays closed.",麥克風音量。那條線是噪音門檻，比它小聲時嘴巴不會動。
+Gain,Gain,增益
+Makes a quiet microphone louder.,Makes a quiet microphone louder.,把太小聲的麥克風放大。
+Noise gate,Noise gate,噪音門檻
+"Sounds quieter than this do not move the mouth, like a fan or keyboard.","Sounds quieter than this do not move the mouth, like a fan or keyboard.",比這個小聲的聲音（例如電扇、鍵盤）不會讓嘴巴動。
+"Higher is calmer, lower follows every syllable.","Higher is calmer, lower follows every syllable.",越高越穩定，越低越會跟著每個音節動。

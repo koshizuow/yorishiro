@@ -20,7 +20,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Use microphone input on PC to affect certain
 mouth related tracking parameters"
-text = "Sample Microphone"
+text = "Lip sync from the microphone"
 
 [node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer" unique_id=1938832296]
 layout_mode = 2

@@ -32,6 +32,9 @@
 ##                          authenticate and check the requests (model, hotkeys, expressions, parameters, injection)
 ##   --expression-editor-test[=<png>]  after --open-panel=model: make an expression in the editor (png: a shot
 ##                          of it), check the preview moves the model, save, edit it again, delete it
+##   --mic-test=<wav>       lip sync: play the wav (tools/lip_sync_vowels.py, with its .json timeline) through
+##                          the voice bus instead of the microphone, print the voice values per part and check
+##                          silence, volume and the vowel that wins in each
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
 ##                          (saved position, background, change model) and check what pressing it does
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
@@ -223,6 +226,8 @@ func _ready() -> void:
 			await _app_action_test()
 		if args.has("expression-editor-test"):
 			await _expression_editor_test(str(args["expression-editor-test"]))
+		if args.has("mic-test"):
+			await _mic_test(str(args["mic-test"]))
 		if args.has("plugin-api-test"):
 			await _plugin_api_test(str(args["plugin-api-test"]))
 		if args.has("sensitivity-test"):
@@ -450,6 +455,49 @@ func _expression_editor_test(shot: String):
 	await wait.call(15)
 	names = model.get_expression_controller().expressions.map(func (e): return e.get_name())
 	check.call("deleted", not FileAccess.file_exists(file) and not ("yori_test" in names))
+
+func _mic_test(wav: String):
+	var check := func (what: String, ok: bool): print("[automation] lip sync %s: %s" % [what, "ok" if ok else "FAILED"])
+	var tracking = get_tree().get_first_node_in_group("system:tracking")
+	var mic = tracking.get_node("MicrophoneTracker")
+	var timeline: Array = JSON.parse_string(FileAccess.get_file_as_string(wav.get_basename() + ".json"))
+	mic.use_file(wav)
+	var keys := ["VoiceVolume", "VoiceFrequency", "VoiceA", "VoiceI", "VoiceU", "VoiceE", "VoiceO", "VoiceSilence"]
+	var sums := {}
+	var counts := {}
+	var end: float = timeline[-1].end
+	while mic.mic.playing:
+		await get_tree().process_frame
+		var t: float = mic.mic.get_playback_position()
+		if t >= end - 0.05:
+			break
+		for part in timeline:
+			# the middle of each part, away from fades and smoothing
+			if t > part.start + 0.3 and t < part.end - 0.15:
+				var k: String = part.part
+				counts[k] = counts.get(k, 0) + 1
+				var acc: Dictionary = sums.get_or_add(k, {})
+				for p in keys:
+					acc[p] = acc.get(p, 0.0) + float(tracking.parameters.get(p, 0.0))
+				acc["F1"] = acc.get("F1", 0.0) + mic.formants.x
+				acc["F2"] = acc.get("F2", 0.0) + mic.formants.y
+	var vowels := ["a", "i", "u", "e", "o"]
+	var right := 0
+	for k in counts:
+		var mean := {}
+		for p in keys:
+			mean[p] = sums[k][p] / counts[k]
+		var line := ", ".join(keys.map(func (p): return "%s %.2f" % [p.trim_prefix("Voice"), mean[p]]))
+		print("[automation] lip sync part %s (%d frames, formants %.0f / %.0f Hz): %s" % [k, counts[k], sums[k].F1 / counts[k], sums[k].F2 / counts[k], line])
+		if k == "silence":
+			check.call("silence closes the mouth (volume %.2f)" % mean.VoiceVolume, mean.VoiceVolume < 0.05)
+		else:
+			var best: String = vowels.reduce(func (a, b): return a if mean["Voice" + a.to_upper()] >= mean["Voice" + b.to_upper()] else b)
+			check.call("%s opens the mouth (volume %.2f)" % [k, mean.VoiceVolume], mean.VoiceVolume > 0.5)
+			print("[automation] lip sync vowel %s heard as %s" % [k, best])
+			if best == k:
+				right += 1
+	check.call("vowels recognized %d of 5" % right, right >= 4)
 
 func _plugin_api_test(card_shot: String):
 	var check := func (what: String, ok: bool): print("[automation] plugin api %s: %s" % [what, "ok" if ok else "FAILED"])
