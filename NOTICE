@@ -72,6 +72,12 @@ Models the default tracker (facemesh) uses, all commercially usable
     https://github.com/ICT-VGL/ICT-FaceKit
     Neutral head and 53 ARKit-named expression shapes, used by the expression
     solver and the preview avatar.
+  Eye openness model          Yorishiro, same license as the tracker
+    tracker/src/yorishiro_tracker/assets/eye_openness.onnx, part of this
+    repository. Trained only on synthetic renders of the ICT-FaceKit head
+    (tracker/tools/eye_synth), eye crops located by FaceMesh-V2. No photos of
+    real people were used for training; the user's own clips and CREMA-D were
+    used for evaluation only.
 
 Code adapted from MediaPipe (Apache-2.0)
 

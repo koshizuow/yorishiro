@@ -151,6 +151,7 @@ class MediaPipePointFitter:
         self.calibrated = False
         self.gaze_neutral = np.zeros(4)
         self.lid_neutral = {side: 1.0 for side in LIDS}
+        self.eye_neutral = {side: 1.0 for side in LIDS}  # eye model openness at the neutral
 
     def align(self, landmarks: np.ndarray, width: int, height: int) -> tuple[np.ndarray, np.ndarray]:
         """All 478 points rigidly aligned onto the reference, and the head rotation (face -> camera)."""
@@ -158,27 +159,31 @@ class MediaPipePointFitter:
         s, r, t = similarity_transform(pts[MP_RIGID], self.reference[MP_RIGID])
         return apply(s, r, t, pts), r.T
 
-    def calibrate(self, aligned: np.ndarray) -> None:
+    def calibrate(self, aligned: np.ndarray, eye_open: np.ndarray | None = None) -> None:
         self.reference = aligned[:468].copy()
         self.gaze_neutral = _iris_offsets(aligned)
         self.lid_neutral = {side: _lid_gap(aligned, side) for side in LIDS}
+        if eye_open is not None:
+            self.eye_neutral = {side: max(float(v), 0.2) for side, v in zip(LIDS, eye_open)}
         self.brow_neutral = {side: self._brow_height(aligned, side) for side in BROW_HEIGHT}
         self.solver.w[:] = 0
         for _, _, solver in self.regions:
             solver.w[:] = 0
         self.calibrated = True
 
-    def calibrate_many(self, aligned: list[np.ndarray]) -> None:
+    def calibrate_many(self, aligned: list[np.ndarray], eye_open: list[np.ndarray] | None = None) -> None:
         """Neutral = per-point median over a window of aligned frames."""
-        self.calibrate(np.median(np.stack(aligned), axis=0))
+        self.calibrate(np.median(np.stack(aligned), axis=0),
+                       np.median(np.stack(eye_open), axis=0) if eye_open else None)
 
     def realign(self, aligned: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Re-align points that were aligned to an older reference, and the rotation that took them there."""
         s, r, t = similarity_transform(aligned[MP_RIGID], self.reference[MP_RIGID])
         return apply(s, r, t, aligned), r
 
-    def expressions(self, aligned: np.ndarray) -> np.ndarray:
-        """ARKit 52 values for FIT_COVERAGE, zeros elsewhere."""
+    def expressions(self, aligned: np.ndarray, eye_open: np.ndarray | None = None) -> np.ndarray:
+        """ARKit 52 values for FIT_COVERAGE, zeros elsewhere. Blink and wide come from the eye model's
+        openness when given (eye_openness.py), otherwise from the lid gap."""
         disp = aligned[self.src_idx] - self.reference[self.src_idx]
         w = self.solver.solve(disp)
         if REGIONAL:
@@ -192,8 +197,11 @@ class MediaPipePointFitter:
             for side in BROW_HEIGHT:
                 drop = self.brow_neutral[side] - self._brow_height(aligned, side)
                 bs[ARKIT52_INDEX[f"browDown{side}"]] = np.clip(drop / self.brow_down_full[side], 0.0, 1.0)
-        for side in LIDS:
-            rel = _lid_gap(aligned, side) / max(self.lid_neutral[side], 1e-6)
+        for i, side in enumerate(LIDS):
+            if eye_open is not None:
+                rel = float(eye_open[i]) / self.eye_neutral[side]
+            else:
+                rel = _lid_gap(aligned, side) / max(self.lid_neutral[side], 1e-6)
             bs[ARKIT52_INDEX[f"eyeBlink{side}"]] = np.clip(
                 (1 - LID_DEADBAND - rel) / (1 - LID_DEADBAND - LID_CLOSED), 0.0, 1.0)
             bs[ARKIT52_INDEX[f"eyeWide{side}"]] = np.clip(

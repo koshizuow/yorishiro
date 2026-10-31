@@ -1,14 +1,18 @@
 #!/bin/sh
 # Test stand-in for yorishiro-tracker: same CLI, but serve replays a recording instead of a camera.
-# YORISHIRO_RECORDING picks the recording, otherwise the newest one under $YORISHIRO_DATA/recordings
-# (default tracker/data/recordings).
+# YORISHIRO_RECORDING picks the recording, otherwise crema-d-60 under $YORISHIRO_DATA/recordings
+# (default tracker/data/recordings), so automation tests always replay the same faces. Without that one, the
+# last recording by name.
 T=$(cd "$(dirname "$0")/../tracker" && pwd)
 # same env choice as the app: the NVIDIA one when it exists
 V=$T/.venv; [ -x "$T/.venv-nvidia/bin/yorishiro-tracker" ] && V=$T/.venv-nvidia
 if [ "$1" = "serve" ]; then
   REC=${YORISHIRO_RECORDING:-}
+  if [ -z "$REC" ] && [ -f "${YORISHIRO_DATA:-$T/data}/recordings/crema-d-60/meta.json" ]; then
+    REC=${YORISHIRO_DATA:-$T/data}/recordings/crema-d-60
+  fi
   if [ -z "$REC" ]; then
-    # glob order is name order, recordings are named by timestamp
+    # glob order is name order
     for d in "${YORISHIRO_DATA:-$T/data}"/recordings/*/; do
       [ -f "$d/meta.json" ] && REC=$d
     done
