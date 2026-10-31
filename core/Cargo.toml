@@ -7,8 +7,10 @@ description = "Yorishiro's face tracking core: landmarks to ARKit 52 and VTube S
 publish = false
 
 [dependencies]
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
 nalgebra = "0.33"
 npyz = { version = "0.8", features = ["npz"] }
+ort = { version = "2.0.0-rc.15", default-features = false, features = ["load-dynamic", "std"] }
 
 [profile.release]
 debug = 1

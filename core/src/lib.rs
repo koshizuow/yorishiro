@@ -9,9 +9,12 @@
 //! Numbers follow the Python code: f64 math, rounded to f32 where Python stores float32 arrays, so the
 //! two agree to a few 1e-6.
 
+pub mod backend;
 pub mod data;
 pub mod fit;
 pub mod frame;
+pub mod image;
+pub mod inference;
 pub mod pipeline;
 pub mod pose;
 pub mod smooth;

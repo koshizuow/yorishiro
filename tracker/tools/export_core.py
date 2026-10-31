@@ -51,6 +51,7 @@ def export_fit(fitter: MediaPipePointFitter, out: Path) -> None:
         "arkit_of_shape": np.array(fitter.arkit_of_shape, np.int64),
         "n_shapes": np.int64(len(ICT_SHAPES)),
         "rigid": mpp.MP_RIGID.astype(np.int64),
+        "flip_mirror": __import__("yorishiro_tracker.mediapipe_ncnn.landmarks", fromlist=["x"]).mirror_index(mpp.load_canonical()).astype(np.int64),
         **solver_arrays("main", fitter.solver),
     }
     for i, (rows, taken, solver) in enumerate(fitter.regions):
@@ -140,6 +141,67 @@ def golden(rec: Path, head: IctHead, out: Path) -> None:
     print(f"wrote {out}: {n} frames, {int(det.sum())} faces, neutral window done at {calibrated_at}")
 
 
+INFERENCE_FRAMES = 400
+# the first frames also as OpenCV decoded them (PNG, lossless), so the Rust test sees the same pixels:
+# JPEG decoders differ by a few grey levels, which the face networks amplify
+PNG_FRAMES = 100
+
+
+def golden_inference(rec: Path, out: Path, frames: int = INFERENCE_FRAMES) -> None:
+    """The image side on ONNX Runtime CPU: detector letterbox and decode, landmark crop and ROI tracking
+    (no flip averaging), MediaPipe's blendshape model, the eye model. Same steps as FaceMesh.process,
+    with the detector on ORT instead of ncnn so both sides run the same files."""
+    import cv2
+
+    from yorishiro_tracker.adapters.eye_openness import MODEL as EYE_MODEL, crop_eyes
+    from yorishiro_tracker.adapters.mediapipe_blendshapes import MediaPipeBlendshapes
+    from yorishiro_tracker.backends.ort_backend import OrtCpuBackend
+    from yorishiro_tracker.mediapipe_ncnn import detector as det
+    from yorishiro_tracker.mediapipe_ncnn import landmarks as lmk
+    from yorishiro_tracker.mediapipe_ncnn.facemesh import MP_DIR, PRESENCE_LOGIT
+
+    detector = OrtCpuBackend(MP_DIR / "face_detector.onnx")
+    landmarker = OrtCpuBackend(MP_DIR / "face_landmarks.onnx")
+    blend = MediaPipeBlendshapes()
+    eyes = OrtCpuBackend(EYE_MODEL)
+    n = min(frames, len(list((rec / "frames").glob("*.jpg"))))
+    res = {k: np.zeros(s) for k, s in (("roi", (n, 4)), ("detected", (n,)), ("landmarks", (n, 478, 3)),
+                                        ("presence", (n,)), ("found", (n,)), ("mp_bs", (n, 52)),
+                                        ("eye_open", (n, 2)), ("eye_crops", (n, 2, 40, 64, 3)))}
+    roi = None
+    png_dir = out.parent / f"{rec.name}-frames"
+    png_dir.mkdir(parents=True, exist_ok=True)
+    for i in range(n):
+        bgr = cv2.imread(str(rec / "frames" / f"{i:05d}.jpg"))
+        if i < PNG_FRAMES:
+            cv2.imwrite(str(png_dir / f"{i:05d}.png"), bgr)
+        h, w = bgr.shape[:2]
+        for _ in range(2):
+            if roi is None:
+                x, sc, px, py = det.letterbox(bgr)
+                o = detector.run({"in0": x})
+                roi = det.decode_best(o["out0"], o["out1"], sc, px, py)
+                res["detected"][i] = 1
+                if roi is None:
+                    break
+            res["roi"][i] = [roi[0][0], roi[0][1], roi[1], roi[2]]
+            m = lmk.roi_matrix(*roi)
+            o = landmarker.run({"in0": lmk.preprocess(bgr, m)})
+            res["presence"][i] = o["out1"].item()
+            if o["out1"].item() > PRESENCE_LOGIT:
+                lm = lmk.postprocess(o["out0"], m, w, h)
+                roi = lmk.roi_from_landmarks(lm * (w, h, w))
+                res["landmarks"][i], res["found"][i] = lm, 1
+                res["mp_bs"][i] = blend(lm, w, h)
+                crops = crop_eyes(bgr, lm)
+                res["eye_crops"][i] = crops
+                res["eye_open"][i] = eyes.run({"in0": crops.transpose(0, 3, 1, 2).astype(np.float32)})["out0"]
+                break
+            roi = None
+    np.savez_compressed(out, **{k: v.astype(np.uint8) if k == "eye_crops" else v for k, v in res.items()})
+    print(f"wrote {out}: {n} frames, {int(res['found'].sum())} faces, {int(res['detected'].sum())} detector runs")
+
+
 def main():
     head = ensure_ict_facekit()
     export_fit(MediaPipePointFitter(head), MODEL_DIR / "core" / "fit.npz")
@@ -147,6 +209,7 @@ def main():
     for r in recs:
         rec = Path(r) if "/" in r else TESTDATA / "recordings" / r
         golden(rec, head, TESTDATA / "core-golden" / f"{rec.name}.npz")
+        golden_inference(rec, TESTDATA / "core-golden" / f"{rec.name}-inference.npz")
 
 
 if __name__ == "__main__":
