@@ -108,3 +108,5 @@ Native addons,Native addons,原生擴充
 Interface font,Interface font,介面字型
 Face tracking models (yorishiro-tracker),Face tracking models (yorishiro-tracker),臉部追蹤模型（yorishiro-tracker）
 Expression shapes (yorishiro-tracker),Expression shapes (yorishiro-tracker),表情形狀（yorishiro-tracker）
+Show screen buttons on the stage,Show screen buttons on the stage,在舞台上顯示畫面按鈕
+Clickable buttons in the corner of the stage for hotkeys that have one. Off: keyboard hotkeys only.,Clickable buttons in the corner of the stage for hotkeys that have one. Off: keyboard hotkeys only.,舞台角落可以用滑鼠點的按鈕，對應有設定畫面按鈕的熱鍵。關掉就只用鍵盤熱鍵。

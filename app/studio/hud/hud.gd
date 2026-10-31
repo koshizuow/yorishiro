@@ -36,6 +36,8 @@ var open
 var group: ButtonGroup
 var model_browser_opened := false
 var overlay: SettingsOverlay
+## user setting: show the screen buttons that have a Musubi binding (VTS's on-screen hotkeys)
+var show_screen_buttons := true
 var stage_models: PanelContainer
 var _idle := 0.0
 
@@ -185,6 +187,52 @@ func _process(delta: float) -> void:
 	_idle += delta
 	var target := 1.0 if _idle < IDLE_FADE_SECONDS or overlay.visible or stage_models.visible else 0.0
 	%Menu.modulate.a = move_toward(%Menu.modulate.a, target, delta * 4.0)
+	onscreen_buttons.modulate.a = %Menu.modulate.a
+	_screen_button_check -= delta
+	if _screen_button_check <= 0.0:
+		_screen_button_check = 1.0
+		refresh_screen_buttons()
+
+var _screen_button_check := 0.0
+
+## shows only the screen buttons a Musubi graph of the model listens to, labelled with what they trigger
+## (checked once a second, graphs change in the editor and load after the model)
+func refresh_screen_buttons() -> void:
+	var labels := {}
+	var model = stage.active_model if stage else null
+	if model and show_screen_buttons:
+		for graph in model.blueprints:
+			for node in graph.get_children():
+				if not node.has_method("get_type") or node.get_type() != &"screen_button":
+					continue
+				var mapping: Array = node.get_node("%Mapping").get_children()
+				var idx := mapping.find_custom(func (b): return b.button_pressed)
+				if idx >= 0:
+					labels[idx] = _screen_button_label(graph, node)
+	var buttons: Array = onscreen_buttons.get_node("%Buttons").get_children()
+	for i in buttons.size():
+		var b: Button = buttons[i]
+		b.visible = i in labels
+		if b.visible:
+			b.text = labels[i].left(4)
+			b.tooltip_text = labels[i]
+			b.clip_text = true
+	onscreen_buttons.visible = not labels.is_empty()
+
+func _screen_button_label(graph, node) -> String:
+	for c in graph.connections:
+		if c.from_node != node.name:
+			continue
+		var target = graph.get_node_or_null(NodePath(c.to_node))
+		if target == null:
+			continue
+		if "expression" in target and target.expression:
+			return target.expression
+		if target.has_node("%Animation"):
+			var anim: OptionButton = target.get_node("%Animation")
+			if anim.selected >= 0:
+				return anim.get_item_text(anim.selected)
+	return str(node.get_node("%Mapping").get_children().find_custom(func (b): return b.button_pressed) + 1)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -237,6 +285,7 @@ func _clear_buttons():
 func load_settings(settings: Dictionary):
 	super.load_settings(settings)
 	
+	show_screen_buttons = settings.get("show_screen_buttons", true)
 	var do_popup = settings.get("popout_controls", false)
 	if do_popup:
 		await get_tree().process_frame
@@ -246,6 +295,7 @@ func save_settings(settings: Dictionary):
 	super.save_settings(settings)
 	
 	settings["popout_controls"] = self.is_floating
+	settings["show_screen_buttons"] = show_screen_buttons
 	
 func _on_screenshot_btn_pressed() -> void:
 	var stage = get_tree().get_first_node_in_group("system:stage")

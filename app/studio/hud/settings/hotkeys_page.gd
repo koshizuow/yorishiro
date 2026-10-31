@@ -4,6 +4,20 @@ extends VBoxContainer
 
 func _init() -> void:
 	name = "HotkeysPage"
+	var screen := CheckButton.new()
+	screen.name = "ShowScreenButtons"
+	screen.text = "Show screen buttons on the stage"
+	screen.tooltip_text = "Clickable buttons in the corner of the stage for hotkeys that have one. Off: keyboard hotkeys only."
+	screen.toggled.connect(func (on):
+		var hud = find_parent("HUD")
+		if hud:
+			hud.show_screen_buttons = on
+			hud.refresh_screen_buttons())
+	add_child(screen)
+	visibility_changed.connect(func ():
+		var hud = find_parent("HUD")
+		if hud and is_visible_in_tree():
+			screen.set_pressed_no_signal(hud.show_screen_buttons))
 	var list := Label.new()
 	list.name = "Placeholder"
 	list.text = "The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now."
