@@ -10,6 +10,7 @@
 //! two agree to a few 1e-6.
 
 pub mod backend;
+pub mod camera;
 pub mod data;
 pub mod fit;
 pub mod frame;
