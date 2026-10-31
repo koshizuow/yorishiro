@@ -32,6 +32,8 @@ fn check(name: &str, own_landmarks: bool) -> bool {
     let (mp, fit, eyes) = (root().join("tracker/models/mediapipe"), root().join("tracker/models/core/fit.npz"),
                            root().join("tracker/src/yorishiro_tracker/assets/eye_openness.onnx"));
     let mut tracker = Tracker::open(&ModelPaths { mediapipe: &mp, fit: &fit, eyes: Some(&eyes) }, 2).unwrap();
+    // the golden run has no flip averaging; on a fast CPU the core would switch it on
+    tracker.mesh.flip_mirror = None;
     let mut g = Npz::open(&golden).unwrap();
     let found = g.ints("found").unwrap();
     let ts = g.f64s("timestamps_ms").unwrap().0;

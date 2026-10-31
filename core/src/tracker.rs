@@ -9,6 +9,10 @@ use crate::inference::{eye_widths, Blendshapes, Eyes, FaceMesh, LandmarkRuntime}
 use crate::pipeline::{Extras, Output, Pipeline};
 use std::path::Path;
 
+/// Flip averaging (the landmark model also on the mirrored crop) when one pass takes at most this long:
+/// a quarter of a 30 fps frame, the Python tracker's FLIP_MAX_PASS_MS. Steadier still faces, mouth and cheeks.
+pub const FLIP_MAX_PASS_MS: f64 = 8.0;
+
 pub struct Tracker {
     pub mesh: FaceMesh,
     blend: Blendshapes,
@@ -31,8 +35,15 @@ impl Tracker {
 
     /// With the landmark model on the given runtime.
     pub fn open_on(paths: &ModelPaths, runtime: LandmarkRuntime, threads: usize) -> Result<Self, Error> {
+        let mut mesh = FaceMesh::open_on(paths.mediapipe, runtime, threads)?;
+        let pass = mesh.pass_ms()?;
+        if pass <= FLIP_MAX_PASS_MS {
+            let mut fit = crate::data::Npz::open(paths.fit).map_err(|e| e.to_string())?;
+            mesh.flip_mirror = Some(fit.ints("flip_mirror").map_err(|e| e.to_string())?);
+        }
+        mesh.runtime = format!("{}{} (pass {pass:.1} ms)", mesh.runtime, if mesh.flip_mirror.is_some() { " flip-averaged" } else { "" });
         Ok(Self {
-            mesh: FaceMesh::open_on(paths.mediapipe, runtime, threads)?,
+            mesh,
             blend: Blendshapes::open(&paths.mediapipe.join("face_blendshapes.onnx"))?,
             eyes: paths.eyes.map(Eyes::open).transpose()?,
             pipeline: Pipeline::new(Fitter::load(paths.fit).map_err(|e| e.to_string())?),

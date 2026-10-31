@@ -331,6 +331,33 @@ def golden_ncnn(rec: Path, out: Path) -> None:
     print(f"wrote {out}")
 
 
+def golden_flip(rec: Path, out: Path) -> None:
+    """Flip averaged landmarks (the model also on the mirrored crop, the two averaged) on ORT CPU at the ORT
+    run's crops, for the Rust core's flip averaging."""
+    import cv2
+
+    from yorishiro_tracker.backends.ort_backend import OrtCpuBackend
+    from yorishiro_tracker.mediapipe_ncnn import landmarks as lmk
+    from yorishiro_tracker.mediapipe_ncnn.facemesh import MP_DIR
+
+    model = OrtCpuBackend(MP_DIR / "face_landmarks.onnx")
+    mirror = lmk.mirror_index(mpp.load_canonical())
+    inf = np.load(out.parent / f"{rec.name}-inference.npz")
+    frames = sorted((out.parent / f"{rec.name}-frames").glob("*.png"))[:30]
+    lms = np.zeros((len(frames), 478, 3))
+    for i, f in enumerate(frames):
+        bgr = cv2.imread(str(f))
+        h, w = bgr.shape[:2]
+        r = inf["roi"][i]
+        m = lmk.roi_matrix(np.array(r[:2]), r[2], r[3])
+        x = lmk.preprocess(bgr, m)
+        raw = model.run({"in0": x})["out0"]
+        flipped = model.run({"in0": lmk.flip_input(x)})["out0"]
+        lms[i] = lmk.postprocess((raw.reshape(478, 3) + lmk.unflip(flipped, mirror)) / 2, m, w, h)
+    np.savez_compressed(out, landmarks=lms)
+    print(f"wrote {out}")
+
+
 def golden_sinks(out: Path, frames: int = 20) -> None:
     """The outputs to other apps (VTS iPhone JSON, iFacialMocap text) on random frames, for the Rust sinks."""
     import json
@@ -400,6 +427,7 @@ def main():
         golden_inference(rec, TESTDATA / "core-golden" / f"{rec.name}-inference.npz")
         golden_full(rec, head, TESTDATA / "core-golden" / f"{rec.name}-full.npz")
         golden_ncnn(rec, TESTDATA / "core-golden" / f"{rec.name}-ncnn.npz")
+        golden_flip(rec, TESTDATA / "core-golden" / f"{rec.name}-flip.npz")
 
 
 if __name__ == "__main__":

@@ -173,6 +173,22 @@ impl FaceMesh {
         })
     }
 
+    /// One landmark pass's time (ms): the median of 10 after 3 warm-up runs on a blank crop, as the Python
+    /// tracker measures it to decide on flip averaging.
+    pub fn pass_ms(&mut self) -> Result<f64, Error> {
+        let blank = Image::new(LM_INPUT, LM_INPUT);
+        for _ in 0..3 {
+            self.landmarks_in(&blank)?;
+        }
+        let mut times = vec![];
+        for _ in 0..10 {
+            let t = std::time::Instant::now();
+            self.landmarks_in(&blank)?;
+            times.push(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        Ok(crate::fit::median(&mut times))
+    }
+
     /// raw landmarks (1434) and the presence logit
     fn landmarks_in(&mut self, crop: &Image) -> Result<(Vec<f32>, f32), Error> {
         let out = self.landmarker.run(3, LM_INPUT, LM_INPUT, crop.to_nchw(1.0 / 255.0, 0.0))?;
