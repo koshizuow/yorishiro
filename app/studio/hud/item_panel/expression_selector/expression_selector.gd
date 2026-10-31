@@ -9,7 +9,7 @@ var buttons: Dictionary[AyagamiExpression, Array] = {}
 @onready var exp_controller: AyagamiExpressionMutator = item.get_expression_controller()
 @onready var expressions = exp_controller.expressions.duplicate()
 func _ready():
-	title = "Set Expression [%s]" % item.display_name
+	title = tr("Set Expression [%s]") % item.display_name
 	
 	expressions.sort_custom(
 		func (e, _e):

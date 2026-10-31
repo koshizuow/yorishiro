@@ -173,3 +173,134 @@ Detect from reflections,Detect from reflections,依反光自動偵測
 I wear glasses,I wear glasses,有戴眼鏡
 No glasses,No glasses,沒戴眼鏡
 Shown on the preview head. Detection only notices glasses that reflect the screen.,Shown on the preview head. Detection only notices glasses that reflect the screen.,會顯示在預覽頭上。自動偵測只認得出有反光的眼鏡。
+Blink,Blink,眨眼
+Frequency,Frequency,頻率
+Min,Min,最小
+Speed,Speed,速度
+Breathe,Breathe,呼吸
+Hotkey Input,Hotkey Input,熱鍵輸入
+Pressed,Pressed,按下
+Released,Released,放開
+Read from Store,Read from Store,從暫存讀取
+On-screen Button,On-screen Button,畫面按鈕
+Value,Value,數值
+Trigger,Trigger,觸發
+XR Tracker,XR Tracker,XR 追蹤
+Arithmetic,Arithmetic,運算
+Output,Output,輸出
+Compose,Compose,組合
+Decompose,Decompose,拆分
+Eval,Eval,算式
+Solution,Solution,結果
+Remap,Remap,範圍轉換
+From,From,從
+Clamp,Clamp,限制範圍
+To,To,到
+Weight,Weight,權重
+In,In,進
+Out,Out,出
+Toggle Group,Toggle Group,切換群組
+Slots,Slots,欄位
+Inactive,Inactive,未啟用
+Toggle,Toggle,切換
+State,State,狀態
+Tween,Tween,補間
+Duration,Duration,時間長度
+Easing,Easing,緩動
+InOut,InOut,進出
+OutIn,OutIn,出進
+Transition,Transition,過渡曲線
+Linear,Linear,線性
+Sine,Sine,正弦
+Quintic,Quintic,五次方
+Quartic,Quartic,四次方
+Quadratic,Quadratic,二次方
+Exponential,Exponential,指數
+Elastic,Elastic,彈性
+Cubic,Cubic,三次方
+Circ,Circ,圓弧
+Bounce,Bounce,彈跳
+Back,Back,回彈
+Spring,Spring,彈簧
+Write to Store,Write to Store,寫入暫存
+Var,Var,變數
+Output Model Parameters,Output Model Parameters,輸出模型參數
+Fade,Fade,淡入淡出
+Play,Play,播放
+Stop,Stop,停止
+Completed,Completed,完成
+Skeleton Driver,Skeleton Driver,骨架驅動
+Toggle Expression,Toggle Expression,切換表情
+Clear Expressions,Clear Expressions,清除表情
+Active,Active,啟用
+FPS: %d,FPS: %d,FPS：%d
+Link Eye Blinking,Link Eye Blinking,雙眼一起眨
+OSF Port,OSF Port,OSF 連接埠
+Auto Connect,Auto Connect,自動連線
+Connect,Connect,連線
+Disconnect,Disconnect,中斷連線
+Listening,Listening,等待連線
+Hostname,Hostname,主機名稱
+Port,Port,連接埠
+Start Server,Start Server,啟動伺服器
+Hostname (Phone),Hostname (Phone),主機名稱（手機）
+Connect to Mobile,Connect to Mobile,連線到手機
+no camera found,no camera found,找不到攝影機
+Gamepad,Gamepad,遊戲手把
+Keyboard,Keyboard,鍵盤
+Map DPad to Left Stick,Map DPad to Left Stick,方向鍵當作左搖桿
+Keyboard Mapping,Keyboard Mapping,鍵盤對應
+Sample Microphone,Sample Microphone,測試麥克風
+Input Device,Input Device,輸入裝置
+Edit Blueprint Properties,Edit Blueprint Properties,編輯節點圖屬性
+Default,Default,預設
+Auto-Setup,Auto-Setup,自動設定
+Move Left,Move Left,往左移
+Move Right,Move Right,往右移
+Add %s Tracker,Add %s Tracker,新增 %s 追蹤
+Add XR Tracker,Add XR Tracker,新增 XR 追蹤
+Add Hotkey Binding,Add Hotkey Binding,新增熱鍵綁定
+Add Onscreen Button Binding,Add Onscreen Button Binding,新增畫面按鈕綁定
+Add Breathe,Add Breathe,新增呼吸
+Add Blink,Add Blink,新增眨眼
+Add Arithmetic,Add Arithmetic,新增運算
+Add Smoothing,Add Smoothing,新增平滑
+Add Toggle State,Add Toggle State,新增切換狀態
+Single Toggle,Single Toggle,單一切換
+Change Expression,Change Expression,切換表情
+Set Model Parameter,Set Model Parameter,設定模型參數
+OpenSeeFace (Webcam),OpenSeeFace (Webcam),OpenSeeFace（網路攝影機）
+VTubeStudio (WiFi),VTubeStudio (WiFi),VTube Studio（Wi-Fi）
+iOS BlendShapes (VTS),iOS BlendShapes (VTS),iOS 表情形狀（VTS）
+Yorishiro tracker (GPU),Yorishiro tracker (GPU),Yorishiro 追蹤器（GPU）
+Yorishiro (Controls),Yorishiro (Controls),Yorishiro（控制）
+Action Palette,Action Palette,動作面板
+Waiting for Input...,Waiting for Input...,等待輸入…
+Press ESCAPE to clear binding,Press ESCAPE to clear binding,按 Esc 清除綁定
+Set Expression [%s],Set Expression [%s],設定表情［%s］
+Model Settings [%s],Model Settings [%s],模型設定［%s］
+Z-Order,Z-Order,前後順序
+Model Name,Model Name,模型名稱
+Group,Group,群組
+Group Name,Group Name,群組名稱
+Action Controller,Action Controller,動作控制
+Section,Section,區段
+Search...,Search...,搜尋…
+Functions,Functions,函式
+%s: %s,%s: %s,%s：%s
+Running,Running,執行中
+Starting,Starting,啟動中
+Error,Error,錯誤
+waiting for the tracker,waiting for the tracker,等待追蹤器
+loading tracker %s,loading tracker %s,載入追蹤模型 %s
+port %s is in use by another program,port %s is in use by another program,連接埠 %s 被其他程式占用
+yorishiro-tracker is not installed at %s. Run `uv sync` in the tracker folder.,yorishiro-tracker is not installed at %s. Run `uv sync` in the tracker folder.,在 %s 找不到 yorishiro-tracker。請在 tracker 資料夾執行 `uv sync`。
+could not start %s,could not start %s,無法啟動 %s
+starting tracker (first start loads models),starting tracker (first start loads models),啟動追蹤器中（第一次啟動要載入模型）
+"tracker stopped (exit code %s), see the log","tracker stopped (exit code %s), see the log",追蹤器停止了（結束代碼 %s），請看紀錄
+tracking,tracking,追蹤中
+no face in view,no face in view,畫面裡沒有臉
+calibrated,calibrated,已校正
+"calibrating, keep a neutral face","calibrating, keep a neutral face",校正中，請保持自然表情
+NON-COMMERCIAL model,NON-COMMERCIAL model,非商用模型
+external tracker,external tracker,外部追蹤器

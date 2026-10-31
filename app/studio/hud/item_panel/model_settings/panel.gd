@@ -11,7 +11,7 @@ var _pause_signals = false
 
 func _ready():
 	assert(model != null)
-	title = "Model Settings [%s]" % model.display_name
+	title = tr("Model Settings [%s]") % model.display_name
 	
 	# mesh modifier controls
 	var categories: Dictionary[String, Node] = {}

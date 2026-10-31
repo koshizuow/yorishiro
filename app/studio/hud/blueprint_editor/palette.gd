@@ -46,7 +46,7 @@ func tracker_options():
 	var idx = 0
 	menu.id_pressed.connect(_handle_popup.bind(menu))
 	for i in Registry.parameter_groups():
-		menu.add_item("Add %s Tracker" % [i])
+		menu.add_item(tr("Add %s Tracker") % [tr(i)])
 		menu.set_item_metadata(
 			idx,
 			func ():

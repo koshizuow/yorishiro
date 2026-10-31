@@ -3,6 +3,16 @@
 extends VBoxContainer
 
 const STATE_COLORS = {"running": Color(0.4, 0.9, 0.5), "starting": Color(1, 0.8, 0.3), "error": Color(1, 0.4, 0.4)}
+const STATE_NAMES = {"running": "Running", "starting": "Starting", "error": "Error"}
+## status messages come in English (the tracker's are part of its protocol), the ones with a value are
+## matched here so the value can be put into the translated text. Others are shown as they come.
+const MESSAGE_PATTERNS = [
+	["^loading tracker (.+)$", "loading tracker %s"],
+	["^port (\\d+) is in use by another program$", "port %s is in use by another program"],
+	["^yorishiro-tracker is not installed at (.+)\\. Run `uv sync` in the tracker folder\\.$", "yorishiro-tracker is not installed at %s. Run `uv sync` in the tracker folder."],
+	["^could not start (.+)$", "could not start %s"],
+	["^tracker stopped \\(exit code (-?\\d+)\\), see the log$", "tracker stopped (exit code %s), see the log"],
+]
 
 var tracker
 
@@ -159,20 +169,27 @@ func _on_restart():
 
 func _on_status(s: Dictionary):
 	var state = s.get("state", "")
-	_state.text = "%s: %s" % [state.capitalize(), s.get("message", "")]
+	_state.text = tr("%s: %s") % [tr(STATE_NAMES.get(state, state.capitalize())), _translate_message(s.get("message", ""))]
 	_state.modulate = STATE_COLORS.get(state, Color.WHITE)
 	var parts = []
 	if s.has("fps"):
 		parts.append("%.0f fps, %.1f ms" % [s["fps"], s.get("infer_ms", 0)])
 	if s.has("calibrated"):
-		parts.append("calibrated" if s["calibrated"] else "calibrating, keep a neutral face")
+		parts.append(tr("calibrated") if s["calibrated"] else tr("calibrating, keep a neutral face"))
 	if s.has("runtime"):
 		parts.append(s["runtime"])
 	if s.get("commercial_use") == false:
-		parts.append("NON-COMMERCIAL model")
+		parts.append(tr("NON-COMMERCIAL model"))
 	if not tracker.is_managed() and state != "error":
-		parts.append("external tracker")
+		parts.append(tr("external tracker"))
 	_details.text = "  |  ".join(parts)
+
+func _translate_message(message: String) -> String:
+	for p in MESSAGE_PATTERNS:
+		var m = RegEx.create_from_string(p[0]).search(message)
+		if m:
+			return tr(p[1]) % m.get_string(1)
+	return tr(message)
 
 func _on_log(lines: PackedStringArray):
 	_log.text = "\n".join(lines)
