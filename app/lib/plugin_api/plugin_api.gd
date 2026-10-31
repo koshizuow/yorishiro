@@ -5,7 +5,8 @@
 ## main window, then the plugin authenticates each session with that token.
 ## Supported: status, statistics, folders, current/available/load model, move model, hotkeys (list, trigger),
 ## expressions (state, activate), input and Live2D parameters, creating/deleting custom parameters,
-## injecting parameter values, face found.
+## injecting parameter values, face found, and events (EventSubscriptionRequest): TestEvent,
+## ModelLoadedEvent, ModelMovedEvent, TrackingStatusChangedEvent, HotkeyTriggeredEvent, BackgroundChangedEvent.
 extends Node
 
 const PluginInput = preload("./plugin_input.gd")
@@ -38,6 +39,7 @@ const ERR_PARAMETER_EXISTS = 352
 const ERR_PARAMETER_NOT_FOUND = 353
 const ERR_PARAMETER_DEFAULT = 354
 const ERR_INJECT = 453
+const ERR_EVENT = 500
 
 ## a plugin is waiting for the user's answer: {name, developer, icon (Texture2D or null)}
 signal approval_requested(plugin: Dictionary)
@@ -64,6 +66,18 @@ var _sessions: Array[Dictionary] = []
 ## the token request waiting for the user: {session, request}
 var _pending := {}
 var _input: PluginInput
+
+const EVENTS = ["TestEvent", "ModelLoadedEvent", "ModelMovedEvent", "TrackingStatusChangedEvent",
+	"HotkeyTriggeredEvent", "BackgroundChangedEvent"]
+## ModelMovedEvent at most this often while the model moves
+const MOVE_EVENT_SECONDS = 0.1
+## what the events compare against, checked every frame while anyone listens
+var _seen := {"model": null, "face": null, "position": null, "background": null}
+var _next_test := 0
+var _next_move := 0
+## the hotkey sources wired to HotkeyTriggeredEvent, and whether the current press came from a plugin
+var _wired_hotkeys: Array = []
+var _api_press := false
 var _started := Time.get_ticks_msec()
 ## "live2dparameterlist" -> "_on_live2d_parameter_list" (to_snake_case splits "Live2D" differently)
 var _handlers := {}
@@ -135,7 +149,7 @@ func _process(_delta: float) -> void:
 		var peer := WebSocketPeer.new()
 		peer.inbound_buffer_size = 1 << 20  # plugin icons come as base64 PNG
 		peer.accept_stream(_server.take_connection())
-		_sessions.append({"peer": peer, "authenticated": false, "plugin": "", "developer": ""})
+		_sessions.append({"peer": peer, "authenticated": false, "plugin": "", "developer": "", "events": {}})
 	for s in _sessions.duplicate():
 		var peer: WebSocketPeer = s.peer
 		peer.poll()
@@ -148,6 +162,8 @@ func _process(_delta: float) -> void:
 			WebSocketPeer.STATE_OPEN:
 				while peer.get_available_packet_count() > 0:
 					_handle(s, peer.get_packet().get_string_from_utf8())
+	if _sessions.any(func (x): return not x.events.is_empty()):
+		_check_events()
 
 func _handle(s: Dictionary, text: String) -> void:
 	var req = JSON.parse_string(text)
@@ -349,7 +365,9 @@ func _on_hotkey_trigger(s: Dictionary, req: Dictionary):
 	var want := str(req.data.get("hotkeyID", ""))
 	for h in _hotkeys(m):
 		if h.id == want or h.name == want:
+			_api_press = true
 			h.source.slot_updated.emit(0)  # a press, like the key or the on-screen button
+			_api_press = false
 			return {"hotkeyID": h.id}
 	return _error(s, req, ERR_HOTKEY, "No hotkey with this hotkeyID or name in the current model.")
 
@@ -480,6 +498,86 @@ func _on_inject_parameter_data(s: Dictionary, req: Dictionary):
 func _on_face_found(_s: Dictionary, _req: Dictionary):
 	var t = _tracking()
 	return {"found": t.face_present if t else false}
+
+# --- events ---
+
+func _on_event_subscription(s: Dictionary, req: Dictionary):
+	var d: Dictionary = req.data
+	var event := str(d.get("eventName", ""))
+	var on := bool(d.get("subscribe", true))
+	if event.is_empty() and not on:
+		s.events.clear()  # unsubscribe from everything
+	elif event not in EVENTS:
+		return _error(s, req, ERR_EVENT, "%s is not an event Yorishiro sends. Events: %s" % [event, ", ".join(EVENTS)])
+	elif on:
+		s.events[event] = d.get("config", {}) if d.get("config") is Dictionary else {}
+		if event == "TestEvent":
+			s.events[event]["counter"] = 0
+	else:
+		s.events.erase(event)
+	_seen = {"model": null, "face": null, "position": null, "background": null}  # report the current state once
+	return {"subscribedEventCount": s.events.size(), "subscribedEvents": s.events.keys()}
+
+func _emit_event(event: String, data: Dictionary) -> void:
+	for s in _sessions:
+		if s.authenticated and s.events.has(event):
+			_reply(s, {}, event, data)
+
+func _check_events() -> void:
+	var now := Time.get_ticks_msec()
+	if now >= _next_test:
+		_next_test = now + 1000
+		for s in _sessions:
+			if s.authenticated and s.events.has("TestEvent"):
+				var cfg: Dictionary = s.events.TestEvent
+				cfg.counter += 1
+				_reply(s, {}, "TestEvent", {"yourTestMessage": str(cfg.get("testMessageForEvent", "")), "counter": cfg.counter})
+	var m = _model()
+	var path: String = m.modelmeta.model if m else ""
+	if path != _seen.model:
+		if _seen.model != null:
+			_emit_event("ModelLoadedEvent", {"modelLoaded": m != null, "modelName": _model_name(path) if m else "", "modelID": _model_id(path) if m else ""})
+		_seen.model = path
+		_wire_hotkeys(m)
+	var t = _tracking()
+	var face: bool = t.face_present if t else false
+	if face != _seen.face:
+		if _seen.face != null:
+			_emit_event("TrackingStatusChangedEvent", {"faceFound": face, "leftHandFound": false, "rightHandFound": false})
+		_seen.face = face
+	if m and now >= _next_move:
+		var pos := _position_of(m)
+		if _seen.position != null and pos != _seen.position:
+			_next_move = now + int(MOVE_EVENT_SECONDS * 1000)
+			_emit_event("ModelMovedEvent", {"modelID": _model_id(path), "modelName": _model_name(path), "modelPosition": pos})
+		_seen.position = pos
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	if stage:
+		var bg := "%d:%s" % [stage.background_mode, stage.background_image]
+		if bg != _seen.background:
+			if _seen.background != null:
+				var names := ["Default Grid", "", "Color", "Transparent"]
+				_emit_event("BackgroundChangedEvent", {"backgroundName": stage.background_image.get_file().get_basename() if stage.background_mode == 1 else names[clampi(stage.background_mode, 0, 3)]})
+			_seen.background = bg
+
+## HotkeyTriggeredEvent: listens to the press of every hotkey and on-screen button of the model
+func _wire_hotkeys(m) -> void:
+	for w in _wired_hotkeys:
+		if is_instance_valid(w[0]) and w[0].slot_updated.is_connected(w[1]):
+			w[0].slot_updated.disconnect(w[1])
+	_wired_hotkeys.clear()
+	if m == null:
+		return
+	for h in _hotkeys(m):
+		var path: String = m.modelmeta.model
+		var info := h
+		var f := func (slot: int):
+			if slot == 0:
+				_emit_event("HotkeyTriggeredEvent", {"hotkeyID": info.id, "hotkeyName": info.name, "hotkeyAction": info.type,
+					"hotkeyFile": info.file, "hotkeyTriggeredByAPI": _api_press, "modelID": _model_id(path),
+					"modelName": _model_name(path), "isLive2DItem": false})
+		h.source.slot_updated.connect(f)
+		_wired_hotkeys.append([h.source, f])
 
 # --- helpers ---
 

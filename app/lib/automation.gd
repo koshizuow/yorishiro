@@ -464,6 +464,7 @@ func _plugin_api_test(card_shot: String):
 			break
 	check.call("connected", ws.get_ready_state() == WebSocketPeer.STATE_OPEN)
 	var n := [0]
+	var events: Array = []  # everything that is not an answer
 	var ask := func (type: String, data := {}, press := "") -> Dictionary:
 		n[0] += 1
 		var id := "t%d" % n[0]
@@ -482,6 +483,8 @@ func _plugin_api_test(card_shot: String):
 				var msg = JSON.parse_string(ws.get_packet().get_string_from_utf8())
 				if msg is Dictionary and msg.get("requestID") == id:
 					return msg
+				if msg is Dictionary and str(msg.get("messageType", "")).ends_with("Event"):
+					events.append(msg)
 		return {}
 	var plugin := {"pluginName": "Test Plugin", "pluginDeveloper": "Yorishiro tests"}
 	var r: Dictionary = await ask.call("APIState")
@@ -543,12 +546,32 @@ func _plugin_api_test(card_shot: String):
 		r = await ask.call("ExpressionState", {"details": false, "expressionFile": e})
 		check.call("expression %s on" % e, r.get("data", {}).get("expressions", [{}])[0].get("active") == true)
 		await ask.call("ExpressionActivation", {"expressionFile": e, "active": false, "fadeTime": 0.0})
+	r = await ask.call("EventSubscription", {"eventName": "ModelMovedEvent", "subscribe": true})
+	check.call("subscribed", r.get("data", {}).get("subscribedEvents", []) == ["ModelMovedEvent"])
+	await ask.call("EventSubscription", {"eventName": "HotkeyTriggeredEvent", "subscribe": true})
+	r = await ask.call("EventSubscription", {"eventName": "TestEvent", "subscribe": true, "config": {"testMessageForEvent": "hi"}})
+	check.call("three events", r.get("data", {}).get("subscribedEventCount") == 3)
+	r = await ask.call("EventSubscription", {"eventName": "NoSuchEvent", "subscribe": true})
+	check.call("unknown event refused", r.get("messageType") == "APIError")
+	model.position.x -= 100
+	for i in 90:
+		await ask.call("APIState")  # keeps reading while events arrive
+	var moved := events.filter(func (e): return e.messageType == "ModelMovedEvent")
+	check.call("model moved event (%d)" % moved.size(), moved.size() >= 1)
+	var tests := events.filter(func (e): return e.messageType == "TestEvent")
+	check.call("test event (%d, says %s)" % [tests.size(), tests[0].data.yourTestMessage if tests else "-"], tests.size() >= 1 and tests[0].data.yourTestMessage == "hi")
 	r = await ask.call("HotkeysInCurrentModel")
 	var keys: Array = r.get("data", {}).get("availableHotkeys", [])
 	check.call("hotkeys (%d)" % keys.size(), r.get("messageType") == "HotkeysInCurrentModelResponse")
 	if keys:
 		r = await ask.call("HotkeyTrigger", {"hotkeyID": keys[0].hotkeyID})
 		check.call("hotkey %s (%s) triggered" % [keys[0].name, keys[0].type], r.get("data", {}).get("hotkeyID") == keys[0].hotkeyID)
+		for i in 5:
+			await ask.call("APIState")
+		var fired := events.filter(func (e): return e.messageType == "HotkeyTriggeredEvent")
+		check.call("hotkey event, by API", fired.size() >= 1 and fired[-1].data.hotkeyTriggeredByAPI == true)
+	r = await ask.call("EventSubscription", {"eventName": "", "subscribe": false})
+	check.call("unsubscribed from all", r.get("data", {}).get("subscribedEventCount") == 0)
 	r = await ask.call("FaceFound")
 	check.call("face found answered (%s)" % r.get("data", {}).get("found"), r.get("messageType") == "FaceFoundResponse")
 	r = await ask.call("NoSuchThing")
