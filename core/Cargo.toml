@@ -12,5 +12,13 @@ nalgebra = "0.33"
 npyz = { version = "0.8", features = ["npz"] }
 ort = { version = "2.0.0-rc.15", default-features = false, features = ["load-dynamic", "std"] }
 
+[features]
+# ncnn with Vulkan for the landmark model (AMD, Intel and other GPUs without CUDA); needs ncnn built with
+# NCNN_VULKAN and NCNN_SHARED_LIB, found through NCNN_DIR (its install prefix)
+ncnn = ["dep:cc"]
+
 [profile.release]
 debug = 1
+
+[build-dependencies]
+cc = { version = "1.10.0", optional = true }

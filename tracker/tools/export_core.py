@@ -304,6 +304,33 @@ def golden_full(rec: Path, head: IctHead, out: Path) -> None:
     print(f"wrote {out}: {n} frames, {int(res['found'].sum())} faces, neutral window done at {calibrated_at}")
 
 
+def golden_ncnn(rec: Path, out: Path) -> None:
+    """The landmark model on ncnn (Vulkan fp16 and fp32, CPU) on the PNG frames at the ORT run's crops, for the
+    Rust core's ncnn backend (same ncnn release, same GPU)."""
+    import cv2
+
+    from yorishiro_tracker.backends.factory import open_model
+    from yorishiro_tracker.mediapipe_ncnn import landmarks as lmk
+    from yorishiro_tracker.mediapipe_ncnn.facemesh import MP_DIR
+
+    inf = np.load(out.parent / f"{rec.name}-inference.npz")
+    frames = sorted((out.parent / f"{rec.name}-frames").glob("*.png"))
+    res = {}
+    for runtime in ("vulkan", "vulkan-fp32", "ncnn-cpu"):
+        model = open_model(MP_DIR / "face_landmarks", runtime)
+        lms = np.zeros((len(frames), 478, 3))
+        for i, f in enumerate(frames):
+            bgr = cv2.imread(str(f))
+            h, w = bgr.shape[:2]
+            r = inf["roi"][i]
+            m = lmk.roi_matrix(np.array(r[:2]), r[2], r[3])
+            lms[i] = lmk.postprocess(model.run({"in0": lmk.preprocess(bgr, m)})["out0"], m, w, h)
+        res[runtime.replace("-", "_")] = lms
+        print(f"  {runtime}: {model.name}")
+    np.savez_compressed(out, **res)
+    print(f"wrote {out}")
+
+
 def main():
     head = ensure_ict_facekit()
     export_fit(MediaPipePointFitter(head), MODEL_DIR / "core" / "fit.npz")
@@ -313,6 +340,7 @@ def main():
         golden(rec, head, TESTDATA / "core-golden" / f"{rec.name}.npz")
         golden_inference(rec, TESTDATA / "core-golden" / f"{rec.name}-inference.npz")
         golden_full(rec, head, TESTDATA / "core-golden" / f"{rec.name}-full.npz")
+        golden_ncnn(rec, TESTDATA / "core-golden" / f"{rec.name}-ncnn.npz")
 
 
 if __name__ == "__main__":

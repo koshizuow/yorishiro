@@ -17,6 +17,8 @@ pub mod glare;
 pub mod tracker;
 pub mod image;
 pub mod inference;
+#[cfg(feature = "ncnn")]
+pub mod ncnn;
 pub mod pipeline;
 pub mod pose;
 pub mod smooth;

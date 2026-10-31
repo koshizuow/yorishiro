@@ -124,9 +124,49 @@ pub fn roi_from_landmarks(px: &[P3]) -> Roi {
     Roi { center, size, angle }
 }
 
+/// Which runtime runs the landmark model (the detector, MediaPipe's blendshapes and the eye model stay on
+/// ONNX Runtime CPU: small, and the Python tracker does the same).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum LandmarkRuntime {
+    /// ONNX Runtime CPU (the reference)
+    OrtCpu,
+    /// ncnn on the first Vulkan GPU, fp16 or fp32
+    #[cfg(feature = "ncnn")]
+    Vulkan { fp16: bool },
+    /// ncnn on the CPU
+    #[cfg(feature = "ncnn")]
+    NcnnCpu,
+}
+
+enum Landmarker {
+    Ort(OrtModel),
+    #[cfg(feature = "ncnn")]
+    Ncnn(crate::ncnn::NcnnModel),
+}
+
+impl Landmarker {
+    /// raw landmarks (1434) and the presence logit
+    fn run(&mut self, crop: &Image) -> Result<(Vec<f32>, f32), Error> {
+        match self {
+            Landmarker::Ort(m) => {
+                let out = m.run(&[1, 3, LM_INPUT as i64, LM_INPUT as i64], crop.to_nchw(1.0 / 255.0, 0.0))?;
+                Ok((out[0].clone(), out[1][0]))
+            }
+            #[cfg(feature = "ncnn")]
+            Landmarker::Ncnn(m) => {
+                let out = m.run(3, LM_INPUT, LM_INPUT, crop.to_nchw(1.0 / 255.0, 0.0))?;
+                let get = |n: &str| out.iter().find(|(k, _)| k == n).map(|(_, v)| v.clone()).ok_or(format!("no {n}"));
+                Ok((get("out0")?, get("out1")?[0]))
+            }
+        }
+    }
+}
+
 pub struct FaceMesh {
     detector: Detector,
-    landmarker: OrtModel,
+    landmarker: Landmarker,
+    /// what the landmark model runs on, as the status shows it
+    pub runtime: String,
     pub roi: Option<Roi>,
     /// times the detector ran
     pub detections: usize,
@@ -151,9 +191,29 @@ pub struct Tracked {
 
 impl FaceMesh {
     pub fn open(models: &Path, threads: usize) -> Result<Self, Error> {
+        Self::open_on(models, LandmarkRuntime::OrtCpu, threads)
+    }
+
+    pub fn open_on(models: &Path, runtime: LandmarkRuntime, threads: usize) -> Result<Self, Error> {
+        let (landmarker, name) = match runtime {
+            LandmarkRuntime::OrtCpu => (Landmarker::Ort(OrtModel::open(&models.join("face_landmarks.onnx"), threads)?), "ort-cpu-fp32".to_string()),
+            #[cfg(feature = "ncnn")]
+            LandmarkRuntime::Vulkan { fp16 } => {
+                let m = crate::ncnn::NcnnModel::open(&models.join("face_landmarks"), true, fp16, threads)?;
+                let n = m.name.clone();
+                (Landmarker::Ncnn(m), n)
+            }
+            #[cfg(feature = "ncnn")]
+            LandmarkRuntime::NcnnCpu => {
+                let m = crate::ncnn::NcnnModel::open(&models.join("face_landmarks"), false, false, threads)?;
+                let n = m.name.clone();
+                (Landmarker::Ncnn(m), n)
+            }
+        };
         Ok(Self {
             detector: Detector::open(&models.join("face_detector.onnx"))?,
-            landmarker: OrtModel::open(&models.join("face_landmarks.onnx"), threads)?,
+            landmarker,
+            runtime: name,
             roi: None,
             detections: 0,
             flip_mirror: None,
@@ -161,8 +221,7 @@ impl FaceMesh {
     }
 
     fn landmarks_in(&mut self, crop: &Image) -> Result<(Vec<f32>, f32), Error> {
-        let out = self.landmarker.run(&[1, 3, LM_INPUT as i64, LM_INPUT as i64], crop.to_nchw(1.0 / 255.0, 0.0))?;
-        Ok((out[0].clone(), out[1][0]))
+        self.landmarker.run(crop)
     }
 
     pub fn process(&mut self, img: &Image) -> Result<Option<Landmarks>, Error> {
