@@ -1,0 +1,82 @@
+{
+  "_doc": "Upstreams we take code from (D33). pin says how to find the version we use. policy: cherry-pick for code we changed, bump for code we use as is. tools/upstream_report.py reads this. OpenVT is not tracked: the app is a fork of it, not a downstream (user 2026-10-31).",
+  "upstreams": [
+    {
+      "name": "ayagami-gd",
+      "url": "https://github.com/AyagamiDev/ayagami-gd.git",
+      "branch": "main",
+      "pin": {
+        "kind": "subtree",
+        "prefix": "app/thirdparty/ayagami"
+      },
+      "policy": "cherry-pick",
+      "note": "Our fork (D25). Check every commit's source: nothing written from the Cubism SDK or Framework (D26)."
+    },
+    {
+      "name": "ayagami",
+      "url": "https://github.com/AyagamiDev/ayagami.git",
+      "branch": "main",
+      "pin": {
+        "kind": "cargo-lock",
+        "lock": "app/thirdparty/ayagami/Cargo.lock",
+        "package": "ayagami"
+      },
+      "policy": "bump",
+      "note": "Unmodified. cargo update -p ayagami in app/thirdparty/ayagami, rebuild, render regression."
+    },
+    {
+      "name": "godot-rust (gdext)",
+      "url": "https://github.com/godot-rust/gdext.git",
+      "branch": "master",
+      "pin": {
+        "kind": "cargo-lock-version",
+        "lock": "app/thirdparty/ayagami/Cargo.lock",
+        "package": "godot"
+      },
+      "policy": "bump",
+      "note": "Released crate, bump with ayagami-gd when it needs a newer one."
+    },
+    {
+      "name": "godot-vrm",
+      "url": "https://github.com/V-Sekai/godot-vrm.git",
+      "branch": "master",
+      "pin": {
+        "kind": "submodule",
+        "path": "app/thirdparty/godot-vrm"
+      },
+      "policy": "bump"
+    },
+    {
+      "name": "godot-keylogger",
+      "url": "https://github.com/erodozer/godot-keylogger",
+      "branch": "main",
+      "pin": {
+        "kind": "submodule",
+        "path": "app/thirdparty/godot-keylogger"
+      },
+      "policy": "bump"
+    },
+    {
+      "name": "gd-virtualcamera",
+      "url": "https://github.com/erodozer/gd-virtualcamera.git",
+      "branch": "main",
+      "pin": {
+        "kind": "submodule",
+        "path": "app/thirdparty/gd-virtualcamera"
+      },
+      "policy": "bump"
+    }
+  ],
+  "godot": {
+    "engine_version": "4.7.1",
+    "build_release": {
+      "repo": "AyagamiDev/ayagami-gd",
+      "tag": "godot"
+    },
+    "blend_mode_pr": {
+      "repo": "godotengine/godot",
+      "number": 116686
+    },
+    "note": "Patch releases of the same minor through AyagamiDev's build. A new minor is its own project. When the PR is merged, switch to official builds."
+  }
+}
