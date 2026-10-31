@@ -146,14 +146,7 @@ func _build_model():
 	idle_anim.add_animation_library("", anim_lib)
 	
 	# emotion controller
-	var expression_library = AyagamiLoader.load_expression_library(modelmeta.model.get_base_dir(), true)
-	var expression_controller: AyagamiExpressionMutator = model.get_node("ExpressionController")
-	if not expression_library.is_empty():
-		expression_controller.expressions = expression_library.keys()
-		for e in expression_library.keys():
-			var group = expression_library[e]
-			if group != "":
-				expression_controller.set("expression_groups/%s" % e.get_name(), group)
+	load_expressions()
 		
 	# add ONE_SHOT animation player
 	var os_lib = AnimationLibrary.new()
@@ -223,6 +216,66 @@ func get_animation_player() -> AnimationPlayer:
 	
 func get_expression_controller() -> AyagamiExpressionMutator:
 	return model.get_node("ExpressionController")
+
+## expressions made or changed in the expression editor, beside the model's settings file; the model's own
+## folder is never written. One with the name of a model expression takes its place.
+func user_expression_dir() -> String:
+	return modelmeta.settings_file.get_basename().get_basename() + ".expressions"
+
+func user_expression_names() -> PackedStringArray:
+	var out := PackedStringArray()
+	if not DirAccess.dir_exists_absolute(user_expression_dir()):
+		return out
+	for f in DirAccess.get_files_at(user_expression_dir()):
+		if f.ends_with(".exp3.json"):
+			out.append(f.trim_suffix(".exp3.json"))
+	return out
+
+## the model's expressions and the user's, keeping the weights of those still there
+func load_expressions() -> void:
+	var controller: AyagamiExpressionMutator = get_expression_controller()
+	var weights := {}
+	for e in controller.expressions:
+		weights[e.get_name()] = controller.get("weight/%s" % e.get_name())
+	var library: Dictionary = AyagamiLoader.load_expression_library(modelmeta.model.get_base_dir(), true)
+	var list: Array[AyagamiExpression] = []
+	var groups := {}
+	for e in library.keys():
+		list.append(e)
+		groups[e.get_name()] = library[e]
+	var dir := user_expression_dir()
+	for n in user_expression_names():
+		var e: AyagamiExpression = AyagamiLoader.load_expression(ProjectSettings.globalize_path(dir.path_join(n + ".exp3.json")))
+		if e == null:
+			continue
+		var i := list.find_custom(func (x): return x.get_name() == n)
+		if i >= 0:
+			list[i] = e
+		else:
+			list.append(e)
+	controller.expressions = list
+	for e in list:
+		var n: String = e.get_name()
+		if groups.get(n, &"") != &"":
+			controller.set("expression_groups/%s" % n, groups[n])
+		if weights.has(n) and weights[n] != null:
+			controller.set("weight/%s" % n, weights[n])
+
+## writes an expression ({id: [value, blend]}, blend Add, Multiply or Overwrite) and reloads the list
+func save_user_expression(expression_name: String, tracks: Dictionary) -> void:
+	DirAccess.make_dir_recursive_absolute(user_expression_dir())
+	var params := []
+	for id in tracks:
+		params.append({"Id": id, "Value": tracks[id][0], "Blend": tracks[id][1]})
+	var f := FileAccess.open(user_expression_dir().path_join(expression_name + ".exp3.json"), FileAccess.WRITE)
+	f.store_string(JSON.stringify({"Type": "Live2D Expression", "FadeInTime": 0.5, "FadeOutTime": 0.5, "Parameters": params}, "\t"))
+	f.close()
+	load_expressions()
+
+## the model's own expression of that name comes back, if it has one
+func delete_user_expression(expression_name: String) -> void:
+	DirAccess.remove_absolute(user_expression_dir().path_join(expression_name + ".exp3.json"))
+	load_expressions()
 
 ## save bidirectional vts compatible settings
 ## Disabled: it rewrote the user's <name>.vtube.json (key order, and every mesh listed as excluded from

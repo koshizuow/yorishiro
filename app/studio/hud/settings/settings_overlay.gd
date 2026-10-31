@@ -20,6 +20,8 @@ var _sub_key: StringName
 var _sub_bar := HBoxContainer.new()
 var _sub_title := Label.new()
 var _header: HBoxContainer
+var _backdrop := ColorRect.new()
+var _margin := MarginContainer.new()
 
 func _init() -> void:
 	name = "SettingsOverlay"
@@ -27,13 +29,13 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
-	var backdrop := ColorRect.new()
+	var backdrop := _backdrop
 	backdrop.color = BACKDROP
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	backdrop.gui_input.connect(_on_backdrop_input)
 	add_child(backdrop)
 
-	var margin := MarginContainer.new()
+	var margin := _margin
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 24)
@@ -131,6 +133,13 @@ func open_sub_page(key: StringName, window: Window) -> void:
 	for page in _pages.get_children():
 		page.modulate.a = 0.0  # the page keeps its state, the window covers it
 	_place_sub_window()
+
+## the panel takes the right half and the stage shows undimmed on the left, for pages that change
+## the model while you watch it (the expression editor)
+func side_by_side(on: bool) -> void:
+	_margin.anchor_left = 0.5 if on else 0.0
+	_backdrop.color = Color.TRANSPARENT if on else BACKDROP
+	_place_sub_window.call_deferred()
 
 func close_sub_page() -> void:
 	if _sub_window == null:

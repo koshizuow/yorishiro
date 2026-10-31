@@ -195,7 +195,9 @@ func _on_expression_pressed() -> void:
 		func ():
 			var window = load("res://studio/hud/item_panel/expression_selector/expression_selector.tscn").instantiate()
 			window.item = item.render if item is VtItem else item
-			item.tree_exiting.connect(WindowManager.close_popup.bind(key))
+			window.reopen = _on_expression_pressed
+			if not item.tree_exiting.is_connected(WindowManager.close_popup.bind(key)):
+				item.tree_exiting.connect(WindowManager.close_popup.bind(key))
 			return window
 	)
 	_present(key, popup)
@@ -223,7 +225,8 @@ func _on_model_settings_pressed() -> void:
 		func ():
 			var popup = preload("./model_settings/panel.tscn").instantiate()
 			popup.model = item.render if item is VtItem else item
-			item.tree_exiting.connect(WindowManager.close_popup.bind(key))
+			if not item.tree_exiting.is_connected(WindowManager.close_popup.bind(key)):
+				item.tree_exiting.connect(WindowManager.close_popup.bind(key))
 			return popup
 	)
 	_present(key, popup)

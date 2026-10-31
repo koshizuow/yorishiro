@@ -3,17 +3,30 @@ extends Window
 const VtModel = preload("res://lib/model/vt_model.gd")
 const Collections = preload("res://lib/utils/collections.gd")
 
+const ExpressionEditor = preload("./expression_editor.gd")
+
 var item: VtModel
+## opens this list again (set by the item row), after the editor closes
+var reopen: Callable
 var buttons: Dictionary[AyagamiExpression, Array] = {}
 
 @onready var exp_controller: AyagamiExpressionMutator = item.get_expression_controller()
 @onready var expressions = exp_controller.expressions.duplicate()
 func _ready():
 	title = tr("Set Expression [%s]") % item.display_name
+	if item.has_method("save_user_expression"):
+		var add := Button.new()
+		add.name = "NewExpressionBtn"
+		add.text = "New expression"
+		add.icon = preload("res://ui/icons/plus.svg")
+		add.pressed.connect(_open_editor.bind(""))
+		%ExpressionList.add_child(add)
 	
+	# expressions without a group first, a strict order so the sort stays valid
 	expressions.sort_custom(
-		func (e, _e):
-			return exp_controller.get("expression_groups/%s" % e.get_name()).is_empty()
+		func (a, b):
+			return exp_controller.get("expression_groups/%s" % a.get_name()).is_empty() \
+				and not exp_controller.get("expression_groups/%s" % b.get_name()).is_empty()
 	)
 	var groups = [""] + exp_controller.get_expression_groups()
 	var group_controls = {}
@@ -90,6 +103,12 @@ func make_row(e: AyagamiExpression, btn_group: ButtonGroup = null):
 	duration.custom_minimum_size = Vector2i(64, 0)
 	btn.set_meta("spinner", duration)
 	row.add_child(duration)
+	if item.has_method("save_user_expression"):
+		var edit_btn := Button.new()
+		edit_btn.name = "Edit_" + String(e_name).validate_node_name()
+		edit_btn.text = "Edit"
+		edit_btn.pressed.connect(_open_editor.bind(e_name))
+		row.add_child(edit_btn)
 	
 	btn.toggled.connect(
 		func (toggled):
@@ -97,6 +116,26 @@ func make_row(e: AyagamiExpression, btn_group: ButtonGroup = null):
 	)
 	
 	return row
+
+## the editor takes this page's place in the settings panel; the list comes back when it closes
+func _open_editor(expression_name: String) -> void:
+	var key := "%s_expression_editor" % name
+	var model := item
+	var editor = WindowManager.get_popup(key, func ():
+		var w := ExpressionEditor.new()
+		w.model = model
+		w.original = expression_name
+		return w)
+	var back := reopen
+	editor.tree_exiting.connect(func ():
+		var overlay = model.get_tree().root.find_child("SettingsOverlay", true, false) if model.is_inside_tree() else null
+		if back.is_valid() and overlay and overlay.is_visible_in_tree():
+			back.call_deferred())
+	var overlay = get_tree().root.find_child("SettingsOverlay", true, false)
+	await get_tree().process_frame  # the editor sets its title in _ready
+	if overlay and overlay.is_visible_in_tree():
+		overlay.open_sub_page(key, editor)
+	editor.grab_focus()
 
 func toggle_expression(activate: bool, expression: AyagamiExpression, fade: float):
 	for b in buttons[expression]:

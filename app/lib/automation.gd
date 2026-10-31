@@ -30,6 +30,8 @@
 ##                          the model transform after each step
 ##   --plugin-api-test[=<png>]  (png: a shot of the approval card) switch the plugin API on, connect as a plugin over WebSocket, get allowed on the card,
 ##                          authenticate and check the requests (model, hotkeys, expressions, parameters, injection)
+##   --expression-editor-test[=<png>]  after --open-panel=model: make an expression in the editor (png: a shot
+##                          of it), check the preview moves the model, save, edit it again, delete it
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
 ##                          (saved position, background, change model) and check what pressing it does
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
@@ -219,6 +221,8 @@ func _ready() -> void:
 			await _hotkey_test(args["hotkey-test"])
 		if args.has("app-action-test"):
 			await _app_action_test()
+		if args.has("expression-editor-test"):
+			await _expression_editor_test(str(args["expression-editor-test"]))
 		if args.has("plugin-api-test"):
 			await _plugin_api_test(str(args["plugin-api-test"]))
 		if args.has("sensitivity-test"):
@@ -383,6 +387,69 @@ func _mouse_motion(at: Vector2, rel: Vector2) -> void:
 	m.relative = rel
 	m.button_mask = MOUSE_BUTTON_MASK_LEFT if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) else 0
 	Input.parse_input_event(m)
+
+func _expression_editor_test(shot: String):
+	var check := func (what: String, ok: bool): print("[automation] expression editor %s: %s" % [what, "ok" if ok else "FAILED"])
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var model = stage.active_model
+	var root := get_tree().root
+	var wait := func (n: int):
+		for i in n:
+			await get_tree().process_frame
+	var open_list := func ():
+		var b = root.find_child("Expression", true, false)
+		b.pressed.emit()
+		await wait.call(10)
+	await open_list.call()
+	var add = root.find_child("NewExpressionBtn", true, false)
+	check.call("new expression button", add != null)
+	add.pressed.emit()
+	await wait.call(10)
+	var editor = root.find_child("ExpressionName", true, false)
+	check.call("editor open", editor != null)
+	editor = editor.get_parent().get_parent().get_parent().get_parent()
+	# pick a parameter the face does not drive much: the first one with a range
+	var param := ""
+	for id in model.get_parameters():
+		if String(id).to_lower().contains("brow") or String(id).to_lower().contains("cheek"):
+			param = String(id)
+			break
+	if param.is_empty():
+		param = String(model.get_parameters().keys()[0])
+	var r: Dictionary = editor._rows[param]
+	var before = model.model.get("output/parameters/%s" % param)
+	r.blend.select(2)
+	r.blend.item_selected.emit(2)
+	r.slider.value = r.slider.max_value
+	var top: float = r.slider.max_value
+	await wait.call(5)
+	var during = model.model.get("output/parameters/%s" % param)
+	check.call("preview moves %s (%.2f -> %.2f, max %.2f)" % [param, before, during, r.slider.max_value], absf(during - r.slider.max_value) < 0.01)
+	if shot.ends_with(".png"):
+		get_viewport().get_texture().get_image().save_png(shot)
+	editor._name.text = "yori_test"
+	root.find_child("SaveExpressionBtn", true, false).pressed.emit()
+	await wait.call(15)
+	var file: String = model.user_expression_dir().path_join("yori_test.exp3.json")
+	check.call("saved to the settings folder, model folder untouched", FileAccess.file_exists(file) and not FileAccess.file_exists(model.modelmeta.model.get_base_dir().path_join("yori_test.exp3.json")))
+	var names: Array = model.get_expression_controller().expressions.map(func (e): return e.get_name())
+	check.call("in the model's expressions, preview gone", "yori_test" in names and not ("__yorishiro_preview__" in names))
+	await wait.call(5)
+	var after = model.model.get("output/parameters/%s" % param)
+	check.call("model back after closing (%.2f)" % after, absf(after - during) > 0.01 or absf(before - during) < 0.01)
+	check.call("list came back", root.find_child("NewExpressionBtn", true, false) != null)
+	var edit_btn = root.find_child("Edit_yori_test", true, false)
+	check.call("edit button for it", edit_btn != null)
+	edit_btn.pressed.emit()
+	await wait.call(10)
+	editor = root.find_child("ExpressionName", true, false).get_parent().get_parent().get_parent().get_parent()
+	check.call("editing keeps the value", editor._rows[param].use.button_pressed and absf(editor._rows[param].slider.value - top) < 0.01)
+	var delete = root.find_child("DeleteExpressionBtn", true, false)
+	check.call("delete offered for own expression", delete != null)
+	delete.pressed.emit()
+	await wait.call(15)
+	names = model.get_expression_controller().expressions.map(func (e): return e.get_name())
+	check.call("deleted", not FileAccess.file_exists(file) and not ("yori_test" in names))
 
 func _plugin_api_test(card_shot: String):
 	var check := func (what: String, ok: bool): print("[automation] plugin api %s: %s" % [what, "ok" if ok else "FAILED"])

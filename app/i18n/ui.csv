@@ -391,3 +391,18 @@ Port %d is in use by another program.,Port %d is in use by another program.,連�
 Deny,Deny,拒絕
 Allow,Allow,允許
 by %s,by %s,作者：%s
+New expression,New expression,新增表情
+Edit,Edit,編輯
+Edit expression,Edit expression,編輯表情
+Search parameters,Search parameters,搜尋參數
+Only the ones in use,Only the ones in use,只顯示有用到的
+Part of this expression,Part of this expression,這個表情有用到
+Add: on top of tracking. Multiply: scales tracking. Overwrite: replaces tracking.,Add: on top of tracking. Multiply: scales tracking. Overwrite: replaces tracking.,相加：加在追蹤數值上。相乘：放大縮小追蹤數值。覆寫：取代追蹤數值。
+Add,Add,相加
+Multiply,Multiply,相乘
+Overwrite,Overwrite,覆寫
+Delete my version,Delete my version,刪除我的版本
+"The model's own expression of this name comes back, if it has one.","The model's own expression of this name comes back, if it has one.",如果模型本身有同名的表情，會恢復成原本的。
+The expression needs a name.,The expression needs a name.,表情需要一個名稱。
+"The name cannot contain / \ : * ? "" < > |","The name cannot contain / \ : * ? "" < > |","名稱不能有 / \ : * ? "" < > |"
+The model already has an expression with this name.,The model already has an expression with this name.,模型已經有同名的表情。
