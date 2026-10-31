@@ -37,4 +37,6 @@ pub struct FaceFrame {
     pub right_eye_rotation: [f64; 3],
     /// inner lip gap over face height
     pub mouth_gap: Option<f64>,
+    /// share of each eye's box that looks like a screen reflection on glasses (left, right, subject's sides)
+    pub lens_glare: Option<[f64; 2]>,
 }

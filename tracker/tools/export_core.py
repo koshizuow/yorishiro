@@ -202,6 +202,108 @@ def golden_inference(rec: Path, out: Path, frames: int = INFERENCE_FRAMES) -> No
     print(f"wrote {out}: {n} frames, {int(res['found'].sum())} faces, {int(res['detected'].sum())} detector runs")
 
 
+def golden_full(rec: Path, head: IctHead, out: Path) -> None:
+    """The whole tracker on the PNG frames, as FacemeshGpuTracker and serve run it: landmarks (ORT CPU, no
+    flip averaging), smoothing, fit with the eye model's openness (the far eye takes the near one's when
+    hidden), MediaPipe's model for mouth and jaw, gaze, lens glare, the neutral window, smoothing, VTS."""
+    import cv2
+
+    from yorishiro_tracker.adapters.eye_openness import EyeOpenness, eye_widths
+    from yorishiro_tracker.adapters.lens_glare import lens_glare
+    from yorishiro_tracker.adapters.mediapipe_blendshapes import MediaPipeBlendshapes, merge
+    from yorishiro_tracker.backends.ort_backend import OrtCpuBackend
+    from yorishiro_tracker.mediapipe_ncnn import detector as det
+    from yorishiro_tracker.mediapipe_ncnn import landmarks as lmk
+    from yorishiro_tracker.mediapipe_ncnn.facemesh import MP_DIR, PRESENCE_LOGIT
+    from yorishiro_tracker.trackers.facemesh_gpu import HIDDEN_EYE_WIDTH, SIDES
+
+    detector = OrtCpuBackend(MP_DIR / "face_detector.onnx")
+    landmarker = OrtCpuBackend(MP_DIR / "face_landmarks.onnx")
+    blend, eyes = MediaPipeBlendshapes(), EyeOpenness()
+    fitter, smoother = MediaPipePointFitter(head), LandmarkSmoother()
+    calibration, frame_smoother = NeutralCalibration(), FrameSmoother()
+    frames_dir = out.parent / f"{rec.name}-frames"
+    n = len(list(frames_dir.glob("*.png")))
+    ts = __import__("json").loads((rec / "meta.json").read_text())["timestamps_ms"]
+    res = {k: np.zeros(s) for k, s in (("found", (n,)), ("eye_open", (n, 2)), ("glare", (n, 2)), ("bs", (n, 52)),
+                                        ("roi", (n, 4)), ("landmarks", (n, 478, 3)), ("detected", (n,)),
+                                        ("final_bs", (n, 52)), ("final_head", (n, 3)), ("final_pos", (n, 3)),
+                                        ("vts", (n, len(VTS_KEYS))))}
+    roi, faces, window, calibrated_at = None, 0, None, []
+
+    def blendshapes(smoothed, aligned, w, h, eye_open):
+        return merge(fitter.expressions(aligned, eye_open), blend(smoothed, w, h)) + fitter.gaze(aligned)
+
+    for i in range(n):
+        bgr = cv2.imread(str(frames_dir / f"{i:05d}.png"))
+        h, w = bgr.shape[:2]
+        lm = None
+        for _ in range(2):
+            if roi is None:
+                x, sc, px, py = det.letterbox(bgr)
+                o = detector.run({"in0": x})
+                roi = det.decode_best(o["out0"], o["out1"], sc, px, py)
+                res["detected"][i] = 1
+                if roi is None:
+                    break
+            res["roi"][i] = [roi[0][0], roi[0][1], roi[1], roi[2]]
+            m = lmk.roi_matrix(*roi)
+            o = landmarker.run({"in0": lmk.preprocess(bgr, m)})
+            if o["out1"].item() > PRESENCE_LOGIT:
+                lm = lmk.postprocess(o["out0"], m, w, h)
+                roi = lmk.roi_from_landmarks(lm * (w, h, w))
+                break
+            roi = None
+        if lm is None:
+            smoother.reset()
+            continue
+        res["landmarks"][i] = lm
+        t = int(ts[i])
+        smoothed = smoother(lm, t / 1000)
+        aligned, rot = fitter.align(smoothed, w, h)
+        eye_open = eyes(bgr, smoothed)
+        width = eye_widths(smoothed, w, h)
+        for far, near in ((0, 1), (1, 0)):
+            if width[far] < HIDDEN_EYE_WIDTH * width[near]:
+                eye_open[far] = eye_open[near] * fitter.eye_neutral[SIDES[far]] / fitter.eye_neutral[SIDES[near]]
+        if not fitter.calibrated:
+            fitter.calibrate(aligned, eye_open)
+        bs = blendshapes(smoothed, aligned, w, h, eye_open)
+        le, re = eye_rotations_from_blendshapes(bs)
+        glare = lens_glare(bgr, smoothed)
+        frame = FaceFrame(timestamp_ms=t, blendshapes=bs, head_rotation=rotation_to_ypr(rot),
+                          head_translation=head_position(smoothed, w, h, rot), left_eye_rotation=le,
+                          right_eye_rotation=re, mouth_gap=mouth_gap(smoothed, w, h), lens_glare=glare)
+        res["found"][i], res["eye_open"][i], res["glare"][i], res["bs"][i] = 1, eye_open, glare, bs
+        faces += 1
+        if faces == SETTLE_FACES:
+            window = []
+        if window is not None:
+            window.append((smoothed, aligned, eye_open, frame))
+            if len(window) == CALIBRATE_FACES:
+                fitter.calibrate_many([a for _, a, _, _ in window], [e for _, _, e, _ in window])
+                redone = []
+                for sm, a, e, f in window:
+                    a2, dr = fitter.realign(a)
+                    b2 = blendshapes(sm, a2, w, h, e)
+                    l2, r2 = eye_rotations_from_blendshapes(b2)
+                    head_r = rotation_to_ypr(ypr_to_rotation(f.head_rotation) @ dr.T)
+                    redone.append(replace(f, blendshapes=b2, head_rotation=head_r, left_eye_rotation=l2,
+                                          right_eye_rotation=r2))
+                calibration.set_many(redone)
+                frame_smoother.reset()
+                window = None
+                calibrated_at.append(i)
+        elif calibration.neutral is None:
+            calibration.set(frame)
+        final = frame_smoother(calibration(frame))
+        p = vts_params(final)
+        res["final_bs"][i], res["final_head"][i], res["final_pos"][i] = final.blendshapes, final.head_rotation, final.head_translation
+        res["vts"][i] = [p[k] for k in VTS_KEYS]
+    np.savez_compressed(out, timestamps_ms=np.array(ts[:n], np.int64), calibrated_at=np.array(calibrated_at, np.int64), **res)
+    print(f"wrote {out}: {n} frames, {int(res['found'].sum())} faces, neutral window done at {calibrated_at}")
+
+
 def main():
     head = ensure_ict_facekit()
     export_fit(MediaPipePointFitter(head), MODEL_DIR / "core" / "fit.npz")
@@ -210,6 +312,7 @@ def main():
         rec = Path(r) if "/" in r else TESTDATA / "recordings" / r
         golden(rec, head, TESTDATA / "core-golden" / f"{rec.name}.npz")
         golden_inference(rec, TESTDATA / "core-golden" / f"{rec.name}-inference.npz")
+        golden_full(rec, head, TESTDATA / "core-golden" / f"{rec.name}-full.npz")
 
 
 if __name__ == "__main__":

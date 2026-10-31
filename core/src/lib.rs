@@ -13,6 +13,8 @@ pub mod backend;
 pub mod data;
 pub mod fit;
 pub mod frame;
+pub mod glare;
+pub mod tracker;
 pub mod image;
 pub mod inference;
 pub mod pipeline;

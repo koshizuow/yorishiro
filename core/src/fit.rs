@@ -129,6 +129,8 @@ pub struct Fitter {
     pub calibrated: bool,
     gaze_neutral: [f64; 4],
     lid_neutral: [f64; 2],
+    /// the eye model's openness at the neutral, subject's left and right
+    pub eye_neutral: [f64; 2],
 }
 
 pub const FIT_ITERS: usize = 60;
@@ -157,6 +159,7 @@ impl Fitter {
             calibrated: false,
             gaze_neutral: [0.0; 4],
             lid_neutral: [1.0; 2],
+            eye_neutral: [1.0; 2],
         })
     }
 
@@ -177,8 +180,12 @@ impl Fitter {
         (apply(s, &r, &t, aligned), r)
     }
 
-    pub fn calibrate(&mut self, aligned: &[P3]) {
+    /// eye_open: the eye model's openness at the neutral, when it runs
+    pub fn calibrate(&mut self, aligned: &[P3], eye_open: Option<[f64; 2]>) {
         self.reference = aligned[..468].to_vec();
+        if let Some(e) = eye_open {
+            self.eye_neutral = e.map(|v| v.max(0.2));
+        }
         self.gaze_neutral = iris_offsets(aligned);
         self.lid_neutral = [lid_gap(aligned, 0), lid_gap(aligned, 1)];
         self.solver.reset();
@@ -188,8 +195,8 @@ impl Fitter {
         self.calibrated = true;
     }
 
-    /// Neutral = per-point median over a window of aligned frames.
-    pub fn calibrate_many(&mut self, frames: &[Vec<P3>]) {
+    /// Neutral = per-point median over a window of aligned frames (and of the eye openness, when given).
+    pub fn calibrate_many(&mut self, frames: &[Vec<P3>], eye_open: Option<&[[f64; 2]]>) {
         let n = frames[0].len();
         let mut med = vec![[0.0; 3]; n];
         let mut vals = vec![0.0; frames.len()];
@@ -201,11 +208,18 @@ impl Fitter {
                 med[i][k] = median(&mut vals);
             }
         }
-        self.calibrate(&med);
+        let eyes = eye_open.filter(|e| !e.is_empty()).map(|e| {
+            [0, 1].map(|k| {
+                let mut v: Vec<f64> = e.iter().map(|x| x[k]).collect();
+                median(&mut v)
+            })
+        });
+        self.calibrate(&med, eyes);
     }
 
-    /// ARKit 52 from the fit (eyeLook* zero, see gaze), blink and wide from the lid gap.
-    pub fn expressions(&mut self, aligned: &[P3]) -> [f64; 52] {
+    /// ARKit 52 from the fit (eyeLook* zero, see gaze). Blink and wide from the eye model's openness when given,
+    /// otherwise from the lid gap; either relative to its neutral.
+    pub fn expressions(&mut self, aligned: &[P3], eye_open: Option<[f64; 2]>) -> [f64; 52] {
         let mut disp = Vec::with_capacity(self.src_idx.len() * 3);
         for &i in &self.src_idx {
             for k in 0..3 {
@@ -228,7 +242,10 @@ impl Fitter {
             bs[k] = bs[k].max(w[s]); // browInnerUp and cheekPuff come from two ICT shapes
         }
         for (i, (side, ..)) in LIDS.iter().enumerate() {
-            let rel = lid_gap(aligned, i) / self.lid_neutral[i].max(1e-6);
+            let rel = match eye_open {
+                Some(e) => e[i] / self.eye_neutral[i],
+                None => lid_gap(aligned, i) / self.lid_neutral[i].max(1e-6),
+            };
             bs[arkit(&format!("eyeBlink{side}"))] =
                 f32r(((1.0 - LID_DEADBAND - rel) / (1.0 - LID_DEADBAND - LID_CLOSED)).clamp(0.0, 1.0));
             bs[arkit(&format!("eyeWide{side}"))] =

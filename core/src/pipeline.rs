@@ -81,13 +81,30 @@ impl NeutralCalibration {
     }
 }
 
+/// What the image side adds to a frame, computed from the smoothed landmarks (eye model, MediaPipe's
+/// blendshape model, lens glare); all optional, the fit falls back to the lid gap and its own mouth.
+#[derive(Default, Clone)]
+pub struct Extras {
+    /// the eye model's openness, subject's left and right
+    pub eye_open: Option<[f64; 2]>,
+    /// MediaPipe's blendshapes; mouth and jaw are taken from them
+    pub mouth: Option<[f64; 52]>,
+    pub lens_glare: Option<[f64; 2]>,
+    /// each eye's corner distance in pixels, for the hidden eye rule
+    pub eye_widths: Option<[f64; 2]>,
+}
+
+/// A far eye shorter than this share of the near one (head turned) is behind the nose: it takes the near
+/// eye's openness, scaled by the two neutrals.
+pub const HIDDEN_EYE_WIDTH: f64 = 0.55;
+
 pub struct Pipeline {
     pub fitter: Fitter,
     smoother: LandmarkSmoother,
     calibration: NeutralCalibration,
     frame_smoother: FrameSmoother,
     faces: usize,
-    window: Option<Vec<(Vec<P3>, FaceFrame)>>,
+    window: Option<Vec<(Vec<P3>, Extras, FaceFrame)>>,
 }
 
 impl Pipeline {
@@ -112,8 +129,15 @@ impl Pipeline {
         self.window = Some(vec![]);
     }
 
-    fn blendshapes(&mut self, aligned: &[P3]) -> [f64; 52] {
-        let e = self.fitter.expressions(aligned);
+    fn blendshapes(&mut self, aligned: &[P3], extras: &Extras) -> [f64; 52] {
+        let mut e = self.fitter.expressions(aligned, extras.eye_open);
+        if let Some(mouth) = extras.mouth {
+            for (i, name) in crate::frame::ARKIT52.iter().enumerate() {
+                if crate::inference::from_blendshape_model(name) {
+                    e[i] = f32r(mouth[i]);
+                }
+            }
+        }
         let g = self.fitter.gaze(aligned);
         let mut bs = [0.0; 52];
         for i in 0..52 {
@@ -124,12 +148,28 @@ impl Pipeline {
 
     /// landmarks: 478 normalized image points (x, y in 0..1, z in x's scale)
     pub fn process(&mut self, landmarks: &[P3], width: f64, height: f64, timestamp_ms: i64) -> Output {
+        self.process_with(landmarks, width, height, timestamp_ms, &mut |_| Extras::default())
+    }
+
+    /// As process, with the image side: extras gets the smoothed landmarks.
+    pub fn process_with(&mut self, landmarks: &[P3], width: f64, height: f64, timestamp_ms: i64,
+                        extras: &mut dyn FnMut(&[P3]) -> Extras) -> Output {
         let smoothed = self.smoother.apply(landmarks, timestamp_ms as f64 / 1000.0);
         let (aligned, rot) = self.fitter.align(&smoothed, width, height);
-        if !self.fitter.calibrated {
-            self.fitter.calibrate(&aligned);
+        let mut extra = extras(&smoothed);
+        if let (Some(mut open), Some(widths)) = (extra.eye_open, extra.eye_widths) {
+            let n = self.fitter.eye_neutral;
+            for (far, near) in [(0, 1), (1, 0)] {
+                if widths[far] < HIDDEN_EYE_WIDTH * widths[near] {
+                    open[far] = open[near] * n[far] / n[near];
+                }
+            }
+            extra.eye_open = Some(open);
         }
-        let bs = self.blendshapes(&aligned);
+        if !self.fitter.calibrated {
+            self.fitter.calibrate(&aligned, extra.eye_open);
+        }
+        let bs = self.blendshapes(&aligned, &extra);
         let (le, re) = eye_rotations_from_blendshapes(&bs);
         let frame = FaceFrame {
             timestamp_ms,
@@ -139,6 +179,7 @@ impl Pipeline {
             left_eye_rotation: le,
             right_eye_rotation: re,
             mouth_gap: Some(mouth_gap(&smoothed, width, height)),
+            lens_glare: extra.lens_glare,
         };
         self.faces += 1;
         if self.faces == SETTLE_FACES {
@@ -146,16 +187,17 @@ impl Pipeline {
         }
         let mut calibrated = false;
         if let Some(window) = &mut self.window {
-            window.push((aligned.clone(), frame.clone()));
+            window.push((aligned.clone(), extra.clone(), frame.clone()));
             if window.len() == CALIBRATE_FACES {
                 let window = self.window.take().unwrap();
-                let points: Vec<Vec<P3>> = window.iter().map(|(a, _)| a.clone()).collect();
-                self.fitter.calibrate_many(&points);
+                let points: Vec<Vec<P3>> = window.iter().map(|(a, _, _)| a.clone()).collect();
+                let eyes: Vec<[f64; 2]> = window.iter().filter_map(|(_, x, _)| x.eye_open).collect();
+                self.fitter.calibrate_many(&points, Some(&eyes));
                 // the window's frames again against the new neutral
                 let mut redone = vec![];
-                for (a, f) in &window {
+                for (a, x, f) in &window {
                     let (a2, dr) = self.fitter.realign(a);
-                    let b2 = self.blendshapes(&a2);
+                    let b2 = self.blendshapes(&a2, x);
                     let (l2, r2) = eye_rotations_from_blendshapes(&b2);
                     let head = rotation_to_ypr(&(ypr_to_rotation(f.head_rotation) * dr.transpose()));
                     redone.push(FaceFrame { blendshapes: b2, head_rotation: head, left_eye_rotation: l2,
