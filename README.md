@@ -18,8 +18,11 @@
 - **Face tracking built in.** The app starts its own tracker: MediaPipe FaceMesh landmarks fitted to the 52
   ARKit expressions, an eye model trained on synthetic eyes (holds up behind glasses that reflect the
   screen), gaze, head position. Runs on any GPU through Vulkan, on NVIDIA through CUDA or TensorRT, or on the CPU.
+- **Hand tracking.** Optional, beside the face on the same GPU runtime: hand position, angle, openness
+  and each finger, as the hand inputs Live2D models with hand rigs use.
 - **No camera picture on screen.** A 3D head shows what the tracker sees, so a slip of the settings window
-  never shows your room on stream. It even puts on glasses when it notices yours.
+  never shows your room on stream. It even puts on glasses when it notices yours, and shows clay hands
+  when hand tracking is on.
 - **Tune the model to your face.** Guided calibration, range and smoothing per parameter, both eyes blinking
   together, automatic blinking, follow-the-face movement, what to do when tracking is lost, physics strength
   per part.

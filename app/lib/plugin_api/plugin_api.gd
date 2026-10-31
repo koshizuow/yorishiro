@@ -649,10 +649,13 @@ func _check_events() -> void:
 		_wire_hotkeys(m)
 	var t = _tracking()
 	var face: bool = t.face_present if t else false
-	if face != _seen.face:
+	var left: bool = t != null and float(t.parameters.get("HandLeftFound", 0.0)) > 0.5
+	var right: bool = t != null and float(t.parameters.get("HandRightFound", 0.0)) > 0.5
+	var state := [face, left, right]
+	if state != _seen.face:
 		if _seen.face != null:
-			_emit_event("TrackingStatusChangedEvent", {"faceFound": face, "leftHandFound": false, "rightHandFound": false})
-		_seen.face = face
+			_emit_event("TrackingStatusChangedEvent", {"faceFound": face, "leftHandFound": left, "rightHandFound": right})
+		_seen.face = state
 	if m and now >= _next_move:
 		var pos := _position_of(m)
 		if _seen.position != null and pos != _seen.position:
