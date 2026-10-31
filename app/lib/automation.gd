@@ -51,6 +51,8 @@ var _pose_tracker
 const TRACKERS = {
 	"yorishiro": "res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd",
 	"openseeface": "res://lib/tracking/camera/openseeface/osf_tracker.gd",
+	# the VTube Studio iPhone protocol input, asking 127.0.0.1 (yorishiro-tracker serve --vts-iphone)
+	"vts-iphone": "res://lib/tracking/camera/vts_blendshapes/vts_tracker.gd",
 }
 
 func _ready() -> void:
@@ -92,7 +94,11 @@ func _ready() -> void:
 		for i in 10:
 			await get_tree().process_frame
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
-		tracking.activate_tracker(load(TRACKERS[args["tracker"]]).new())
+		var t = load(TRACKERS[args["tracker"]]).new()
+		tracking.activate_tracker(t)
+		if args["tracker"] == "vts-iphone":
+			t.server.client_host = "127.0.0.1"
+			t.server.start()
 		print("[automation] tracker %s" % args["tracker"])
 
 	if args.has("pipe-frames"):

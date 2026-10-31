@@ -46,7 +46,8 @@ def _camera_frames(index: int, width: int, height: int):
 
 def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: int = 0,
               size: tuple[int, int] = (1280, 720), replay: Path | None = None, loop: bool = False,
-              smoothing: bool = True, control: LinkControl | None = None, parent_pid: int | None = None) -> int:
+              smoothing: bool = True, control: LinkControl | None = None, parent_pid: int | None = None,
+              extra_sinks: list | None = None) -> int:
     """Returns a process exit code. Every failure is also reported to the app as a status message."""
     source = f"recording {replay.name}" if replay else f"camera {camera}"
     sink.status("starting", f"loading tracker {tracker_name}", source=source)
@@ -101,6 +102,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
                 if smoothing:
                     frame = smoother(frame)
             sink.send(frame, ts)
+            for extra in extra_sinks or []:
+                extra.send(frame, ts)
             sent += 1
             now = time.monotonic()
             if preview_on and now - last_preview >= 0.1:
@@ -128,6 +131,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
         tracker.close()
         if control:
             control.close()
+        for extra in extra_sinks or []:
+            extra.close()
         sink.close()
 
 
@@ -164,15 +169,18 @@ def synthetic_frame(yaw=0.0, pitch=0.0, roll=0.0, eye_yaw=0.0, eye_pitch=0.0,
     )
 
 
-def run_send_test(sink: LinkSink, seconds: float, rate: float = 30.0, **values) -> None:
+def run_send_test(sink: LinkSink, seconds: float, rate: float = 30.0, extra_sinks: list | None = None,
+                  **values) -> None:
     frame = synthetic_frame(**values)
     t0 = time.monotonic()
     n = 0
     while (elapsed := time.monotonic() - t0) < seconds:
-        sink.send(frame, int(elapsed * 1000))
+        for s in [sink] + (extra_sinks or []):
+            s.send(frame, int(elapsed * 1000))
         n += 1
         time.sleep(max(0.0, n / rate - (time.monotonic() - t0)))
-    sink.close()
+    for s in [sink] + (extra_sinks or []):
+        s.close()
 
 
 def parse_blendshapes(items: list[str]) -> dict[str, float]:

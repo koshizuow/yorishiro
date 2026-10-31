@@ -5,6 +5,23 @@ from pathlib import Path
 from .models import RECORDINGS_DIR
 
 
+def _extra_sinks(args) -> list:
+    """outputs for other apps next to the Yorishiro link"""
+    extra = []
+    if args.vts_iphone:
+        from .sinks.vts_iphone import VtsIPhoneSink
+        try:
+            extra.append(VtsIPhoneSink(args.vts_iphone, args.vts_iphone_sign))
+        except OSError as e:
+            print(f"VTS iPhone protocol: port {args.vts_iphone} busy ({e}), not sending")
+    return extra
+
+
+def _signs(text: str) -> dict[str, float]:
+    x, y, z = (float(v) for v in text.split(","))
+    return {"x": x, "y": y, "z": z}
+
+
 def _size(text: str) -> tuple[int, int]:
     w, h = text.lower().split("x")
     return int(w), int(h)
@@ -50,6 +67,11 @@ def main() -> None:
         p.add_argument("--no-mirror", dest="mirror", action="store_false")
     s.add_argument("--control-port", type=int, default=39571, help="commands from the app, 0 to disable")
     s.add_argument("--parent-pid", type=int, default=None, help="exit when this process is gone")
+    for p in (s, t):
+        p.add_argument("--vts-iphone", type=int, nargs="?", const=21412, default=None, metavar="PORT",
+                       help="also act as an iPhone running VTube Studio (VTube Studio, OpenVT), requests on PORT")
+        p.add_argument("--vts-iphone-sign", type=_signs, default=None, metavar="X,Y,Z",
+                       help="flip head rotation axes for that output, e.g. -1,1,1")
 
     g = sub.add_parser("golden", help="replay a recording through the MediaPipe reference")
     g.add_argument("recording", type=Path)
@@ -69,7 +91,7 @@ def main() -> None:
     if args.cmd == "send-test":
         from .serve import parse_blendshapes, run_send_test
         from .sinks.link import LinkSink
-        run_send_test(LinkSink(port=args.port, mirror=args.mirror), args.seconds,
+        run_send_test(LinkSink(port=args.port, mirror=args.mirror), args.seconds, extra_sinks=_extra_sinks(args),
                       yaw=args.yaw, pitch=args.pitch, roll=args.roll, eye_yaw=args.eye_yaw,
                       eye_pitch=args.eye_pitch, blendshapes=parse_blendshapes(args.bs))
         return
@@ -84,8 +106,9 @@ def main() -> None:
         except OSError as e:
             sink.status("error", f"control port {args.control_port} busy, is another tracker running? ({e})")
             raise SystemExit(2)
+        extra = _extra_sinks(args)
         raise SystemExit(run_serve(args.tracker, args.runtime, sink, args.camera, args.size, args.replay,
-                                   args.loop, args.smoothing, control, args.parent_pid))
+                                   args.loop, args.smoothing, control, args.parent_pid, extra))
     from . import app
 
     if args.cmd == "preview":
