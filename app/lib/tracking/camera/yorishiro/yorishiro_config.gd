@@ -71,6 +71,7 @@ func _ready():
 
 	_lost_options()
 	_glasses_option()
+	_output_options()
 
 	for b in [["Restart tracker", _on_restart], ["Recalibrate (look straight, relax)", tracker.calibrate]]:
 		var button = Button.new()
@@ -159,6 +160,28 @@ func _glasses_option():
 		tracker.save_settings())
 	row.add_child(mode)
 	add_child(row)
+
+## sending the tracking to other apps; changing one restarts the tracker with the new outputs
+func _output_options():
+	var title = Label.new()
+	title.text = "Send tracking to other apps on this computer"
+	title.theme_type_variation = &"FieldLabel"
+	add_child(title)
+	for o in [["SendVtsIPhone", "VTube Studio (as an iPhone)", "send_vts_iphone",
+			"In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT."],
+			["SendIFacialMocap", "VSeeFace, Warudo, VNyan (iFacialMocap)", "send_ifacialmocap",
+			"In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1."]]:
+		var check = CheckButton.new()
+		check.name = o[0]
+		check.text = o[1]
+		check.tooltip_text = o[3]
+		check.button_pressed = tracker.get(o[2])
+		var prop: String = o[2]
+		check.toggled.connect(func (on):
+			tracker.set(prop, on)
+			tracker.save_settings()
+			tracker.restart())
+		add_child(check)
 
 func _process(_delta):
 	_poll_tracker_list()

@@ -117,7 +117,9 @@ func _ready() -> void:
 			for i in 30:
 				await get_tree().process_frame
 			var button = get_tree().root.find_child(button_name, true, false)
-			if button is BaseButton:
+			if button is BaseButton and button.toggle_mode:
+				button.button_pressed = not button.button_pressed  # switches and check boxes flip like a click
+			elif button is BaseButton:
 				button.pressed.emit()
 			else:
 				push_error("[automation] no button %s" % button_name)

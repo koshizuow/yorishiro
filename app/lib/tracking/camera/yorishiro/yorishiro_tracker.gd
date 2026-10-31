@@ -48,6 +48,10 @@ var _glare_msec := 0
 var _last_glare_check := 0
 var tracker_name := "facemesh"
 var runtime := "vulkan"
+## tracking for other apps on this computer, sent by the tracker next to the app's own link:
+## VTube Studio and OpenVT read the VTube Studio iPhone protocol, VSeeFace, Warudo and VNyan iFacialMocap
+var send_vts_iphone := false
+var send_ifacialmocap := false
 
 var found := false
 ## latest raw ARKit 52 values, for bindings that want more than the VTS style inputs
@@ -100,6 +104,10 @@ func start():
 		return
 	var args = ["serve", "--camera", str(camera), "--tracker", tracker_name, "--runtime", runtime,
 		"--parent-pid", str(OS.get_process_id())]
+	if send_vts_iphone:
+		args.append("--vts-iphone")
+	if send_ifacialmocap:
+		args.append("--ifacialmocap")
 	_append_log("$ %s %s" % [cmd.get_file(), " ".join(args)])
 	OS.set_environment("PYTHONUNBUFFERED", "1")  # otherwise its log arrives in 4 KB bursts
 	_proc = OS.execute_with_pipe(cmd, args, false)
@@ -254,9 +262,12 @@ func load_settings():
 		when_lost = int(data.get("when_lost", when_lost))
 		glasses = int(data.get("glasses", glasses))
 		lost_delay = float(data.get("lost_delay", lost_delay))
+		send_vts_iphone = bool(data.get("send_vts_iphone", send_vts_iphone))
+		send_ifacialmocap = bool(data.get("send_ifacialmocap", send_ifacialmocap))
 
 func save_settings():
 	var f = FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"camera": camera, "tracker": tracker_name, "runtime": runtime,
-			"when_lost": when_lost, "lost_delay": lost_delay, "glasses": glasses}))
+			"when_lost": when_lost, "lost_delay": lost_delay, "glasses": glasses,
+			"send_vts_iphone": send_vts_iphone, "send_ifacialmocap": send_ifacialmocap}))

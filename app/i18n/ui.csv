@@ -337,3 +337,8 @@ Color Override,Color Override,覆蓋顏色
 Multiply Color,Multiply Color,色彩相乘
 Screen Color,Screen Color,色彩濾色
 Pinnable,Pinnable,可釘選道具
+Send tracking to other apps on this computer,Send tracking to other apps on this computer,把追蹤資料傳給這台電腦上的其他軟體
+VTube Studio (as an iPhone),VTube Studio (as an iPhone),VTube Studio（當作 iPhone）
+"VSeeFace, Warudo, VNyan (iFacialMocap)","VSeeFace, Warudo, VNyan (iFacialMocap)",VSeeFace、Warudo、VNyan（iFacialMocap）
+In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT.,In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT.,在 VTube Studio 選擇 iPhone 當作追蹤來源，輸入 127.0.0.1。OpenVT 也讀得到。
+In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,在那個軟體選擇 iFacialMocap 當作追蹤來源，輸入 127.0.0.1。
