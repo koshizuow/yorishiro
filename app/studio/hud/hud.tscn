@@ -7,8 +7,6 @@
 [ext_resource type="Texture2D" uid="uid://blil5brl4i0qh" path="res://ui/icons/gear.svg" id="5_1vcj3"]
 [ext_resource type="Texture2D" uid="uid://b3m3xj1ms8rss" path="res://ui/icons/square-arrow-up-left.svg" id="7_wochk"]
 [ext_resource type="Texture2D" uid="uid://b401bri37hvvq" path="res://studio/stage/grid.png" id="8_i4b50"]
-[ext_resource type="PackedScene" uid="uid://bcxs7fe1yqc6o" path="res://studio/hud/item_panel/item_panel.tscn" id="11_juv7g"]
-[ext_resource type="PackedScene" uid="uid://crwh7f50woqgu" path="res://studio/hud/camera_panel/camera_panel.tscn" id="12_blrl1"]
 [ext_resource type="PackedScene" uid="uid://bbpykopqsj46s" path="res://studio/hud/onscreen_buttons/onscreen_buttons.tscn" id="14_67g5m"]
 [ext_resource type="Script" uid="uid://dojlh62kl14nk" path="res://ui/fps_counter.gd" id="17_0k8c4"]
 [ext_resource type="PackedScene" uid="uid://bpwsyuhheohw7" path="res://ui/toast/toast.tscn" id="17_1vcj3"]
@@ -108,7 +106,6 @@ icon = ExtResource("4_0k8c4")
 flat = true
 icon_alignment = 1
 expand_icon = true
-metadata/panel = NodePath("../../../../../Panels/ItemPanel")
 
 [node name="CameraBtn" type="Button" parent="Menu/VBoxContainer/PanelContainer/VBoxContainer" unique_id=1535069087]
 unique_name_in_owner = true
@@ -125,7 +122,6 @@ icon = ExtResource("5_1vcj3")
 flat = true
 icon_alignment = 1
 expand_icon = true
-metadata/panel = NodePath("../../../../../Panels/CameraPanel")
 
 [node name="ScreenshotBtn" type="Button" parent="Menu/VBoxContainer" unique_id=1335475815]
 unique_name_in_owner = true
@@ -171,18 +167,6 @@ title = "Action Palette"
 [node name="Panels" type="CanvasLayer" parent="." unique_id=913944957 groups=["hide_screenshot"]]
 unique_name_in_owner = true
 layer = 5
-
-[node name="ItemPanel" parent="Panels" unique_id=1318537345 instance=ExtResource("11_juv7g")]
-unique_name_in_owner = true
-visible = false
-offset_left = 1549.0
-offset_right = 2029.0
-
-[node name="CameraPanel" parent="Panels" unique_id=41043332 instance=ExtResource("12_blrl1")]
-unique_name_in_owner = true
-visible = false
-offset_left = 1550.0
-offset_right = 2030.0
 
 [node name="Debug" type="CanvasLayer" parent="." unique_id=1340795754]
 layer = 99

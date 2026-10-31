@@ -154,12 +154,13 @@ func _pipe_frames(path: String, viewport: Viewport):
 		f.flush()
 
 func _open_panel(which: String):
-	var button = get_tree().root.find_child("%sBtn" % which.capitalize(), true, false)
-	if button == null or not button.has_meta("panel"):
-		push_error("[automation] no panel button for %s" % which)
+	# --open-panel names: model and item open the models page, camera the settings page, others by page id
+	var page = {"model": &"model", "item": &"model", "camera": &"settings"}.get(which, StringName(which))
+	var overlay = get_tree().root.find_child("SettingsOverlay", true, false)
+	if overlay == null:
+		push_error("[automation] no settings overlay")
 		return
-	button.button_pressed = true
-	button.owner._open_panel(button.get_node(button.get_meta("panel")))
+	overlay.open_page(page)
 
 ## presses every expression hotkey of the model's graphs once (on, shot, off), as the key would
 func _shoot_hotkeys(args: Dictionary, viewport: Viewport, path: String):

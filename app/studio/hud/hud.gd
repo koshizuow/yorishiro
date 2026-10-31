@@ -1,8 +1,40 @@
 extends "res://ui/popout_panel.gd"
 
+const SettingsOverlay = preload("res://studio/hud/settings/settings_overlay.gd")
+const HotkeysPage = preload("res://studio/hud/settings/hotkeys_page.gd")
+## seconds without mouse movement before the stage buttons fade out (clean window capture)
+const IDLE_FADE_SECONDS = 3.0
+
+## hosts a side panel scene as an overlay page, with optional buttons above it. The panel is created here,
+## not moved from elsewhere: Preferences saves "persist" nodes whenever they leave the tree, and a move
+## saved the camera panel before it had restored its tracker selection.
+class PanelPage extends VBoxContainer:
+	var inner: Control
+	func _init(scene: PackedScene, unique_name: String, top: Array = []) -> void:
+		var panel: Control = scene.instantiate()
+		panel.name = unique_name
+		name = "%sPage" % unique_name
+		if top:
+			var bar := HBoxContainer.new()
+			for b in top:
+				bar.add_child(b)
+			add_child(bar)
+		inner = panel
+		add_child(panel)
+		panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		panel.custom_minimum_size = Vector2.ZERO
+		panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	func setup():
+		inner.show()
+		await inner.setup()
+	func teardown():
+		inner.teardown()
+
 var open
 var group: ButtonGroup
 var model_browser_opened := false
+var overlay: SettingsOverlay
+var _idle := 0.0
 
 @onready var stage = get_tree().get_first_node_in_group("system:stage")
 @onready var popup_bg = %Bg
@@ -18,6 +50,8 @@ func _ready() -> void:
 			fmt.mime_type(),
 		)
 	
+	_build_overlay()
+
 	group = %CameraBtn.button_group
 	group.pressed.connect(
 		func (button):
@@ -76,6 +110,45 @@ func _ready() -> void:
 			func (_model):
 				_clear_buttons()
 		)
+
+func _build_overlay() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "OverlayLayer"
+	layer.layer = 10
+	layer.add_to_group("hide_screenshot")
+	add_child(layer)
+	overlay = SettingsOverlay.new()
+	layer.add_child(overlay)
+
+	var load_model := Button.new()
+	load_model.text = "Load Model..."
+	load_model.pressed.connect(_on_model_btn_pressed)
+	overlay.add_page(&"model", "Models & Items", PanelPage.new(preload("res://studio/hud/item_panel/item_panel.tscn"), "ItemPanel", [load_model]))
+	overlay.add_page(&"hotkeys", "Hotkeys", HotkeysPage.new())
+	overlay.add_page(&"settings", "Settings", PanelPage.new(preload("res://studio/hud/camera_panel/camera_panel.tscn"), "CameraPanel"))
+
+	# the stage keeps a gear (settings), screenshot and nothing else
+	for b in [%ModelBtn, %ItemBtn, %CameraBtn, %PopoutBtn]:
+		b.hide()
+	var gear := Button.new()
+	gear.name = "SettingsBtn"
+	gear.icon = preload("res://ui/icons/gear.svg")
+	gear.tooltip_text = "Settings"
+	gear.custom_minimum_size = %CameraBtn.custom_minimum_size
+	gear.expand_icon = %CameraBtn.expand_icon
+	gear.pressed.connect(overlay.toggle)
+	%CameraBtn.get_parent().add_child(gear)
+	%CameraBtn.get_parent().move_child(gear, 0)
+
+func _process(delta: float) -> void:
+	# fade the stage buttons when the mouse rests, bring them back on movement
+	_idle += delta
+	var target := 1.0 if _idle < IDLE_FADE_SECONDS or overlay.visible else 0.0
+	%Menu.modulate.a = move_toward(%Menu.modulate.a, target, delta * 4.0)
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_idle = 0.0
 
 func _close_panel():
 	if open != null:

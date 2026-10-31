@@ -1,0 +1,84 @@
+keys,en,zh_TW
+Models & Items,Models & Items,模型與道具
+Hotkeys,Hotkeys,熱鍵
+Settings,Settings,設定
+Close (Esc),Close (Esc),關閉 (Esc)
+Load Model...,Load Model...,載入模型…
+Advanced: node editor,Advanced: node editor,進階：節點編輯器
+Load a model first.,Load a model first.,請先載入模型。
+The hotkey list is being built. Hotkeys can be set in the node editor for now.,The hotkey list is being built. Hotkeys can be set in the node editor for now.,熱鍵清單製作中。目前可以先在節點編輯器設定熱鍵。
+Application Settings,Application Settings,應用程式設定
+Tracking,Tracking,追蹤
+Profile,Profile,設定檔
+UI Theme,UI Theme,介面主題
+Application FPS Limit,Application FPS Limit,畫面更新率上限
+Application Scaling,Application Scaling,介面縮放
+Background,Background,背景
+Camera FOV,Camera FOV,攝影機視角
+Virtual Webcam,Virtual Webcam,虛擬攝影機
+Face Tracking,Face Tracking,臉部追蹤
+Default Grid,Default Grid,預設格線
+Image,Image,圖片
+Color,Color,純色
+Transparent,Transparent,透明
+Dark,Dark,深色
+Max,Max,最高
+Open,Open,開啟
+Load Default Profile,Load Default Profile,載入預設設定檔
+Save,Save,儲存
+Save as...,Save as...,另存為…
+Clear Settings,Clear Settings,清除設定
+Item Scene,Item Scene,道具場景
+Items are ordered background to foreground,Items are ordered background to foreground,道具依序由背景排到前景
+Transform,Transform,位置與大小
+Position,Position,位置
+Scale,Scale,縮放
+Rotation,Rotation,旋轉
+Expression,Expression,表情
+Bindings,Bindings,綁定
+Model Settings,Model Settings,模型設定
+Add Item,Add Item,新增道具
+Clear All Items,Clear All Items,清除所有道具
+Lock transform,Lock transform,鎖定位置
+Toggle Locks,Toggle Locks,切換鎖定
+Recenter,Recenter,置中
+Fit to Screen,Fit to Screen,符合畫面
+Reset Scale,Reset Scale,重設縮放
+Reset Rotation,Reset Rotation,重設旋轉
+Rotate Left 90 Degrees,Rotate Left 90 Degrees,向左轉 90 度
+Rotate Right 90 Degrees,Rotate Right 90 Degrees,向右轉 90 度
+Edit Bindings,Edit Bindings,編輯綁定
+Set Expression,Set Expression,設定表情
+Fade (sec),Fade (sec),淡入淡出（秒）
+Pin to Model,Pin to Model,釘在模型上
+Pin to Mesh,Pin to Mesh,釘在網格上
+Pinned To,Pinned To,釘在
+Flip,Flip,翻轉
+Layer,Layer,圖層
+Remove,Remove,移除
+Delete,Delete,刪除
+Cancel,Cancel,取消
+Rename,Rename,重新命名
+Export,Export,匯出
+Name,Name,名稱
+Model,Model,模型
+Items,Items,道具
+Enabled,Enabled,啟用
+Animation,Animation,動畫
+Animation Frame Rate,Animation Frame Rate,動畫幀率
+Frame Rate,Frame Rate,幀率
+Smoothing,Smoothing,平滑
+Preview,Preview,預覽
+Scene Preview,Scene Preview,場景預覽
+Confirm Load,Confirm Load,確認載入
+Change the active model,Change the active model,更換模型
+Compose your scene with extra items,Compose your scene with extra items,用道具佈置畫面
+Configure Application and Hardware Settings,Configure Application and Hardware Settings,應用程式與硬體設定
+Open a File,Open a File,開啟檔案
+Open File(s),Open File(s),開啟檔案
+Preview Background Color,Preview Background Color,預覽背景色
+Tracker log,Tracker log,追蹤器紀錄
+Waiting...,Waiting...,等待中…
+On,On,開
+Off,Off,關
+"If the Scene has Pinned Items, they will be excluded if the active model does not match","If the Scene has Pinned Items, they will be excluded if the active model does not match",場景裡釘在模型上的道具，如果目前的模型不同就不會載入

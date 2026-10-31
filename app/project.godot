@@ -41,6 +41,7 @@ ItemManager="*res://lib/item_manager.gd"
 BlueprintManager="*uid://dridhda34w6dx"
 BlendRegistry="*uid://dmhw76skp73u3"
 WindowManager="*uid://bl4pt68qhf3tn"
+Locale="*res://lib/locale.gd"
 Preferences="*res://lib/preferences.gd"
 Automation="*res://lib/automation.gd"
 
@@ -155,3 +156,7 @@ viewport/transparent_background=true
 [run]
 
 platforms/linuxbsd/prefer_wayland=true
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://i18n/ui.en.translation", "res://i18n/ui.zh_TW.translation")

@@ -33,9 +33,11 @@ func add_fold(section: Node):
 	if select_mode == Mode.MULTI:
 		btn.button_group = button_group
 	btn.link = section
+	# only when the section is deleted: moving the accordion to another parent also exits the tree
 	section.tree_exiting.connect(
 		func ():
-			btn.queue_free()
+			if is_instance_valid(btn) and section.is_queued_for_deletion():
+				btn.queue_free()
 	)
 	
 	# add sibling before
