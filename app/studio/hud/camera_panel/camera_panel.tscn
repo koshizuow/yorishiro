@@ -241,6 +241,7 @@ layout_mode = 2
 text = "..."
 
 [node name="CameraFOV" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=682597613]
+visible = false
 layout_mode = 2
 
 [node name="Label" type="Label" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer/CameraFOV" unique_id=549451558]

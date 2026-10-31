@@ -7,7 +7,6 @@ const COMPONENTS = [
 	["OpenVT", "erodozer", "MIT", "The app this one was forked from"],
 	["Godot Engine", "Godot contributors, patched by Ayagami", "MIT", "Game engine the app runs on"],
 	["Ayagami", "The Ayagami Project Contributors", "MIT / Apache-2.0", "Live2D renderer"],
-	["godot-vrm", "V-Sekai", "MIT", "VRM model loading"],
 	["gd-virtualcamera", "erodozer", "Unlicense", "Virtual webcam output"],
 	["libfunnel", "the libfunnel contributors", "MIT", "Sending the stage to OBS over PipeWire"],
 	["PipeWire", "PipeWire contributors", "MIT", "Sending the stage to OBS over PipeWire"],
@@ -21,7 +20,6 @@ const COMPONENTS = [
 const LICENSE_FILES = [
 	["Yorishiro app (with OpenVT)", "res://LICENSE.txt"],
 	["Ayagami", "res://license/LICENSE.ayagami.md"],
-	["godot-vrm", "res://license/LICENSE.godotvrm.md"],
 	["gd-virtualcamera", "res://license/LICENSE.gdvirtualcamera.md"],
 	["libfunnel", "res://license/LICENSE.libfunnel.txt"],
 	["godot-keylogger", "res://license/LICENSE.keylogger.md"],

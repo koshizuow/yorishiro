@@ -13,7 +13,6 @@ func _ready() -> void:
 	
 	formats = {
 		"l2d": preload("res://lib/model/formats/l2d/model_loader.gd").new(),
-		"vrm": preload("res://lib/model/formats/vrm/model_loader.gd").new(),
 	}
 	
 func is_model(path: String) -> bool:

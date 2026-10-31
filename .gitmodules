@@ -4,6 +4,3 @@
 [submodule "app/thirdparty/gd-virtualcamera"]
 	path = app/thirdparty/gd-virtualcamera
 	url = https://github.com/erodozer/gd-virtualcamera.git
-[submodule "app/thirdparty/godot-vrm"]
-	path = app/thirdparty/godot-vrm
-	url = https://github.com/V-Sekai/godot-vrm.git

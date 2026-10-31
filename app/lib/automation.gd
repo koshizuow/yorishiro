@@ -82,7 +82,7 @@ func _ready() -> void:
 			Clock.origin_frame = Engine.get_process_frames()
 
 	if args.has("import-models"):
-		for p in ModelLibrary._find_models(args["import-models"], [".model3.json", ".vrm"]):
+		for p in ModelLibrary._find_models(args["import-models"], [".model3.json"]):
 			ModelLibrary.add_imported(p)
 		print("[automation] library has %d models" % ModelLibrary.list().size())
 

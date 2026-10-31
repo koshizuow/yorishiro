@@ -101,7 +101,6 @@ Show full license texts,Show full license texts,顯示授權全文
 The app this one was forked from,The app this one was forked from,本 app 的 fork 來源
 Game engine the app runs on,Game engine the app runs on,app 使用的遊戲引擎
 Live2D renderer,Live2D renderer,Live2D 繪製
-VRM model loading,VRM model loading,VRM 模型載入
 Virtual webcam output,Virtual webcam output,虛擬攝影機輸出
 Global hotkeys,Global hotkeys,全域熱鍵
 Native addons,Native addons,原生擴充
@@ -306,7 +305,6 @@ NON-COMMERCIAL model,NON-COMMERCIAL model,非商用模型
 external tracker,external tracker,外部追蹤器
 Welcome to Yorishiro,Welcome to Yorishiro,歡迎使用 Yorishiro
 Add your model,Add your model,加入你的模型
-A Live2D model folder (with a .model3.json file) or a VRM file.,A Live2D model folder (with a .model3.json file) or a VRM file.,Live2D 模型資料夾（裡面有 .model3.json 檔）或 VRM 檔。
 Choose a model...,Choose a model...,選擇模型…
 Your models,Your models,我的模型
 Face tracking,Face tracking,臉部追蹤
@@ -365,3 +363,4 @@ Use physics,Use physics,使用物理
 This model has no physics.,This model has no physics.,這個模型沒有物理設定。
 Overall strength,Overall strength,整體強度
 Each part (%d),Each part (%d),各部位（%d）
+A Live2D model folder (with a .model3.json file).,A Live2D model folder (with a .model3.json file).,Live2D 模型資料夾（裡面有 .model3.json 檔）。

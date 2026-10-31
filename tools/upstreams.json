@@ -48,16 +48,6 @@
       "note": "Released crate, bump with ayagami-gd when it needs a newer one."
     },
     {
-      "name": "godot-vrm",
-      "url": "https://github.com/V-Sekai/godot-vrm.git",
-      "branch": "master",
-      "pin": {
-        "kind": "submodule",
-        "path": "app/thirdparty/godot-vrm"
-      },
-      "policy": "bump"
-    },
-    {
       "name": "godot-keylogger",
       "url": "https://github.com/erodozer/godot-keylogger",
       "branch": "main",

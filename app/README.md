@@ -19,7 +19,7 @@ headless import steps are described in the repository README.
 
 ## Formats
 
-- Live2D models (`.model3.json`) and VRM models (`.vrm`). VTube Studio settings (`.vtube.json`) are read,
+- Live2D models (`.model3.json`). VTube Studio settings (`.vtube.json`) are read,
   never written.
 - Model settings: `<key>.yori.json` in the app's data folder. Settings an OpenVT install left next to a model
   (`.ovt.json`) are imported once.

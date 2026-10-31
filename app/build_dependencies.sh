@@ -90,18 +90,11 @@ build_keylogger() {
 	cd $PROJ_ROOT
 }
 
-build_vrm () {
-    cp -r $PROJ_ROOT/thirdparty/godot-vrm/addons $PROJ_ROOT
-	cp $PROJ_ROOT/thirdparty/godot-vrm/LICENSE $PROJ_ROOT/license/LICENSE.godotvrm.md
-	echo "*" > $ADDONDIR/vrm/.gitignore
-	echo "*" > $ADDONDIR/Godot-MToon-Shader/.gitignore
-}
 
 # fetch submodules if they haven't been already
 # git submodule update --init --recursive
 
 build_ayagami
-build_vrm
 if [ "$BUILD_VIRTUALCAMERA" = 1 ]; then
 	build_virtualcamera
 fi

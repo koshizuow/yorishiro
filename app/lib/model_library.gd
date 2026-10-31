@@ -39,7 +39,7 @@ func list() -> Array[Dictionary]:
 		out.append({
 			"path": p,
 			"name": _display_name(p),
-			"format": "VRM" if p.ends_with(".vrm") else "Live2D",
+			"format": "Live2D",
 			"thumbnail": thumbnail(p),
 			"last_used": int(_cfg.get_value("last_used", _key(p), 0)),
 		})
@@ -126,7 +126,7 @@ func _find_models(dir: String, extensions: Array, depth := 2) -> Array[String]:
 		return out
 	for f in d.get_files():
 		# a Live2D folder has both .model3.json and .moc3, the json is the one to open
-		if f.ends_with(".model3.json") or (f.ends_with(".vrm") and ".vrm" in extensions):
+		if f.ends_with(".model3.json"):
 			out.append(dir.path_join(f))
 	if depth > 0:
 		for sub in d.get_directories():
@@ -142,7 +142,7 @@ func _inside_model_dirs(path: String) -> bool:
 
 func _display_name(path: String) -> String:
 	var file := path.get_file()
-	for ext in [".model3.json", ".vrm"]:
+	for ext in [".model3.json"]:
 		file = file.trim_suffix(ext)
 	return file
 

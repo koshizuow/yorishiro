@@ -23,7 +23,6 @@ static var _action_types: Array[PackedScene] = [
 	preload("res://lib/blueprints/logic/toggle_state.tscn"),
 	preload("res://lib/blueprints/logic/toggle_group.tscn"),
 	preload("res://lib/blueprints/outputs/model_output.tscn"),
-	preload("res://lib/blueprints/outputs/skeleton_output.tscn"),
 	preload("res://lib/blueprints/outputs/play_animation.tscn"),
 	preload("res://lib/blueprints/outputs/toggle_expression.tscn"),
 	preload("res://lib/blueprints/outputs/metastore_output.tscn"),

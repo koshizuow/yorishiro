@@ -32,7 +32,7 @@ func _init() -> void:
 	title.add_theme_font_size_override("font_size", 22)
 	box.add_child(title)
 
-	var model := _step(box, "1", "Add your model", "A Live2D model folder (with a .model3.json file) or a VRM file.")
+	var model := _step(box, "1", "Add your model", "A Live2D model folder (with a .model3.json file).")
 	var choose := Button.new()
 	choose.name = "WelcomeImportBtn"
 	choose.text = "Choose a model..."

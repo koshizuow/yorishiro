@@ -35,8 +35,6 @@ Third-party components used by app/
                         The Unlicense (public domain)
   godot-keylogger       https://github.com/erodozer/godot-keylogger
                         MIT, Copyright (c) 2025-present erodozer
-  godot-vrm             https://github.com/V-Sekai/godot-vrm
-                        MIT, sample models carry their own licenses
   Godot Engine          https://godotengine.org, MIT. Yorishiro currently
                         needs the Ayagami patched 4.7.1 build.
 
