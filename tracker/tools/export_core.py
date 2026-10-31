@@ -357,10 +357,42 @@ def golden_sinks(out: Path, frames: int = 20) -> None:
     print(f"wrote {out}")
 
 
+def golden_hands(rec: Path, out: Path, frames: int = 120) -> None:
+    """Hand tracking (ORT CPU) on a recording that shows hands, frames as OpenCV decoded them (PNG): per frame
+    the hands found (person's side, score, crop, image and world landmarks) and the Hand* inputs."""
+    import cv2
+
+    from yorishiro_tracker.mediapipe_ncnn.hands import HandTracker, hand_params
+
+    tracker = HandTracker(max_hands=2, runtime="ort-cpu")
+    png_dir = out.parent / f"{rec.name}-frames"
+    png_dir.mkdir(parents=True, exist_ok=True)
+    res = {k: np.zeros(s) for k, s in (("count", (frames,)), ("right", (frames, 2)), ("score", (frames, 2)),
+                                        ("roi", (frames, 2, 4)), ("landmarks", (frames, 2, 21, 3)),
+                                        ("world", (frames, 2, 21, 3)))}
+    params = []
+    for i in range(frames):
+        bgr = cv2.imread(str(rec / "frames" / f"{i:05d}.jpg"))
+        cv2.imwrite(str(png_dir / f"{i:05d}.png"), bgr)
+        hands = tracker.process(bgr)
+        res["count"][i] = len(hands)
+        for k, h in enumerate(hands[:2]):
+            res["right"][i, k], res["score"][i, k] = h.right, h.score
+            c, size, angle = h.roi
+            res["roi"][i, k] = [c[0], c[1], size, angle]
+            res["landmarks"][i, k], res["world"][i, k] = h.landmarks, h.world
+        params.append(hand_params(hands, bgr.shape[1], bgr.shape[0]))
+    np.savez_compressed(out, **res)
+    import json
+    out.with_suffix(".params.json").write_text(json.dumps(params))
+    print(f"wrote {out}: {frames} frames, {int(res['count'].sum())} hands")
+
+
 def main():
     head = ensure_ict_facekit()
     export_fit(MediaPipePointFitter(head), MODEL_DIR / "core" / "fit.npz")
     golden_sinks(TESTDATA / "core-golden" / "sinks.json")
+    golden_hands(TESTDATA / "recordings" / "hagrid-hands", TESTDATA / "core-golden" / "hagrid-hands-hands.npz")
     recs = sys.argv[1:] or ["crema-d-60", "20261029-105439"]
     for r in recs:
         rec = Path(r) if "/" in r else TESTDATA / "recordings" / r

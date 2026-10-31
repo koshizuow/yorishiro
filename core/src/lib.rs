@@ -14,10 +14,12 @@ pub mod camera;
 pub mod data;
 pub mod fit;
 pub mod frame;
+pub mod hands;
 pub mod glare;
 pub mod tracker;
 pub mod image;
 pub mod inference;
+pub mod net;
 #[cfg(feature = "ncnn")]
 pub mod ncnn;
 pub mod pipeline;

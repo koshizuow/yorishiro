@@ -35,7 +35,8 @@
 ##   --mic-test=<wav>       lip sync: play the wav (tools/lip_sync_vowels.py, with its .json timeline) through
 ##                          the voice bus instead of the microphone, print the voice values per part and check
 ##                          silence, volume and the vowel that wins in each
-##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png) switch hand tracking on (restarts the Yorishiro tracker with --hands), run with a
+##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png; --hand-core=<camera> runs it on the
+##                          built-in core and that camera) switch hand tracking on (restarts the Yorishiro tracker with --hands), run with a
 ##                          recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands), check the Hand* inputs
 ##   --core-test=<camera>   switch the Yorishiro tracker to the built-in Rust core (addons/yorishiro_core) on that
 ##                          camera (the development loopback camera is 10), check it runs and moves the model;
@@ -234,7 +235,7 @@ func _ready() -> void:
 		if args.has("core-test"):
 			await _core_test(int(args["core-test"]), str(args.get("core-runtime", "ort-cpu")))
 		if args.has("hand-test"):
-			await _hand_test(str(args["hand-test"]))
+			await _hand_test(str(args["hand-test"]), int(args.get("hand-core", "-1")))
 		if args.has("mic-test"):
 			await _mic_test(str(args["mic-test"]))
 		if args.has("plugin-api-test"):
@@ -505,12 +506,16 @@ func _core_test(cam: int, runtime: String):
 	face.send_ifacialmocap = false
 	face.save_settings()
 
-func _hand_test(shots: String):
+func _hand_test(shots: String, core_camera: int = -1):
 	var check := func (what: String, ok: bool): print("[automation] hands %s: %s" % [what, "ok" if ok else "FAILED"])
 	var tracking = get_tree().get_first_node_in_group("system:tracking")
 	var face = tracking.get_node("FaceTracker")
 	check.call("Yorishiro tracker", "track_hands" in face)
 	face.track_hands = true
+	if core_camera >= 0:  # the built-in core on a camera instead of the tracker program
+		face.engine = "core"
+		face.camera = core_camera
+		face.runtime = "ort-cpu"
 	face.restart()
 	var seen := {"HandLeftFound": 0, "HandRightFound": 0}
 	var open_hi := 0.0
@@ -549,6 +554,7 @@ func _hand_test(shots: String):
 	check.call("right hand seen (%d frames)" % seen.HandRightFound, seen.HandRightFound > 10)
 	check.call("open and closed hand apart (Open %.2f to %.2f)" % [open_lo, open_hi], open_hi > 0.6 and open_lo < 0.35)
 	face.track_hands = false
+	face.engine = "process"
 	face.save_settings()
 
 func _mic_test(wav: String):

@@ -12,6 +12,8 @@ use std::time::Instant;
 use yorishiro_core::backend::{preload_nvidia, runtime as ort_runtime, Provider};
 use yorishiro_core::camera::Camera;
 use yorishiro_core::frame::ARKIT52;
+use yorishiro_core::hands::{hand_params, HandTracker};
+use yorishiro_core::image::Image;
 use yorishiro_core::inference::LandmarkRuntime;
 use yorishiro_core::sinks::{IFacialMocapSink, VtsIphoneSink, VTS_REQUEST_PORT};
 use yorishiro_core::tracker::{ModelPaths, Tracker};
@@ -29,6 +31,84 @@ struct FrameOut {
     vts: Vec<(&'static str, f64)>,
     arkit: [f64; 52],
     glare: Option<[f64; 2]>,
+    /// Hand* inputs by the avatar's sides, when hand tracking runs
+    hands: Option<Vec<(String, f64)>>,
+    /// 21 world points per hand, by the avatar's sides, flipped left to right when mirrored
+    hand_points: Vec<(String, Vec<[f64; 3]>)>,
+}
+
+/// Hand tracking beside the face (the Python tracker's HandWorker): its own thread on the newest picture, the
+/// face never waits for it.
+struct HandWorker {
+    latest: Arc<(Mutex<Option<Image>>, std::sync::Condvar)>,
+    result: Arc<Mutex<(Vec<(String, f64)>, Vec<(String, Vec<[f64; 3]>)>)>>,
+    stop: Arc<AtomicBool>,
+    thread: Option<JoinHandle<()>>,
+}
+
+/// share of the previous value kept per result
+const HAND_SMOOTHING: f64 = 0.5;
+
+impl HandWorker {
+    fn start(mut tracker: HandTracker) -> Self {
+        let latest: Arc<(Mutex<Option<Image>>, std::sync::Condvar)> = Arc::new((Mutex::new(None), std::sync::Condvar::new()));
+        let result = Arc::new(Mutex::new((vec![], vec![])));
+        let stop = Arc::new(AtomicBool::new(false));
+        let (l, r, st) = (latest.clone(), result.clone(), stop.clone());
+        let thread = std::thread::Builder::new().name("yorishiro-hands".into()).spawn(move || {
+            let mut prev: Vec<(String, f64)> = vec![];
+            loop {
+                let img = {
+                    let mut g = l.0.lock().unwrap();
+                    while g.is_none() && !st.load(Ordering::Relaxed) {
+                        g = l.1.wait(g).unwrap();
+                    }
+                    if st.load(Ordering::Relaxed) {
+                        return;
+                    }
+                    g.take().unwrap()
+                };
+                let Ok(hands) = tracker.process(&img) else { continue };
+                let mut params = hand_params(&hands, img.width as f64, img.height as f64);
+                for (k, v) in params.iter_mut() {
+                    // a hand that just appeared starts at its value; angles near +-180 are not averaged across the wrap
+                    let angle = k.ends_with("AngleX") || k.ends_with("AngleZ");
+                    if let Some((_, p)) = prev.iter().find(|(pk, _)| pk == k) {
+                        if !k.ends_with("Found") && !(angle && (*v - p).abs() > 180.0) {
+                            *v = HAND_SMOOTHING * p + (1.0 - HAND_SMOOTHING) * *v;
+                        }
+                    }
+                }
+                prev = params.clone();
+                let points = hands.iter().map(|h| ((if h.right { "Right" } else { "Left" }).to_string(), h.world.clone())).collect();
+                *r.lock().unwrap() = (params, points);
+            }
+        }).ok();
+        Self { latest, result, stop, thread }
+    }
+
+    fn submit(&self, img: &Image) {
+        *self.latest.0.lock().unwrap() = Some(img.clone());
+        self.latest.1.notify_one();
+    }
+}
+
+impl Drop for HandWorker {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        self.latest.1.notify_all();
+        if let Some(t) = self.thread.take() {
+            let _ = t.join();
+        }
+    }
+}
+
+/// Person's sides to the avatar's: mirrored, the user's left hand moves the avatar's right one.
+fn avatar_side(name: &str, mirror: bool) -> String {
+    if !mirror {
+        return name.to_string();
+    }
+    name.replace("Left", "\u{0}").replace("Right", "Left").replace('\u{0}', "Right")
 }
 
 #[derive(Default)]
@@ -78,6 +158,9 @@ pub struct YorishiroCore {
     /// send iFacialMocap to this host's 49983 (VSeeFace, Warudo, VNyan), empty for off
     #[export]
     ifacialmocap_host: GString,
+    /// also track hands (the Hand* inputs and the preview's hands)
+    #[export]
+    track_hands: bool,
     shared: Option<Arc<Shared>>,
     worker: Option<JoinHandle<()>>,
     base: Base<Node>,
@@ -99,6 +182,7 @@ impl YorishiroCore {
             mirror: self.mirror,
             vts_iphone: self.send_vts_iphone,
             ifacialmocap: Some(self.ifacialmocap_host.to_string()).filter(|s| !s.is_empty()),
+            hands: self.track_hands,
         };
         let s = shared.clone();
         self.worker = std::thread::Builder::new().name("yorishiro-core".into()).spawn(move || run(cfg, s)).ok();
@@ -157,6 +241,22 @@ impl YorishiroCore {
             let mut d = VarDictionary::new();
             d.set("v", 1);
             d.set("found", f.found);
+            if let Some(hands) = &f.hands {
+                let mut h = VarDictionary::new();
+                for (k, v) in hands {
+                    h.set(k.as_str(), *v);
+                }
+                d.set("hands", &h);
+                let mut pts = VarDictionary::new();
+                for (side, points) in &f.hand_points {
+                    let mut list = VarArray::new();
+                    for p in points {
+                        list.push(&PackedFloat64Array::from(&p[..]).to_variant());
+                    }
+                    pts.set(side.as_str(), &list);
+                }
+                d.set("hand_points", &pts);
+            }
             if f.found {
                 let mut vts = VarDictionary::new();
                 for (k, v) in f.vts {
@@ -201,6 +301,7 @@ struct Config {
     mirror: bool,
     vts_iphone: bool,
     ifacialmocap: Option<String>,
+    hands: bool,
 }
 
 fn landmark_runtime(name: &str, models: &std::path::Path) -> Result<LandmarkRuntime, String> {
@@ -260,6 +361,20 @@ fn run(cfg: Config, s: Arc<Shared>) {
         }
     };
     s.log(format!("camera {}: {}", cfg.camera, camera.mode));
+    let hand_worker = if cfg.hands {
+        match HandTracker::open(&cfg.models.join("mediapipe/hands"), &landmark_runtime(&cfg.runtime, &cfg.models).unwrap_or(LandmarkRuntime::OrtCpu), 2) {
+            Ok(t) => {
+                s.log(format!("hand tracking on {}", t.runtime));
+                Some(HandWorker::start(t))
+            }
+            Err(e) => {
+                s.log(format!("hand tracking unavailable: {e}"));
+                None
+            }
+        }
+    } else {
+        None
+    };
     let mut vts = None;
     if cfg.vts_iphone {
         match VtsIphoneSink::open(VTS_REQUEST_PORT) {
@@ -293,6 +408,9 @@ fn run(cfg: Config, s: Arc<Shared>) {
             tracker.pipeline.recalibrate();
             s.log("collecting the neutral for the app".into());
         }
+        if let Some(h) = &hand_worker {
+            h.submit(&frame.image);
+        }
         let t = Instant::now();
         let out = match tracker.process(&frame.image, start.elapsed().as_millis() as i64) {
             Ok(o) => o,
@@ -307,14 +425,20 @@ fn run(cfg: Config, s: Arc<Shared>) {
         if let Some(m) = ifm.as_mut() {
             m.send(finished);
         }
-        let f = match &out {
+        let mut f = match &out {
             Some(o) => {
                 calibrated |= o.calibrated;
                 FrameOut { found: true, vts: vts_params(&o.final_frame, cfg.mirror), arkit: o.final_frame.blendshapes,
-                           glare: o.frame.lens_glare }
+                           glare: o.frame.lens_glare, hands: None, hand_points: vec![] }
             }
-            None => FrameOut { found: false, vts: vec![], arkit: [0.0; 52], glare: None },
+            None => FrameOut { found: false, vts: vec![], arkit: [0.0; 52], glare: None, hands: None, hand_points: vec![] },
         };
+        if let Some(h) = &hand_worker {
+            let (params, points) = h.result.lock().unwrap().clone();
+            f.hands = Some(params.into_iter().map(|(k, v)| (avatar_side(&k, cfg.mirror), v)).collect());
+            let flip = if cfg.mirror { -1.0 } else { 1.0 };
+            f.hand_points = points.into_iter().map(|(side, pts)| (avatar_side(&side, cfg.mirror), pts.into_iter().map(|p| [p[0] * flip, p[1], p[2]]).collect())).collect();
+        }
         *s.frame.lock().unwrap() = Some(f);
         sent += 1;
         if report.elapsed().as_secs_f64() >= 1.0 {
