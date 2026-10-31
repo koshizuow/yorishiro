@@ -1,4 +1,5 @@
-## Settings panel for the Yorishiro tracker input: status, camera preview, pickers, log.
+## Settings panel for the Yorishiro tracker input: status, a 3D head showing what is tracked (never the camera
+## picture), pickers, log.
 extends VBoxContainer
 
 const STATE_COLORS = {"running": Color(0.4, 0.9, 0.5), "starting": Color(1, 0.8, 0.3), "error": Color(1, 0.4, 0.4)}
@@ -7,7 +8,7 @@ var tracker
 
 var _state: Label
 var _details: Label
-var _preview: TextureRect
+var _preview: FacePreview
 var _camera: OptionButton
 var _model: OptionButton
 var _runtime: OptionButton
@@ -24,10 +25,8 @@ func _ready():
 	_details.add_theme_font_size_override("font_size", 12)
 	add_child(_details)
 
-	_preview = TextureRect.new()
-	_preview.custom_minimum_size = Vector2(0, 160)
-	_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_preview = FacePreview.new()
+	_preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	add_child(_preview)
 
 	_camera = _picker("Camera")
@@ -66,11 +65,9 @@ func _ready():
 	add_child(_log)
 
 	tracker.status_changed.connect(_on_status)
-	tracker.preview_changed.connect(func (t): _preview.texture = t)
 	tracker.log_changed.connect(_on_log)
 	_on_status(tracker.status)
 	_on_log(tracker.log_lines)
-	_preview.texture = tracker.preview
 
 func _picker(title: String) -> OptionButton:
 	var row = HBoxContainer.new()

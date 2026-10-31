@@ -60,7 +60,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
     calibration = NeutralCalibration()
     smoother = FrameSmoother()
     frames = _recording_frames(replay, loop) if replay else _camera_frames(camera, *size)
-    preview_on, last_preview = True, 0.0
+    # camera pictures only go out when asked (the app shows a 3D head instead), see "preview" below
+    preview_on, last_preview = False, 0.0
     t0 = time.monotonic()
     last_ts, sent, t_report, faces, infer_ms, fps = -1, 0, t0, 0, 0.0, 0.0
     recalibrate = False

@@ -17,6 +17,8 @@
 ##   --pipe-frames=<file>   keep writing the rendered stage to a shared file (for example in /dev/shm), for
 ##                          the PipeWire test tool (/media/koshizu/Work/dev/external/funnel-sender, outside the repo)
 ##   --press=<a,b>          after --open-panel, press these buttons (node names) in order, for screenshots of what they open
+##   --face-preview         show the 3D tracking preview head in the window corner, next to the stage (with
+##                          --poses and only --screenshot-window: one shot per pose with both)
 ##   --show=<name>          after --open-panel and --press, scroll the page so this node (name) is in view
 ##   --import-models=<dir>  add every model under dir to the model library, as the import card would
 ##   --cycle-models=<prefix> after the screenshot, open each library model in turn like a click on its card, save
@@ -112,6 +114,14 @@ func _ready() -> void:
 				button.pressed.emit()
 			else:
 				push_error("[automation] no button %s" % button_name)
+		if args.has("face-preview"):
+			var layer := CanvasLayer.new()
+			layer.layer = 50
+			var head := FacePreview.new()
+			head.custom_minimum_size = Vector2(300, 300)
+			head.position = Vector2(16, 16)
+			layer.add_child(head)
+			get_tree().root.add_child(layer)
 		if args.has("show"):
 			for i in 30:
 				await get_tree().process_frame
@@ -153,6 +163,8 @@ func _ready() -> void:
 		if args.has("screenshot-window"):
 			var werr = get_viewport().get_texture().get_image().save_png(args["screenshot-window"])
 			print("[automation] window screenshot %s -> %s" % [args["screenshot-window"], error_string(werr)])
+			if args.has("poses") and not args.has("screenshot"):  # poses of the whole window, e.g. the face preview
+				await _shoot_poses(args, get_viewport(), args["screenshot-window"])
 		var viewport = stage.capture_viewport if stage else get_viewport()
 		var path: String = args.get("screenshot", "")
 		if path:

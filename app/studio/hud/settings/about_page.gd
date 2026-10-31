@@ -13,7 +13,7 @@ const COMPONENTS = [
 	["godot-rust and Rust crates", "crates.io authors", "MPL-2.0 and others", "Native addons"],
 	["jf open 粉圓 (Huninn)", "justfont", "SIL OFL 1.1", "Interface font"],
 	["MediaPipe Face Landmarker", "Google", "Apache-2.0", "Face tracking models (yorishiro-tracker)"],
-	["ICT-FaceKit", "USC Institute for Creative Technologies", "MIT", "Expression shapes (yorishiro-tracker)"],
+	["ICT-FaceKit", "USC Institute for Creative Technologies", "MIT", "Expression shapes (yorishiro-tracker) and the 3D head of the tracking preview"],
 ]
 ## license files shown in full, the app's own first
 const LICENSE_FILES = [
@@ -23,6 +23,7 @@ const LICENSE_FILES = [
 	["gd-virtualcamera", "res://license/LICENSE.gdvirtualcamera.md"],
 	["godot-keylogger", "res://license/LICENSE.keylogger.md"],
 	["jf open 粉圓 (Huninn)", "res://ui/fonts/OFL.txt"],
+	["ICT-FaceKit", "res://license/LICENSE.ict-facekit.txt"],
 ]
 
 var _texts := RichTextLabel.new()
