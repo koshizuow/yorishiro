@@ -44,6 +44,41 @@ build_ayagami () {
 	cd $PROJ_ROOT
 }
 
+## Yorishiro's tracking core as a Godot node (core/gd, Phase B4). With NCNN_DIR set (ncnn built with Vulkan),
+## the landmark model can also run on ncnn; ONNX Runtime is loaded at run time from the tracker's venv.
+build_core () {
+	echo -e "\n#### Preparing yorishiro-core\n\n"
+
+	WORKDIR=$PROJ_ROOT/../core/gd
+	ADDON=$PROJ_ROOT/addons/yorishiro_core
+	FEATURES=""
+	if [ -n "$NCNN_DIR" ]; then
+		FEATURES="--features ncnn"
+	fi
+
+	cd $WORKDIR
+	cargo build --release $FEATURES || return 1
+	mkdir -p $ADDON/lib
+	cp target/release/libyorishiro_core_gd.so $ADDON/lib/libyorishiro_core_gd.x86_64.so
+	if [ -n "$NCNN_DIR" ]; then
+		cp -L $NCNN_DIR/lib/libncnn.so.1 $ADDON/lib/  # found through the node library's $ORIGIN rpath
+	fi
+	cat > $ADDON/yorishiro_core.gdextension <<'GDEXT'
+[configuration]
+entry_symbol = "gdext_rust_init"
+compatibility_minimum = 4.7
+reloadable = false
+
+[libraries]
+linux.debug.x86_64 = "res://addons/yorishiro_core/lib/libyorishiro_core_gd.x86_64.so"
+linux.release.x86_64 = "res://addons/yorishiro_core/lib/libyorishiro_core_gd.x86_64.so"
+GDEXT
+	echo "*" > $ADDON/.gitignore
+	find $ADDON -type f
+
+	cd $PROJ_ROOT
+}
+
 build_virtualcamera () {
 	echo -e "\n#### Preparing gd-virtualcamera\n\n"
 
@@ -95,6 +130,7 @@ build_keylogger() {
 # git submodule update --init --recursive
 
 build_ayagami
+build_core
 if [ "$BUILD_VIRTUALCAMERA" = 1 ]; then
 	build_virtualcamera
 fi

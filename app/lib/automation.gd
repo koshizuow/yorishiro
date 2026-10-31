@@ -37,6 +37,9 @@
 ##                          silence, volume and the vowel that wins in each
 ##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png) switch hand tracking on (restarts the Yorishiro tracker with --hands), run with a
 ##                          recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands), check the Hand* inputs
+##   --core-test=<camera>   switch the Yorishiro tracker to the built-in Rust core (addons/yorishiro_core) on that
+##                          camera (the development loopback camera is 10), check it runs and moves the model;
+##                          --core-runtime=<vulkan|tensorrt|cuda|...> picks the landmark runtime (ort-cpu)
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
 ##                          (saved position, background, change model) and check what pressing it does
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
@@ -228,6 +231,8 @@ func _ready() -> void:
 			await _app_action_test()
 		if args.has("expression-editor-test"):
 			await _expression_editor_test(str(args["expression-editor-test"]))
+		if args.has("core-test"):
+			await _core_test(int(args["core-test"]), str(args.get("core-runtime", "ort-cpu")))
 		if args.has("hand-test"):
 			await _hand_test(str(args["hand-test"]))
 		if args.has("mic-test"):
@@ -459,6 +464,41 @@ func _expression_editor_test(shot: String):
 	await wait.call(15)
 	names = model.get_expression_controller().expressions.map(func (e): return e.get_name())
 	check.call("deleted", not FileAccess.file_exists(file) and not ("yori_test" in names))
+
+func _core_test(cam: int, runtime: String):
+	var check := func (what: String, ok: bool): print("[automation] core %s: %s" % [what, "ok" if ok else "FAILED"])
+	var tracking = get_tree().get_first_node_in_group("system:tracking")
+	var face = tracking.get_node("FaceTracker")
+	check.call("extension loaded", face.core_available())
+	if not face.core_available():
+		return
+	face.stop()
+	face.engine = "core"
+	face.camera = cam
+	face.runtime = runtime
+	face.restart()
+	# models load first (TensorRT engines take a while), the 15 s count from the first face
+	var t0 := Time.get_ticks_msec()
+	while not face.found and Time.get_ticks_msec() - t0 < 90000:
+		await get_tree().process_frame
+	t0 = Time.get_ticks_msec()
+	var values: Array[float] = []
+	var found_frames := 0
+	while Time.get_ticks_msec() - t0 < 15000:
+		await get_tree().process_frame
+		if face.found:
+			found_frames += 1
+			values.append(float(tracking.parameters.get("FaceAngleX", 0.0)))
+	var spread := 0.0
+	if values.size() > 1:
+		spread = values.max() - values.min()
+	print("[automation] core status %s" % JSON.stringify(face.status))
+	check.call("running (%s)" % face.status.get("state"), face.status.get("state") == "running")
+	check.call("faces in %d frames" % found_frames, found_frames > 100)
+	check.call("the head moves the model (FaceAngleX spread %.1f)" % spread, spread > 1.0)
+	check.call("Rust core named in the status", str(face.status.get("runtime", "")).contains("Rust core"))
+	face.engine = "process"
+	face.save_settings()
 
 func _hand_test(shots: String):
 	var check := func (what: String, ok: bool): print("[automation] hands %s: %s" % [what, "ok" if ok else "FAILED"])

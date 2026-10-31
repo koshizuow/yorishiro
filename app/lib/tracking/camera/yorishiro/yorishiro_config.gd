@@ -69,6 +69,7 @@ func _ready():
 	_select_text(_runtime, tracker.runtime)
 
 
+	_engine_option()
 	_lost_options()
 	_glasses_option()
 	_output_options()
@@ -162,6 +163,28 @@ func _glasses_option():
 	add_child(row)
 
 ## sending the tracking to other apps; changing one restarts the tracker with the new outputs
+## where the tracking runs: the tracker program, or the core built into the app (when it is built)
+func _engine_option():
+	if not tracker.core_available():
+		return
+	var row := HBoxContainer.new()
+	var label := Label.new()
+	label.text = "Engine"
+	row.add_child(label)
+	var pick := OptionButton.new()
+	pick.name = "EnginePicker"
+	pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pick.add_item("Tracker program (Python)")
+	pick.add_item("Built into the app (Rust core, experimental)")
+	pick.tooltip_text = "The built-in core runs camera and tracking inside Yorishiro, without the separate program."
+	pick.select(1 if tracker.engine == "core" else 0)
+	pick.item_selected.connect(func (i):
+		tracker.engine = "core" if i == 1 else "process"
+		tracker.save_settings()
+		tracker.restart())
+	row.add_child(pick)
+	add_child(row)
+
 func _output_options():
 	var hands = CheckButton.new()
 	hands.name = "TrackHands"

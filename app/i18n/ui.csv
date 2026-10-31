@@ -417,3 +417,7 @@ Track hands,Track hands,追蹤手部
 "Hand position, angle and fingers for models with hand parameters. Uses more CPU.","Hand position, angle and fingers for models with hand parameters. Uses more CPU.",給有手部參數的模型用：手的位置、角度和手指。會多用一些 CPU。
 Hands,Hands,手部
 "Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.","Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.",給有手部參數的模型用：手的位置、角度和手指。和臉部用同一個運算方式並行。
+Engine,Engine,引擎
+Tracker program (Python),Tracker program (Python),追蹤程式（Python）
+"Built into the app (Rust core, experimental)","Built into the app (Rust core, experimental)",內建在 app 裡（Rust 核心，實驗中）
+"The built-in core runs camera and tracking inside Yorishiro, without the separate program.","The built-in core runs camera and tracking inside Yorishiro, without the separate program.",內建核心直接在 Yorishiro 裡處理攝影機和追蹤，不需要另外執行追蹤程式。

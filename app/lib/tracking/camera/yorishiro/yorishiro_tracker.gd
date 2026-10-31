@@ -1,6 +1,8 @@
 ## Yorishiro tracker input. Starts yorishiro-tracker in the background (unless one is already
 ## sending), receives frames, status and camera previews over the local link, and controls it.
 ## Protocol: yorishiro_tracker/sinks/link.py.
+## With engine "core" and the yorishiro_core extension built (core/gd, Phase B4) the tracking runs inside
+## the app instead: the YorishiroCore node returns the same messages from poll().
 extends "../camera_tracker.gd"
 
 const DATA_PORT = 39570
@@ -54,6 +56,9 @@ var send_vts_iphone := false
 var send_ifacialmocap := false
 ## also track hands (MediaPipe hands on the CPU beside the face), the Hand* inputs
 var track_hands := false
+## "process": the yorishiro-tracker program; "core": the YorishiroCore node, when the extension is there
+var engine := "process"
+var _core: Node
 ## 21 points per hand for the 3D preview, by the avatar's sides: {"Left": [[x, y, z], ...]} in metres, y down
 var hand_points := {}
 
@@ -99,8 +104,54 @@ func tracker_command() -> String:
 		return nvidia
 	return tracker_dir.path_join(".venv/bin/yorishiro-tracker")
 
+## the tracking core is built into this app (addons/yorishiro_core)
+static func core_available() -> bool:
+	return ClassDB.class_exists(&"YorishiroCore")
+
+func uses_core() -> bool:
+	return engine == "core" and core_available()
+
+## the tracker folder: its models, the eye model, and the ONNX Runtime library the core loads
+func _tracker_dir() -> String:
+	return ProjectSettings.globalize_path("res://").trim_suffix("/").get_base_dir().path_join("tracker")
+
+func _ort_library() -> String:
+	var dir := _tracker_dir()
+	var venvs := [".venv-nvidia", ".venv"] if runtime in ["cuda", "tensorrt"] else [".venv", ".venv-nvidia"]
+	for v in venvs:
+		var capi: String = dir.path_join(v).path_join("lib/python3.12/site-packages/onnxruntime/capi")
+		for f in DirAccess.get_files_at(capi):
+			if f.begins_with("libonnxruntime.so."):
+				return capi.path_join(f)
+	return ""
+
+func _start_core():
+	_core = ClassDB.instantiate(&"YorishiroCore")
+	_core.name = "YorishiroCore"
+	add_child(_core)
+	var dir := _tracker_dir()
+	_core.camera = camera
+	_core.runtime = runtime
+	_core.models_dir = dir.path_join("models")
+	_core.eye_model = dir.path_join("src/yorishiro_tracker/assets/eye_openness.onnx")
+	_core.ort_library = _ort_library()
+	_append_log("tracking core: camera %d, %s, ONNX Runtime %s" % [camera, runtime, _core.ort_library.get_file()])
+	_core.start()
+	# not ported yet (Phase B5): say so instead of quietly doing nothing
+	var missing := []
+	if track_hands:
+		missing.append("hand tracking")
+	if send_vts_iphone or send_ifacialmocap:
+		missing.append("sending tracking to other apps")
+	if missing:
+		_append_log("the built-in core does not do %s yet, use the tracker program for it" % ", ".join(missing))
+	_set_status({"state": "starting", "message": "starting tracker (first start loads models)"})
+
 func start():
 	stop()
+	if uses_core():
+		_start_core()
+		return
 	var cmd = tracker_command()
 	if not FileAccess.file_exists(cmd):
 		_set_status({"state": "error",
@@ -124,6 +175,10 @@ func start():
 	_set_status({"state": "starting", "message": "starting tracker (first start loads models)"})
 
 func stop():
+	if _core:
+		_core.stop()
+		_core.queue_free()
+		_core = null
 	if _pid and OS.is_process_running(_pid):
 		send_command({"cmd": "quit"})
 		OS.kill(_pid)
@@ -135,18 +190,25 @@ func restart():
 	start()
 
 func calibrate():
+	if _core:
+		_core.recalibrate()
+		return
 	send_command({"cmd": "calibrate"})
 
 func send_command(cmd: Dictionary):
 	_control.put_packet(JSON.stringify(cmd).to_utf8_buffer())
 
 func is_managed() -> bool:
-	return _pid != 0
+	return _pid != 0 or _core != null
 
 func _process(delta):
 	_receive()
 	_ease_to_rest(delta)
 	_drain_pipes()
+	if _core:
+		for line in _core.take_log():
+			_append_log(line)
+		return
 	if _pid == 0 and not _adopted and _started_msec and status.get("state") != "error":
 		if Time.get_ticks_msec() - _started_msec > ADOPT_WAIT_SEC * 1000:
 			_started_msec = 0
@@ -158,13 +220,21 @@ func _process(delta):
 		if status.get("state") != "error":
 			_set_status({"state": "error", "message": "tracker stopped (exit code %d), see the log" % code})
 
+func _messages() -> Array:
+	var out := []
+	if _core:
+		out.append_array(_core.poll())
+		return out
+	while _data.get_available_packet_count() > 0:
+		out.append(JSON.parse_string(_data.get_packet().get_string_from_utf8()))
+	return out
+
 func _receive():
 	var latest_frame = null
-	while _data.get_available_packet_count() > 0:
-		var msg = JSON.parse_string(_data.get_packet().get_string_from_utf8())
+	for msg in _messages():
 		if typeof(msg) != TYPE_DICTIONARY:
 			continue
-		if not _adopted and _pid == 0:
+		if not _adopted and _pid == 0 and not _core:
 			_adopted = true
 			_started_msec = 0
 			_append_log("using a tracker that was already running")
@@ -178,7 +248,7 @@ func _receive():
 	if latest_frame != null:
 		found = latest_frame.get("found", false)
 		if found and latest_frame.has("glare"):
-			_count_glare(latest_frame["glare"])
+			_count_glare(Array(latest_frame["glare"]))
 		if not found and _lost_msec == 0:
 			_lost_msec = Time.get_ticks_msec()
 		if found:
@@ -275,10 +345,12 @@ func load_settings():
 		send_vts_iphone = bool(data.get("send_vts_iphone", send_vts_iphone))
 		send_ifacialmocap = bool(data.get("send_ifacialmocap", send_ifacialmocap))
 		track_hands = bool(data.get("track_hands", track_hands))
+		engine = str(data.get("engine", engine))
 
 func save_settings():
 	var f = FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"camera": camera, "tracker": tracker_name, "runtime": runtime,
 			"when_lost": when_lost, "lost_delay": lost_delay, "glasses": glasses,
-			"send_vts_iphone": send_vts_iphone, "send_ifacialmocap": send_ifacialmocap, "track_hands": track_hands}))
+			"send_vts_iphone": send_vts_iphone, "send_ifacialmocap": send_ifacialmocap, "track_hands": track_hands,
+			"engine": engine}))

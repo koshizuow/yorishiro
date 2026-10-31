@@ -5,7 +5,7 @@ use crate::backend::Error;
 use crate::fit::Fitter;
 use crate::glare::lens_glare;
 use crate::image::Image;
-use crate::inference::{eye_widths, Blendshapes, Eyes, FaceMesh};
+use crate::inference::{eye_widths, Blendshapes, Eyes, FaceMesh, LandmarkRuntime};
 use crate::pipeline::{Extras, Output, Pipeline};
 use std::path::Path;
 
@@ -26,8 +26,13 @@ pub struct ModelPaths<'a> {
 
 impl Tracker {
     pub fn open(paths: &ModelPaths, threads: usize) -> Result<Self, Error> {
+        Self::open_on(paths, LandmarkRuntime::OrtCpu, threads)
+    }
+
+    /// With the landmark model on the given runtime.
+    pub fn open_on(paths: &ModelPaths, runtime: LandmarkRuntime, threads: usize) -> Result<Self, Error> {
         Ok(Self {
-            mesh: FaceMesh::open(paths.mediapipe, threads)?,
+            mesh: FaceMesh::open_on(paths.mediapipe, runtime, threads)?,
             blend: Blendshapes::open(&paths.mediapipe.join("face_blendshapes.onnx"))?,
             eyes: paths.eyes.map(Eyes::open).transpose()?,
             pipeline: Pipeline::new(Fitter::load(paths.fit).map_err(|e| e.to_string())?),
