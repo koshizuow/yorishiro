@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use ayagami::meta::Physics3;
 use ayagami::physics::{PhysicsEngine, PhysicsOptions};
+use ayagami::pose::{Key, Value};
 use godot::classes::{FileAccess, IResourceFormatLoader, ResourceFormatLoader, ResourceLoader};
 use godot::global::Error;
 use godot::prelude::*;
@@ -101,6 +104,19 @@ pub struct AyagamiPhysicsMutator {
     #[export]
     #[var(set = set_mode)]
     pub mode: PhysicsMode,
+
+    /// Yorishiro: physics off leaves the outputs where the motions and tracking put them
+    #[export]
+    #[init(val = true)]
+    pub enabled: bool,
+    /// Yorishiro: how far the outputs follow the simulation, 1 as simulated, 0 not at all, above 1 further
+    #[export]
+    #[init(val = 1.0)]
+    pub strength: f32,
+    /// per physics setting (group) id, multiplies `strength`
+    group_strength: HashMap<String, f32>,
+    /// output parameters of each physics setting: (id, name from the physics dictionary, keys)
+    groups: Vec<(String, String, Vec<Key<'static>>)>,
 }
 
 #[godot_api]
@@ -149,18 +165,92 @@ impl AyagamiPhysicsMutator {
             panic!("Could not load physics from {}", path)
         };
         self.definition = path;
+        self.groups = {
+            let physics = &options.bind().physics;
+            physics
+                .physics_settings
+                .iter()
+                .map(|setting| {
+                    let name = physics
+                        .meta
+                        .physics_dictionary
+                        .iter()
+                        .find(|d| d.id == setting.id)
+                        .map(|d| d.name.clone())
+                        .unwrap_or_else(|| setting.id.clone());
+                    let keys = setting
+                        .output
+                        .iter()
+                        .map(|o| Key::from_param(o.destination.id.clone()))
+                        .collect();
+                    (setting.id.clone(), name, keys)
+                })
+                .collect()
+        };
         self.options = Some(options);
 
         self.reload_physics();
+    }
+
+    /// physics settings of the model as [{id, name}], in file order
+    #[func]
+    pub fn get_groups(&self) -> VarArray {
+        let mut out = VarArray::new();
+        for (id, name, _) in self.groups.iter() {
+            let mut d = VarDictionary::new();
+            d.set("id", &GString::from(id.as_str()));
+            d.set("name", &GString::from(name.as_str()));
+            out.push(&d.to_variant());
+        }
+        out
+    }
+
+    #[func]
+    pub fn set_group_strength(&mut self, id: GString, value: f32) {
+        self.group_strength.insert(id.to_string(), value);
+    }
+
+    #[func]
+    pub fn get_group_strength(&self, id: GString) -> f32 {
+        *self.group_strength.get(&id.to_string()).unwrap_or(&1.0)
     }
 }
 
 #[godot_dyn]
 impl IMutator for AyagamiPhysicsMutator {
     fn apply(&mut self, pose: &mut Pose) {
+        if !self.enabled {
+            return;
+        }
         let delta: f32 = self.base().get_process_delta_time() as f32;
-        if let Some(controller) = self.physics_controller.as_mut() {
+        let Some(controller) = self.physics_controller.as_mut() else {
+            return;
+        };
+        let weight = |id: &String| self.strength * self.group_strength.get(id).copied().unwrap_or(1.0);
+        if self.groups.iter().all(|(id, _, _)| weight(id) == 1.0) {
             controller.update(pose, delta);
+            return;
+        }
+        // the values before the simulation, to move the simulated ones toward (or past) by the strength
+        let before: Vec<Vec<Option<f32>>> = self
+            .groups
+            .iter()
+            .map(|(_, _, keys)| keys.iter().map(|k| pose.get_flattened(k)).collect())
+            .collect();
+        controller.update(pose, delta);
+        for ((id, _, keys), base) in self.groups.iter().zip(before) {
+            let w = weight(id);
+            if w == 1.0 {
+                continue;
+            }
+            for (key, b) in keys.iter().zip(base) {
+                let (Some(b), Some(after)) = (b, pose.get_flattened(key)) else {
+                    continue;
+                };
+                if let Some(v) = pose.get_mut_flattened(key) {
+                    *v = Value::opaque(b + (after - b) * w);
+                }
+            }
         }
     }
 }
