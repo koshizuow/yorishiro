@@ -17,13 +17,20 @@ Licensing by directory
   tools/    Same license as the component they belong to (app MIT, tracker
             Apache-2.0).
 
-Third-party components used by app/ (git submodules, unmodified)
+Third-party components used by app/
 
   Ayagami (ayagami-gd)  https://github.com/AyagamiDev/ayagami-gd
                         MIT, Copyright (c) The Ayagami Project Contributors.
+                        Included as app/thirdparty/ayagami with Yorishiro's
+                        fixes (git history).
                         Statically links the Ayagami core library
                         (https://github.com/AyagamiDev/ayagami), MIT or
                         Apache-2.0.
+  libfunnel             https://github.com/hoshinolina/libfunnel
+                        MIT, Copyright the libfunnel contributors. Included
+                        as app/thirdparty/libfunnel, compiled into
+                        app/native/funnel_out/yorishiro-funnel together with
+                        PipeWire's client library (MIT).
   gd-virtualcamera      https://github.com/erodozer/gd-virtualcamera
                         The Unlicense (public domain)
   godot-keylogger       https://github.com/erodozer/godot-keylogger
