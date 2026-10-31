@@ -73,14 +73,17 @@ func _ready() -> void:
 			for i in 15:
 				await get_tree().process_frame
 			_open_panel(args["open-panel"])
-			for button_name in args.get("press", "").split(",", false):
-				for i in 30:
-					await get_tree().process_frame
-				var button = get_tree().root.find_child(button_name, true, false)
-				if button is BaseButton:
-					button.pressed.emit()
-				else:
-					push_error("[automation] no button %s" % button_name)
+		if args.has("press"):
+			for i in 15:
+				await get_tree().process_frame
+		for button_name in args.get("press", "").split(",", false):
+			for i in 30:
+				await get_tree().process_frame
+			var button = get_tree().root.find_child(button_name, true, false)
+			if button is BaseButton:
+				button.pressed.emit()
+			else:
+				push_error("[automation] no button %s" % button_name)
 		for i in int(args.get("wait-frames", "90")):
 			await RenderingServer.frame_post_draw
 		if args.has("screenshot-window"):

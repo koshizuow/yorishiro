@@ -327,6 +327,24 @@ func variations() -> void:
 	t.set_color("font_hover_pressed_color", "OverlayTab", TEXT)
 	t.set_font_size("font_size", "OverlayTab", 17)
 
+	# model picker cards: thumbnail on a raised card, the loaded model outlined in the accent
+	v.call("ModelCard", "Button")
+	t.set_stylebox("normal", "ModelCard", box(RAISED, PANEL_RADIUS, 8, 8))
+	t.set_stylebox("hover", "ModelCard", box(FIELD_HOVER, PANEL_RADIUS, 8, 8))
+	t.set_stylebox("pressed", "ModelCard", box(RAISED, PANEL_RADIUS, 8, 8, ACCENT, 3))
+	t.set_stylebox("hover_pressed", "ModelCard", box(FIELD_HOVER, PANEL_RADIUS, 8, 8, ACCENT, 3))
+	v.call("ModelCardImport", "Button")
+	var dashed := box(Color.TRANSPARENT, PANEL_RADIUS, 8, 24, STRONG_RULE, 2)
+	t.set_stylebox("normal", "ModelCardImport", dashed)
+	t.set_stylebox("hover", "ModelCardImport", box(FIELD_HOVER, PANEL_RADIUS, 8, 24, ACCENT, 2))
+	t.set_stylebox("pressed", "ModelCardImport", box(ACCENT_DIM, PANEL_RADIUS, 8, 24, ACCENT, 2))
+	t.set_color("font_color", "ModelCardImport", SUB)
+	t.set_color("icon_normal_color", "ModelCardImport", SUB)
+	t.set_constant("icon_max_width", "ModelCardImport", 40)
+	# the stage's model picker bar
+	v.call("StagePanel", "PanelContainer")
+	t.set_stylebox("panel", "StagePanel", box(Color(PANEL, 0.92), PANEL_RADIUS, 12, 12))
+
 	v.call("LockButton", "CheckButton")
 	t.set_icon("checked", "LockButton", shared_icon("lock"))
 	t.set_icon("unchecked", "LockButton", shared_icon("unlock"))

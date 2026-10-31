@@ -2,6 +2,7 @@ extends "res://ui/popout_panel.gd"
 
 const SettingsOverlay = preload("res://studio/hud/settings/settings_overlay.gd")
 const HotkeysPage = preload("res://studio/hud/settings/hotkeys_page.gd")
+const ModelStrip = preload("res://studio/hud/model_strip/model_strip.gd")
 ## seconds without mouse movement before the stage buttons fade out (clean window capture)
 const IDLE_FADE_SECONDS = 3.0
 
@@ -34,6 +35,7 @@ var open
 var group: ButtonGroup
 var model_browser_opened := false
 var overlay: SettingsOverlay
+var stage_models: PanelContainer
 var _idle := 0.0
 
 @onready var stage = get_tree().get_first_node_in_group("system:stage")
@@ -112,6 +114,8 @@ func _ready() -> void:
 		)
 
 func _build_overlay() -> void:
+	if stage:
+		ModelLibrary.watch(stage)
 	var layer := CanvasLayer.new()
 	layer.name = "OverlayLayer"
 	layer.layer = 10
@@ -120,11 +124,9 @@ func _build_overlay() -> void:
 	overlay = SettingsOverlay.new()
 	layer.add_child(overlay)
 
-	var load_model := Button.new()
-	load_model.text = "Load Model..."
-	load_model.theme_type_variation = &"AccentButton"
-	load_model.pressed.connect(_on_model_btn_pressed)
-	overlay.add_page(&"model", "Models & Items", PanelPage.new(preload("res://studio/hud/item_panel/item_panel.tscn"), "ItemPanel", [load_model]))
+	var page_models := _model_strip()
+	page_models.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	overlay.add_page(&"model", "Models & Items", PanelPage.new(preload("res://studio/hud/item_panel/item_panel.tscn"), "ItemPanel", [page_models]))
 	overlay.add_page(&"hotkeys", "Hotkeys", HotkeysPage.new())
 	overlay.add_page(&"settings", "Settings", PanelPage.new(preload("res://studio/hud/camera_panel/camera_panel.tscn"), "CameraPanel"))
 
@@ -142,15 +144,47 @@ func _build_overlay() -> void:
 	%CameraBtn.get_parent().add_child(gear)
 	%CameraBtn.get_parent().move_child(gear, 0)
 
+	# the person button shows the model picker along the bottom of the stage
+	var models := Button.new()
+	models.name = "ModelsBtn"
+	models.icon = preload("res://studio/hud/person.svg")
+	models.tooltip_text = "Models"
+	models.theme_type_variation = gear.theme_type_variation
+	models.custom_minimum_size = gear.custom_minimum_size
+	models.expand_icon = gear.expand_icon
+	%CameraBtn.get_parent().add_child(models)
+	%CameraBtn.get_parent().move_child(models, 1)
+	stage_models = PanelContainer.new()
+	stage_models.name = "StageModels"
+	stage_models.theme_type_variation = &"StagePanel"
+	stage_models.visible = false
+	stage_models.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE, Control.PRESET_MODE_MINSIZE, 16)
+	stage_models.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var strip := _model_strip()
+	strip.picked.connect(func (_p): stage_models.hide(), CONNECT_DEFERRED)
+	stage_models.add_child(strip)
+	layer.add_child(stage_models)
+	layer.move_child(stage_models, 0)
+	models.pressed.connect(func (): stage_models.visible = not stage_models.visible)
+
+func _model_strip() -> ModelStrip:
+	var strip := ModelStrip.new()
+	strip.picked.connect(ModelLibrary.open)
+	strip.import_requested.connect(_on_model_btn_pressed)
+	return strip
+
 func _process(delta: float) -> void:
 	# fade the stage buttons when the mouse rests, bring them back on movement
 	_idle += delta
-	var target := 1.0 if _idle < IDLE_FADE_SECONDS or overlay.visible else 0.0
+	var target := 1.0 if _idle < IDLE_FADE_SECONDS or overlay.visible or stage_models.visible else 0.0
 	%Menu.modulate.a = move_toward(%Menu.modulate.a, target, delta * 4.0)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_idle = 0.0
+	if stage_models.visible and event.is_action_pressed("ui_cancel"):
+		stage_models.hide()
+		get_viewport().set_input_as_handled()
 
 func _close_panel():
 	if open != null:
@@ -221,6 +255,6 @@ func _on_model_btn_pressed() -> void:
 	%ModelBrowser.show()
 
 func _on_model_browser_file_selected(path: String) -> void:
-	var model = ModelManager.make_model(path)
-	if model:
-		stage.spawn_model(model)
+	ModelLibrary.add_imported(path)
+	ModelLibrary.open(path)
+	stage_models.hide()

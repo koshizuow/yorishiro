@@ -42,6 +42,7 @@ BlueprintManager="*uid://dridhda34w6dx"
 BlendRegistry="*uid://dmhw76skp73u3"
 WindowManager="*uid://bl4pt68qhf3tn"
 Locale="*res://lib/locale.gd"
+ModelLibrary="*res://lib/model_library.gd"
 Preferences="*res://lib/preferences.gd"
 Automation="*res://lib/automation.gd"
 

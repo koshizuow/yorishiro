@@ -86,3 +86,7 @@ Night Sakura (Default),Night Sakura (Default),夜櫻（預設）
 Automata (OpenVT),Automata (OpenVT),Automata（OpenVT）
 Language,Language,語言
 Load,Load,載入
+Models,Models,模型
+Import...,Import...,匯入…
+Load a model from a folder on this computer,Load a model from a folder on this computer,從這台電腦的資料夾載入模型
+Unable to load model,Unable to load model,無法載入模型

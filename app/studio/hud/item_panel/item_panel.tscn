@@ -61,8 +61,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(96, 32)
 layout_mode = 2
 focus_mode = 0
-text = "Load
-"
+text = "Load"
 icon = ExtResource("4_xjyov")
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer" unique_id=2142864229]
