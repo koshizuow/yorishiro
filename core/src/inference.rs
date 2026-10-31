@@ -126,10 +126,12 @@ pub fn roi_from_landmarks(px: &[P3]) -> Roi {
 
 /// Which runtime runs the landmark model (the detector, MediaPipe's blendshapes and the eye model stay on
 /// ONNX Runtime CPU: small, and the Python tracker does the same).
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LandmarkRuntime {
     /// ONNX Runtime CPU (the reference)
     OrtCpu,
+    /// ONNX Runtime with CUDA (fp32) or TensorRT (fp16), see backend::Provider
+    Ort(crate::backend::Provider),
     /// ncnn on the first Vulkan GPU, fp16 or fp32
     #[cfg(feature = "ncnn")]
     Vulkan { fp16: bool },
@@ -197,6 +199,11 @@ impl FaceMesh {
     pub fn open_on(models: &Path, runtime: LandmarkRuntime, threads: usize) -> Result<Self, Error> {
         let (landmarker, name) = match runtime {
             LandmarkRuntime::OrtCpu => (Landmarker::Ort(OrtModel::open(&models.join("face_landmarks.onnx"), threads)?), "ort-cpu-fp32".to_string()),
+            LandmarkRuntime::Ort(provider) => {
+                let m = OrtModel::open_on(&models.join("face_landmarks.onnx"), threads, &provider)?;
+                let n = m.name.clone();
+                (Landmarker::Ort(m), n)
+            }
             #[cfg(feature = "ncnn")]
             LandmarkRuntime::Vulkan { fp16 } => {
                 let m = crate::ncnn::NcnnModel::open(&models.join("face_landmarks"), true, fp16, threads)?;

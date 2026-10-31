@@ -8,9 +8,10 @@ publish = false
 
 [dependencies]
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
+libloading = "0.9.0"
 nalgebra = "0.33"
 npyz = { version = "0.8", features = ["npz"] }
-ort = { version = "2.0.0-rc.15", default-features = false, features = ["load-dynamic", "std"] }
+ort = { version = "2.0.0-rc.15", default-features = false, features = ["load-dynamic", "std", "cuda", "tensorrt"] }
 
 [features]
 # ncnn with Vulkan for the landmark model (AMD, Intel and other GPUs without CUDA); needs ncnn built with
