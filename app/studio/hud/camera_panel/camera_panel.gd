@@ -59,15 +59,8 @@ func _ready() -> void:
 		
 	# conditionally handle virtual webcam controls based on platform availability
 	if OS.has_feature("linux"):
-		var v4l2_stream = get_tree().get_first_node_in_group("output:v4l2")
-		var feeds = v4l2_stream.get_devices()
-		
-		for feed in feeds:
-			%VirtualCameraDevice.add_item(feed.name)
-			%VirtualCameraDevice.set_item_metadata(%VirtualCameraDevice.item_count - 1, feed.id)
-		if len(feeds) > 0:
-			%VirtualCameraDevice.select(0)
-		var vp = get_tree().get_first_node_in_group("system:stage").capture_viewport
+		_virtual_camera_hint()
+		_refresh_virtual_cameras()
 	else:
 		%VirtualWebcam.queue_free()
 		
@@ -197,6 +190,57 @@ func _on_microphone_toggle_toggled(toggled_on: bool) -> void:
 	if not tracking_system:
 		return	
 	tracking_system.get_node("MicrophoneTracker").enabled = toggled_on
+
+## v4l2loopback devices the stage can be sent to. Creating one needs root, so without one the app only
+## explains how (the switch stays off and a hint with the command shows), and can look again.
+const LOOPBACK_COMMAND = "sudo modprobe v4l2loopback devices=1 video_nr=20 card_label=\"Yorishiro\" exclusive_caps=1"
+## with the module already loaded (another app's loopback devices) modprobe adds nothing, a device is added instead
+const LOOPBACK_ADD_COMMAND = "sudo v4l2loopback-ctl add -n Yorishiro /dev/video20"
+var _vcam_hint: VBoxContainer
+
+func _refresh_virtual_cameras() -> void:
+	var v4l2_stream = get_tree().get_first_node_in_group("output:v4l2")
+	var feeds = v4l2_stream.get_devices()
+	%VirtualCameraDevice.clear()
+	for feed in feeds:
+		%VirtualCameraDevice.add_item(feed.name)
+		%VirtualCameraDevice.set_item_metadata(%VirtualCameraDevice.item_count - 1, feed.id)
+	var any: bool = len(feeds) > 0
+	if any:
+		%VirtualCameraDevice.select(0)
+	%VirtualCameraDevice.visible = any
+	%V4L2Toggle.disabled = not any
+	_vcam_hint.visible = not any
+
+func _virtual_camera_hint() -> void:
+	_vcam_hint = VBoxContainer.new()
+	_vcam_hint.name = "VirtualCameraHint"
+	var text := Label.new()
+	text.text = "No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:"
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.theme_type_variation = &"SubscriptLabel"
+	_vcam_hint.add_child(text)
+	var row := HBoxContainer.new()
+	var command := LineEdit.new()
+	var loaded := DirAccess.dir_exists_absolute("/sys/module/v4l2loopback")
+	var cmd_text := LOOPBACK_ADD_COMMAND if loaded else LOOPBACK_COMMAND
+	command.text = cmd_text
+	command.editable = false
+	command.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(command)
+	var copy := Button.new()
+	copy.text = "Copy"
+	copy.pressed.connect(func (): DisplayServer.clipboard_set(cmd_text))
+	row.add_child(copy)
+	var again := Button.new()
+	again.name = "VirtualCameraRescan"
+	again.text = "Check again"
+	again.pressed.connect(_refresh_virtual_cameras)
+	row.add_child(again)
+	_vcam_hint.add_child(row)
+	var row_parent: Node = %VirtualWebcam.get_parent()
+	row_parent.add_child(_vcam_hint)
+	row_parent.move_child(_vcam_hint, %VirtualWebcam.get_index() + 1)
 
 func _on_loopback_item_selected(index: int) -> void:
 	_on_v4l2_toggled(%V4L2Toggle.button_pressed)

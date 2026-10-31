@@ -344,3 +344,6 @@ In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also
 In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,在那個軟體選擇 iFacialMocap 當作追蹤來源，輸入 127.0.0.1。
 Add item...,Add item...,加入道具…
 Pictures in the Items folder show up here. Add one from anywhere on this computer.,Pictures in the Items folder show up here. Add one from anywhere on this computer.,Items 資料夾裡的圖片會出現在這裡，也可以從這台電腦的任何地方加入。
+"No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:","No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:",還沒有虛擬攝影機裝置。請在終端機執行一次下面的指令（需要輸入密碼），再按「重新檢查」：
+Copy,Copy,複製
+Check again,Check again,重新檢查
