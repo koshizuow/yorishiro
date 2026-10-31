@@ -13,6 +13,7 @@ var _camera: OptionButton
 var _model: OptionButton
 var _runtime: OptionButton
 var _log: TextEdit
+var _glare_hint: Label
 
 func _ready():
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -25,7 +26,15 @@ func _ready():
 	_details.add_theme_font_size_override("font_size", 12)
 	add_child(_details)
 
+	_glare_hint = Label.new()
+	_glare_hint.name = "GlareHint"
+	_glare_hint.text = "Your glasses reflect the screen, so blinks and winks can be missed. Turn the screen brightness down, light the room a little more, or tilt your glasses slightly."
+	_glare_hint.theme_type_variation = &"FieldLabel"
+	_glare_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_glare_hint.visible = false
+	add_child(_glare_hint)
 	_preview = FacePreview.new()
+	_preview.name = "FacePreview"
 	_preview.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	add_child(_preview)
 
@@ -46,7 +55,9 @@ func _ready():
 		_runtime.add_item(r)
 	_select_text(_runtime, tracker.runtime)
 
+
 	_lost_options()
+	_glasses_option()
 
 	for b in [["Restart tracker", _on_restart], ["Recalibrate (look straight, relax)", tracker.calibrate]]:
 		var button = Button.new()
@@ -116,6 +127,28 @@ func _lost_options():
 		tracker.lost_delay = v
 		tracker.save_settings())
 	add_child(row)
+
+func _glasses_option():
+	var row = HBoxContainer.new()
+	var label = Label.new()
+	label.text = "Glasses"
+	row.add_child(label)
+	var mode = OptionButton.new()
+	mode.name = "Glasses"
+	# items in the enum's order: AUTO, ON, OFF
+	for t in ["Detect from reflections", "I wear glasses", "No glasses"]:
+		mode.add_item(t)
+	mode.select(tracker.glasses)
+	mode.tooltip_text = "Shown on the preview head. Detection only notices glasses that reflect the screen."
+	mode.item_selected.connect(func (i):
+		tracker.glasses = i
+		tracker.save_settings())
+	row.add_child(mode)
+	add_child(row)
+
+func _process(_delta):
+	if _glare_hint:
+		_glare_hint.visible = tracker.glare_now
 
 func _on_restart():
 	tracker.camera = _camera.get_selected_id()

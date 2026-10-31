@@ -49,6 +49,8 @@ class LinkSink:
                 arkit={n: round(float(v), 4) for n, v in zip(ARKIT52, frame.blendshapes)},
                 vts={k: round(v, 4) for k, v in vts_params(frame, self.mirror).items()},
             )
+            if frame.lens_glare is not None:
+                msg["glare"] = [round(g, 3) for g in frame.lens_glare]
         self._send(msg)
 
     def status(self, state: str, message: str = "", **fields) -> None:

@@ -8,6 +8,7 @@ import numpy as np
 from ..adapters.landmark_smoother import LandmarkSmoother
 from ..adapters.mediapipe_blendshapes import MediaPipeBlendshapes, merge
 from ..adapters.mediapipe_points import FIT_COVERAGE, GAZE_SHAPES, MediaPipePointFitter, head_position
+from ..adapters.lens_glare import lens_glare
 from ..adapters.vts_params import mouth_gap
 from ..avatar.ict import ensure_ict_facekit
 from ..frame import FaceFrame
@@ -55,6 +56,7 @@ class FaceMeshGpuTracker(Tracker):
             left_eye_rotation=left_eye,
             right_eye_rotation=right_eye,
             mouth_gap=mouth_gap(smoothed, w, h),
+            lens_glare=lens_glare(bgr, smoothed),
         )
         res = TrackResult(frame=frame, landmarks=landmarks)
         res.aligned = aligned

@@ -48,6 +48,8 @@ class FaceFrame:
     right_eye_rotation: np.ndarray
     # inner lip gap over face height (landmarks 13-14 over 10-152), None when the tracker has no landmarks
     mouth_gap: float | None = None
+    # share of each eye's area covered by reflections on glasses (left, right, subject's sides), see lens_glare.py
+    lens_glare: tuple[float, float] | None = None
 
     def to_vector(self) -> np.ndarray:
         return np.concatenate([

@@ -30,6 +30,22 @@ var camera := 0
 var when_lost := WhenLost.REST
 var lost_delay := 1.0
 var _lost_msec := 0
+
+## glasses: AUTO decides from screen reflections on the lenses (lens_glare.py in the tracker)
+enum Glasses { AUTO, ON, OFF }
+var glasses := Glasses.AUTO
+## a frame counts as glare when a lens shows more than this share of reflection (no-glasses faces stay
+## under 0.002, the user's glasses above 0.02 in 44% of frames)
+const GLARE_FRAME = 0.02
+## glare is "now" when that many of the last GLARE_WINDOW frames had it, glasses are detected after
+## GLARE_SECONDS of glare in this session
+const GLARE_WINDOW = 90
+const GLARE_SHARE = 0.2
+const GLARE_SECONDS = 2.0
+var glare_now := false
+var _glare_frames: Array[bool] = []
+var _glare_msec := 0
+var _last_glare_check := 0
 var tracker_name := "facemesh"
 var runtime := "vulkan"
 
@@ -147,12 +163,29 @@ func _receive():
 				latest_frame = msg
 	if latest_frame != null:
 		found = latest_frame.get("found", false)
+		if found and latest_frame.has("glare"):
+			_count_glare(latest_frame["glare"])
 		if not found and _lost_msec == 0:
 			_lost_msec = Time.get_ticks_msec()
 		if found:
 			_lost_msec = 0
 			arkit = latest_frame.get("arkit", {})
 			update(latest_frame.get("vts", {}))
+
+func _count_glare(g: Array):
+	var now := Time.get_ticks_msec()
+	var hit: bool = maxf(float(g[0]), float(g[1])) > GLARE_FRAME
+	_glare_frames.append(hit)
+	if _glare_frames.size() > GLARE_WINDOW:
+		_glare_frames.pop_front()
+	glare_now = _glare_frames.count(true) >= GLARE_SHARE * GLARE_WINDOW
+	if glare_now and _last_glare_check:
+		_glare_msec += now - _last_glare_check
+	_last_glare_check = now
+
+## whether the user wears glasses: set by hand, or seen from lens reflections
+func wears_glasses() -> bool:
+	return glasses == Glasses.ON or (glasses == Glasses.AUTO and _glare_msec >= GLARE_SECONDS * 1000)
 
 ## while the face is lost (and the setting says so), move every tracked value toward its resting value
 func _ease_to_rest(delta: float):
@@ -219,10 +252,11 @@ func load_settings():
 		tracker_name = data.get("tracker", tracker_name)
 		runtime = data.get("runtime", runtime)
 		when_lost = int(data.get("when_lost", when_lost))
+		glasses = int(data.get("glasses", glasses))
 		lost_delay = float(data.get("lost_delay", lost_delay))
 
 func save_settings():
 	var f = FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"camera": camera, "tracker": tracker_name, "runtime": runtime,
-			"when_lost": when_lost, "lost_delay": lost_delay}))
+			"when_lost": when_lost, "lost_delay": lost_delay, "glasses": glasses}))

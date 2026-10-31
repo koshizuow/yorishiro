@@ -167,3 +167,9 @@ Head %+.1f / %+.1f / %+.1f cm,Head %+.1f / %+.1f / %+.1f cm,頭部 %+.1f / %+.1f
 Return to the resting pose,Return to the resting pose,回到正面姿勢
 Freeze in the last pose,Freeze in the last pose,停在最後的姿勢
 after,after,延遲
+"Your glasses reflect the screen, so blinks and winks can be missed. Turn the screen brightness down, light the room a little more, or tilt your glasses slightly.","Your glasses reflect the screen, so blinks and winks can be missed. Turn the screen brightness down, light the room a little more, or tilt your glasses slightly.",眼鏡反射了螢幕的光，眨眼可能偵測不到。可以調低螢幕亮度、讓房間亮一點，或稍微調整眼鏡角度。
+Glasses,Glasses,眼鏡
+Detect from reflections,Detect from reflections,依反光自動偵測
+I wear glasses,I wear glasses,有戴眼鏡
+No glasses,No glasses,沒戴眼鏡
+Shown on the preview head. Detection only notices glasses that reflect the screen.,Shown on the preview head. Detection only notices glasses that reflect the screen.,會顯示在預覽頭上。自動偵測只認得出有反光的眼鏡。
