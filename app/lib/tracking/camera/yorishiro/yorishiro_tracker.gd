@@ -135,14 +135,14 @@ func _start_core():
 	_core.models_dir = dir.path_join("models")
 	_core.eye_model = dir.path_join("src/yorishiro_tracker/assets/eye_openness.onnx")
 	_core.ort_library = _ort_library()
+	_core.send_vts_iphone = send_vts_iphone
+	_core.ifacialmocap_host = "127.0.0.1" if send_ifacialmocap else ""
 	_append_log("tracking core: camera %d, %s, ONNX Runtime %s" % [camera, runtime, _core.ort_library.get_file()])
 	_core.start()
 	# not ported yet (Phase B5): say so instead of quietly doing nothing
 	var missing := []
 	if track_hands:
 		missing.append("hand tracking")
-	if send_vts_iphone or send_ifacialmocap:
-		missing.append("sending tracking to other apps")
 	if missing:
 		_append_log("the built-in core does not do %s yet, use the tracker program for it" % ", ".join(missing))
 	_set_status({"state": "starting", "message": "starting tracker (first start loads models)"})

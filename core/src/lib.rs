@@ -22,6 +22,7 @@ pub mod inference;
 pub mod ncnn;
 pub mod pipeline;
 pub mod pose;
+pub mod sinks;
 pub mod smooth;
 pub mod vts;
 

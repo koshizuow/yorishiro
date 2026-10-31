@@ -13,6 +13,7 @@ use yorishiro_core::backend::{preload_nvidia, runtime as ort_runtime, Provider};
 use yorishiro_core::camera::Camera;
 use yorishiro_core::frame::ARKIT52;
 use yorishiro_core::inference::LandmarkRuntime;
+use yorishiro_core::sinks::{IFacialMocapSink, VtsIphoneSink, VTS_REQUEST_PORT};
 use yorishiro_core::tracker::{ModelPaths, Tracker};
 use yorishiro_core::vts::vts_params;
 
@@ -71,6 +72,12 @@ pub struct YorishiroCore {
     #[export]
     #[init(val = true)]
     mirror: bool,
+    /// answer VTube Studio iPhone protocol requests on UDP 21412 (VTube Studio, OpenVT)
+    #[export]
+    send_vts_iphone: bool,
+    /// send iFacialMocap to this host's 49983 (VSeeFace, Warudo, VNyan), empty for off
+    #[export]
+    ifacialmocap_host: GString,
     shared: Option<Arc<Shared>>,
     worker: Option<JoinHandle<()>>,
     base: Base<Node>,
@@ -90,6 +97,8 @@ impl YorishiroCore {
             eye_model: Some(self.eye_model.to_string()).filter(|s| !s.is_empty()).map(PathBuf::from),
             ort_library: Some(self.ort_library.to_string()).filter(|s| !s.is_empty()).map(PathBuf::from),
             mirror: self.mirror,
+            vts_iphone: self.send_vts_iphone,
+            ifacialmocap: Some(self.ifacialmocap_host.to_string()).filter(|s| !s.is_empty()),
         };
         let s = shared.clone();
         self.worker = std::thread::Builder::new().name("yorishiro-core".into()).spawn(move || run(cfg, s)).ok();
@@ -190,6 +199,8 @@ struct Config {
     eye_model: Option<PathBuf>,
     ort_library: Option<PathBuf>,
     mirror: bool,
+    vts_iphone: bool,
+    ifacialmocap: Option<String>,
 }
 
 fn landmark_runtime(name: &str, models: &std::path::Path) -> Result<LandmarkRuntime, String> {
@@ -249,6 +260,26 @@ fn run(cfg: Config, s: Arc<Shared>) {
         }
     };
     s.log(format!("camera {}: {}", cfg.camera, camera.mode));
+    let mut vts = None;
+    if cfg.vts_iphone {
+        match VtsIphoneSink::open(VTS_REQUEST_PORT) {
+            Ok(v) => {
+                s.log(format!("VTS iPhone protocol: answering requests on UDP {VTS_REQUEST_PORT}"));
+                vts = Some(v);
+            }
+            Err(e) => s.log(format!("VTS iPhone protocol: port {VTS_REQUEST_PORT} unavailable ({e})")),
+        }
+    }
+    let mut ifm = None;
+    if let Some(host) = &cfg.ifacialmocap {
+        match IFacialMocapSink::open(host) {
+            Ok(m) => {
+                s.log(format!("iFacialMocap: sending to {host}:49983"));
+                ifm = Some(m);
+            }
+            Err(e) => s.log(format!("iFacialMocap: {e}")),
+        }
+    }
     let start = Instant::now();
     let (mut seq, mut sent, mut report) = (0u64, 0u32, Instant::now());
     let (mut infer_ms, mut calibrated) = (0.0f64, false);
@@ -269,6 +300,13 @@ fn run(cfg: Config, s: Arc<Shared>) {
         };
         infer_ms = 0.9 * infer_ms + 100.0 * t.elapsed().as_secs_f64();
         let last_found = out.is_some();
+        let finished = out.as_ref().map(|o| &o.final_frame);
+        if let Some(v) = vts.as_mut() {
+            v.send(finished);
+        }
+        if let Some(m) = ifm.as_mut() {
+            m.send(finished);
+        }
         let f = match &out {
             Some(o) => {
                 calibrated |= o.calibrated;

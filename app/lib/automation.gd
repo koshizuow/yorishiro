@@ -476,6 +476,9 @@ func _core_test(cam: int, runtime: String):
 	face.engine = "core"
 	face.camera = cam
 	face.runtime = runtime
+	# the outputs to other apps too, a receiver may listen (tools: a VTS iPhone request, iFacialMocap on 49983)
+	face.send_vts_iphone = true
+	face.send_ifacialmocap = true
 	face.restart()
 	# models load first (TensorRT engines take a while), the 15 s count from the first face
 	var t0 := Time.get_ticks_msec()
@@ -498,6 +501,8 @@ func _core_test(cam: int, runtime: String):
 	check.call("the head moves the model (FaceAngleX spread %.1f)" % spread, spread > 1.0)
 	check.call("Rust core named in the status", str(face.status.get("runtime", "")).contains("Rust core"))
 	face.engine = "process"
+	face.send_vts_iphone = false
+	face.send_ifacialmocap = false
 	face.save_settings()
 
 func _hand_test(shots: String):

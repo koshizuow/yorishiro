@@ -331,9 +331,36 @@ def golden_ncnn(rec: Path, out: Path) -> None:
     print(f"wrote {out}")
 
 
+def golden_sinks(out: Path, frames: int = 20) -> None:
+    """The outputs to other apps (VTS iPhone JSON, iFacialMocap text) on random frames, for the Rust sinks."""
+    import json
+
+    from yorishiro_tracker.sinks.ifacialmocap import IFacialMocapSink
+    from yorishiro_tracker.sinks.vts_iphone import VtsIPhoneSink
+
+    rng = np.random.default_rng(1)
+    vts, ifm = VtsIPhoneSink(port=0), IFacialMocapSink()
+    res = []
+    for i in range(frames):
+        bs = rng.random(52).astype(np.float32)
+        bs[0], bs[1] = 0.125, 0.005  # values that round half way
+        f = FaceFrame(timestamp_ms=i, blendshapes=bs, head_rotation=rng.normal(0, 0.3, 3).astype(np.float32),
+                      head_translation=rng.normal(0, 0.05, 3).astype(np.float32),
+                      left_eye_rotation=rng.normal(0, 0.2, 3).astype(np.float32),
+                      right_eye_rotation=rng.normal(0, 0.2, 3).astype(np.float32))
+        res.append({"bs": f.blendshapes.tolist(), "head": f.head_rotation.tolist(), "pos": f.head_translation.tolist(),
+                    "le": f.left_eye_rotation.tolist(), "re": f.right_eye_rotation.tolist(),
+                    "vts": vts.payload(f), "ifm": ifm.payload(f)})
+    vts.close()
+    ifm.close()
+    out.write_text(json.dumps(res))
+    print(f"wrote {out}")
+
+
 def main():
     head = ensure_ict_facekit()
     export_fit(MediaPipePointFitter(head), MODEL_DIR / "core" / "fit.npz")
+    golden_sinks(TESTDATA / "core-golden" / "sinks.json")
     recs = sys.argv[1:] or ["crema-d-60", "20261029-105439"]
     for r in recs:
         rec = Path(r) if "/" in r else TESTDATA / "recordings" / r
