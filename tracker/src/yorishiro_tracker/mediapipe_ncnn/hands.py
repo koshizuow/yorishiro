@@ -268,6 +268,7 @@ class HandWorker:
         self._wake = threading.Event()
         self._frame = None
         self._params: dict[str, float] = {}
+        self._points: dict[str, list] = {}
         self.infer_ms = 0.0
         self._stop = False
         self._thread = threading.Thread(target=self._run, name="hands", daemon=True)
@@ -281,6 +282,11 @@ class HandWorker:
     def latest(self) -> dict[str, float]:
         with self._lock:
             return dict(self._params)
+
+    def latest_points(self) -> dict[str, list]:
+        """{"Left": 21 world points (metres, x right, y down, z away from the camera), ...} by the person's hands"""
+        with self._lock:
+            return dict(self._points)
 
     def close(self) -> None:
         self._stop = True
@@ -308,3 +314,4 @@ class HandWorker:
                     if k in prev and not k.endswith("Found") and not (k.endswith(("AngleX", "AngleZ")) and abs(v - prev[k]) > 180):
                         params[k] = self.SMOOTHING * prev[k] + (1 - self.SMOOTHING) * v
                 self._params = params
+                self._points = {("Right" if h.right else "Left"): h.world.round(4).tolist() for h in hands}

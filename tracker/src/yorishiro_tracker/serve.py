@@ -112,7 +112,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
                 frame = calibration(res.frame)
                 if smoothing:
                     frame = smoother(frame)
-            sink.send(frame, ts, hand_worker.latest() if hand_worker else None)
+            sink.send(frame, ts, hand_worker.latest() if hand_worker else None,
+                      hand_worker.latest_points() if hand_worker else None)
             for extra in extra_sinks or []:
                 extra.send(frame, ts)
             sent += 1

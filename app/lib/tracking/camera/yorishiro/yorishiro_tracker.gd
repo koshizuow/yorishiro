@@ -54,6 +54,8 @@ var send_vts_iphone := false
 var send_ifacialmocap := false
 ## also track hands (MediaPipe hands on the CPU beside the face), the Hand* inputs
 var track_hands := false
+## 21 points per hand for the 3D preview, by the avatar's sides: {"Left": [[x, y, z], ...]} in metres, y down
+var hand_points := {}
 
 var found := false
 ## latest raw ARKit 52 values, for bindings that want more than the VTS style inputs
@@ -186,6 +188,7 @@ func _receive():
 		# hands are tracked apart from the face, a hand can be seen without it
 		if latest_frame.has("hands"):
 			update(latest_frame["hands"])
+		hand_points = latest_frame.get("hand_points", {})
 
 func _count_glare(g: Array):
 	var now := Time.get_ticks_msec()

@@ -35,7 +35,7 @@
 ##   --mic-test=<wav>       lip sync: play the wav (tools/lip_sync_vowels.py, with its .json timeline) through
 ##                          the voice bus instead of the microphone, print the voice values per part and check
 ##                          silence, volume and the vowel that wins in each
-##   --hand-test            switch hand tracking on (restarts the Yorishiro tracker with --hands), run with a
+##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png) switch hand tracking on (restarts the Yorishiro tracker with --hands), run with a
 ##                          recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands), check the Hand* inputs
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
 ##                          (saved position, background, change model) and check what pressing it does
@@ -229,7 +229,7 @@ func _ready() -> void:
 		if args.has("expression-editor-test"):
 			await _expression_editor_test(str(args["expression-editor-test"]))
 		if args.has("hand-test"):
-			await _hand_test()
+			await _hand_test(str(args["hand-test"]))
 		if args.has("mic-test"):
 			await _mic_test(str(args["mic-test"]))
 		if args.has("plugin-api-test"):
@@ -460,7 +460,7 @@ func _expression_editor_test(shot: String):
 	names = model.get_expression_controller().expressions.map(func (e): return e.get_name())
 	check.call("deleted", not FileAccess.file_exists(file) and not ("yori_test" in names))
 
-func _hand_test():
+func _hand_test(shots: String):
 	var check := func (what: String, ok: bool): print("[automation] hands %s: %s" % [what, "ok" if ok else "FAILED"])
 	var tracking = get_tree().get_first_node_in_group("system:tracking")
 	var face = tracking.get_node("FaceTracker")
@@ -472,8 +472,12 @@ func _hand_test():
 	var open_lo := 1.0
 	var frames := 0
 	var t0 := Time.get_ticks_msec()
+	var next_shot := 6000
 	while Time.get_ticks_msec() - t0 < 20000:
 		await get_tree().process_frame
+		if shots and shots != "true" and Time.get_ticks_msec() - t0 >= next_shot:
+			get_viewport().get_texture().get_image().save_png("%s_%d.png" % [shots, next_shot / 1000])
+			next_shot += 2000
 		var p: Dictionary = tracking.parameters
 		for k in seen:
 			if p.get(k, 0.0) > 0.5:

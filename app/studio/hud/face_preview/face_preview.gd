@@ -2,11 +2,18 @@
 ## faces the tracker sees, so users can check tracking without worrying that their camera image shows up.
 ## Mirrored like the avatar. Driven by the Yorishiro tracker's ARKit values when it runs, otherwise by the
 ## VTS style inputs (eyes, mouth, smile) every face tracker gives.
-## The mesh is made by tools/export_preview_head.py.
+## The mesh is made by tools/export_preview_head.py. With hand tracking on, clay hands built from the tracked
+## points (preview_hand.gd) appear beside the head where the hands are, and the view widens to fit them.
 class_name FacePreview
 extends SubViewportContainer
 
 const HEAD = preload("./head.glb")
+const PreviewHand = preload("./preview_hand.gd")
+## hands are drawn smaller than life so they fit beside the head
+const HAND_SCALE = 0.55
+## how far the camera is, without and with hands in view
+const CAMERA_NEAR = 0.62
+const CAMERA_FAR = 0.85
 ## head turns are drawn smaller than measured, a full 30 degree turn would hide the face
 const TURN = 0.8
 
@@ -18,6 +25,9 @@ var _targets := {}
 ## round glasses, shown when the tracker input says the user wears them
 var _glasses := Node3D.new()
 var _lens_material := StandardMaterial3D.new()
+var _camera := Camera3D.new()
+## avatar side -> PreviewHand
+var _hands := {}
 
 func _init() -> void:
 	stretch = true
@@ -44,9 +54,9 @@ func _init() -> void:
 	rim.light_energy = 0.7
 	rim.rotation_degrees = Vector3(-10, 160, 0)
 	_viewport.add_child(rim)
-	var camera := Camera3D.new()
+	var camera := _camera
 	camera.fov = 30
-	camera.position = Vector3(0, 0.015, 0.62)
+	camera.position = Vector3(0, 0.015, CAMERA_NEAR)
 	_viewport.add_child(camera)
 
 	# the ICT head's origin is near the nose bridge, turn it around the middle of the head instead
@@ -64,6 +74,19 @@ func _init() -> void:
 	_mesh.material_override = clay
 	_build_glasses()
 	head.add_child(_glasses)
+	var hand_clay := StandardMaterial3D.new()
+	hand_clay.albedo_color = Color(0.93, 0.88, 0.90)
+	hand_clay.roughness = 0.7
+	hand_clay.rim_enabled = true
+	hand_clay.rim = 0.25
+	hand_clay.cull_mode = BaseMaterial3D.CULL_DISABLED  # the palm plate is seen from both sides
+	for side in ["Left", "Right"]:
+		var hand := PreviewHand.new(hand_clay)
+		hand.name = "PreviewHand" + side
+		hand.scale = Vector3.ONE * HAND_SCALE
+		hand.visible = false
+		_viewport.add_child(hand)
+		_hands[side] = hand
 	for i in _mesh.mesh.get_blend_shape_count():
 		var name := String(_mesh.mesh.get_blend_shape_name(i))
 		# browInnerUpLeft / cheekPuffRight are halves of one ARKit shape
@@ -158,6 +181,27 @@ func _process(_delta: float) -> void:
 	var arkit: Dictionary = face.arkit if face and "arkit" in face and not face.arkit.is_empty() else _from_inputs(p)
 	for i in _targets:
 		_mesh.set_blend_shape_value(i, clampf(float(arkit.get(_targets[i], 0.0)), 0.0, 1.0))
+	_update_hands(p, face)
+
+## the avatar's left hand (the user's right one in the mirror) is on the right of the picture, outward is away
+## from the head
+func _update_hands(p: Dictionary, face) -> void:
+	var points: Dictionary = face.hand_points if face and "hand_points" in face else {}
+	var any := false
+	for side in _hands:
+		var hand = _hands[side]
+		var found := float(p.get("Hand%sFound" % side, 0.0)) > 0.5 and points.has(side)
+		if not found:
+			hand.visible = false
+			continue
+		any = true
+		hand.show_points(points[side])
+		var out := 1.0 if side == "Left" else -1.0
+		var target := Vector3(out * (0.13 + 0.006 * float(p.get("Hand%sPositionX" % side, 0.0))),
+			-0.06 + 0.008 * float(p.get("Hand%sPositionY" % side, 0.0)), 0.02)
+		hand.position = target if not hand.has_meta("placed") else hand.position.lerp(target, 0.3)
+		hand.set_meta("placed", true)
+	_camera.position.z = lerpf(_camera.position.z, CAMERA_FAR if any else CAMERA_NEAR, 0.08)
 
 ## rough ARKit values from the inputs any face tracker sends, for trackers without blendshapes
 func _from_inputs(p: Dictionary) -> Dictionary:
