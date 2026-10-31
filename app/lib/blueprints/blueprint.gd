@@ -26,6 +26,7 @@ static var _action_types: Array[PackedScene] = [
 	preload("res://lib/blueprints/outputs/play_animation.tscn"),
 	preload("res://lib/blueprints/outputs/toggle_expression.tscn"),
 	preload("res://lib/blueprints/outputs/metastore_output.tscn"),
+	preload("res://lib/blueprints/outputs/app_action.tscn"),
 ]
 
 static var palette: Dictionary[StringName, PackedScene] = _action_types.reduce(

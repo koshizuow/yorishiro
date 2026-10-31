@@ -56,12 +56,12 @@ func refresh() -> void:
 		_rows.add_child(_row(e))
 	_empty.visible = entries.is_empty()
 
-## [{graph, target, kind (&"expression" or &"animation"), key (node or null), button (node or null), hold}]
+## [{graph, target, kind (&"expression", &"animation" or &"app_action"), key (node or null), button (node or null), hold}]
 func entries() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	for graph in model.blueprints:
 		for target in graph.get_children():
-			if not target.has_method("get_type") or target.get_type() not in [&"expression", &"animation"]:
+			if not target.has_method("get_type") or target.get_type() not in [&"expression", &"animation", &"app_action"]:
 				continue
 			var e := {"graph": graph, "target": target, "kind": target.get_type(), "key": null, "button": null, "hold": false}
 			for c in graph.connections:
@@ -92,8 +92,21 @@ func _row(e: Dictionary) -> HBoxContainer:
 	for c in choices:
 		action.add_item(c.label)
 	action.select(choices.find_custom(func (c): return c.kind == e.kind and c.name == _target_name(e)))
-	action.item_selected.connect(func (i): _set_action(e, choices[i].kind, choices[i].name))
+	action.item_selected.connect(func (i):
+		await _set_action(e, choices[i].kind, choices[i].name)
+		refresh())
 	row.add_child(action)
+	# a position hotkey moves the model where it is now when this is pressed
+	if e.kind == &"app_action" and e.target.action == &"position":
+		var save := Button.new()
+		save.name = "SavePosition"
+		save.text = "Save here"
+		save.tooltip_text = "Remember where the model is now, this hotkey moves it back here."
+		save.pressed.connect(func ():
+			model.save_position(e.target.target)
+			model.save_settings()
+			save.text = tr("Saved"))
+		row.add_child(save)
 
 	var keys := Button.new()
 	keys.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -107,7 +120,7 @@ func _row(e: Dictionary) -> HBoxContainer:
 	var hold := CheckBox.new()
 	hold.custom_minimum_size.x = 64
 	hold.button_pressed = e.hold
-	hold.tooltip_text = tr("On: active only while the keys are held. Off: each press toggles.")
+	hold.disabled = e.kind == &"app_action"  # these happen once on the press	hold.tooltip_text = tr("On: active only while the keys are held. Off: each press toggles.")
 	hold.toggled.connect(func (on): e.hold = on; _wire_key(e))
 	row.add_child(hold)
 
@@ -142,9 +155,21 @@ func _choices() -> Array[Dictionary]:
 		if m == "RESET":
 			continue
 		out.append({"kind": &"animation", "name": m, "label": tr("Animation: %s") % m})
+	for i in 4:
+		out.append({"kind": &"app_action", "name": "position:%d" % (i + 1), "label": tr("Move to saved position %d") % (i + 1)})
+	for b in [["0", "Default Grid"], ["1", "Image"], ["2", "Color"], ["3", "Transparent"]]:
+		out.append({"kind": &"app_action", "name": "background:%s" % b[0], "label": tr("Background: %s") % tr(b[1])})
+	for m in ModelLibrary.list():
+		out.append({"kind": &"app_action", "name": "model:%s" % m.path, "label": tr("Change model: %s") % m.name})
+	for it in ItemLibrary.list():
+		out.append({"kind": &"app_action", "name": "item:%s" % "|".join(it.paths), "label": tr("Toggle item: %s") % it.name})
+	out.append({"kind": &"app_action", "name": "reload:", "label": tr("Reload model")})
+	out.append({"kind": &"app_action", "name": "screenshot:", "label": tr("Take a screenshot")})
 	return out
 
 func _target_name(e: Dictionary) -> String:
+	if e.kind == &"app_action":
+		return "%s:%s" % [e.target.action, e.target.target]
 	if e.kind == &"expression":
 		return e.target.expression
 	var anim: OptionButton = e.target.get_node("%Animation")
@@ -195,7 +220,11 @@ func _add() -> void:
 	refresh()
 
 func _apply_target(e: Dictionary, target_name: String) -> void:
-	if e.kind == &"expression":
+	if e.kind == &"app_action":
+		var parts := target_name.split(":", true, 1)
+		e.target.action = StringName(parts[0])
+		e.target.target = parts[1] if parts.size() > 1 else ""
+	elif e.kind == &"expression":
 		e.target.expression = target_name
 	else:
 		var anim: OptionButton = e.target.get_node("%Animation")
@@ -227,7 +256,7 @@ func _wire_key(e: Dictionary) -> void:
 		if c.from_node == e.key.name and c.to_node == e.target.name:
 			_unwire(graph, c)
 	var ports := [[0, 0]]
-	if e.hold:
+	if e.hold and e.kind != &"app_action":  # app actions happen on the press, holding means nothing
 		ports = [[0, 1], [1, 2]] if e.kind == &"expression" else [[0, 0], [1, 1]]
 	for p in ports:
 		graph._on_connection_request(e.key.name, p[0], e.target.name, p[1])

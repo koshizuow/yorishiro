@@ -28,6 +28,8 @@
 ##   --gestures=<prefix>    after the screenshot, operate the model with synthetic mouse and key events (drag,
 ##                          wheel, wheel while dragging, shift+wheel, right drag), save <prefix>_<step>.png and print
 ##                          the model transform after each step
+##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
+##                          (saved position, background, change model) and check what pressing it does
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
 ##                          events, switch it to an animation, hold mode, screen button 3, press that button,
 ##                          save, reload the model and check it is still there, then delete it
@@ -213,6 +215,8 @@ func _ready() -> void:
 			await _gestures(args["gestures"])
 		if args.has("hotkey-test"):
 			await _hotkey_test(args["hotkey-test"])
+		if args.has("app-action-test"):
+			await _app_action_test()
 		if args.has("sensitivity-test"):
 			await _sensitivity_test(args["sensitivity-test"])
 		if args.has("eye-test"):
@@ -375,6 +379,50 @@ func _mouse_motion(at: Vector2, rel: Vector2) -> void:
 	m.relative = rel
 	m.button_mask = MOUSE_BUTTON_MASK_LEFT if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) else 0
 	Input.parse_input_event(m)
+
+func _app_action_test():
+	var list = get_tree().root.find_child("HotkeyList", true, false)
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var check := func (what: String, ok: bool): print("[automation] app action %s: %s" % [what, "ok" if ok else "FAILED"])
+	var model = stage.active_model
+	list.refresh()
+	list.get_node("AddHotkeyBtn").pressed.emit()
+	for i in 3:
+		await get_tree().process_frame
+	var e: Dictionary = list.entries()[-1]
+	# saved position: remember here, move away, press, it comes back
+	await list._set_action(e, &"app_action", "position:2")
+	list.refresh()
+	await get_tree().process_frame
+	e = list.entries()[-1]
+	var save = list._rows.get_child(list._rows.get_child_count() - 1).find_child("SavePosition", true, false)
+	check.call("save button shown", save != null)
+	var home: Vector2 = model.position
+	save.pressed.emit()
+	model.position = home + Vector2(300, -120)
+	e.target.invoke_trigger(1)
+	for i in 40:
+		await get_tree().process_frame
+	check.call("moved back to the saved position (%s, saved %s)" % [model.position, home], model.position.distance_to(home) < 1.0)
+	await list._set_action(e, &"app_action", "background:3")
+	e.target.invoke_trigger(1)
+	await get_tree().process_frame
+	check.call("background transparent", stage.background_mode == 3)
+	await list._set_action(e, &"app_action", "background:0")
+	e.target.invoke_trigger(1)
+	var here := ProjectSettings.globalize_path(model.modelmeta.model)
+	var other = ModelLibrary.list().filter(func (m): return ProjectSettings.globalize_path(m.path) != here)
+	if other:
+		await list._set_action(e, &"app_action", "model:%s" % other[0].path)
+		var data = e.target.serialize()
+		check.call("saved as %s" % data, data.action == "model" and data.target == other[0].path)
+		e.target.invoke_trigger(1)
+		var want := ProjectSettings.globalize_path(other[0].path)
+		for i in 300:
+			await get_tree().process_frame
+			if stage.active_model and ProjectSettings.globalize_path(stage.active_model.modelmeta.model) == want:
+				break
+		check.call("changed model to %s" % other[0].name, ProjectSettings.globalize_path(stage.active_model.modelmeta.model) == want)
 
 func _hotkey_test(prefix: String):
 	var list = get_tree().root.find_child("HotkeyList", true, false)

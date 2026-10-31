@@ -123,7 +123,14 @@ func follow_face(tracking_data: Dictionary, delta: float) -> Vector3:
 	var h := get_viewport_rect().size.y
 	return Vector3(_face_offset.x * h, _face_offset.y * h, maxf(_face_offset.z, -0.5))
 
+## positions a hotkey can move the model to ("1".."4" -> {x, y, scale, rotation}), saved with the model
+var saved_positions := {}
+
+func save_position(slot: String) -> void:
+	saved_positions[slot] = {"x": position.x, "y": position.y, "scale": scale.x, "rotation": rotation_degrees}
+
 func load_model_settings(settings: Dictionary):
+	saved_positions = settings.get("positions", {}).duplicate(true)
 	var movement: Dictionary = settings.get("movement", {})
 	if not movement.is_empty():
 		movement_enabled = movement.get("use", movement_enabled)
@@ -155,6 +162,7 @@ func save_model_settings(settings: Dictionary):
 			"z": movement_amount.z,
 			"smoothing": movement_smoothing,
 		},
+		"positions": saved_positions,
 		"transform": {
 			"position": Serializers.Vec2Serializer.to_json(self.position),
 			"scale": self.scale.x,

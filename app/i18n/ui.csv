@@ -364,3 +364,20 @@ This model has no physics.,This model has no physics.,這個模型沒有物理�
 Overall strength,Overall strength,整體強度
 Each part (%d),Each part (%d),各部位（%d）
 A Live2D model folder (with a .model3.json file).,A Live2D model folder (with a .model3.json file).,Live2D 模型資料夾（裡面有 .model3.json 檔）。
+Save here,Save here,存在這裡
+"Remember where the model is now, this hotkey moves it back here.","Remember where the model is now, this hotkey moves it back here.",記住模型現在的位置，按這個熱鍵就會移回來。
+Saved,Saved,已儲存
+Move to saved position %d,Move to saved position %d,移到存好的位置 %d
+Background: %s,Background: %s,背景：%s
+Change model: %s,Change model: %s,切換模型：%s
+Toggle item: %s,Toggle item: %s,開關道具：%s
+Reload model,Reload model,重新載入模型
+Take a screenshot,Take a screenshot,截圖
+App Action,App Action,App 動作
+Move to saved position,Move to saved position,移到存好的位置
+Change background,Change background,切換背景
+Change model,Change model,切換模型
+Toggle item,Toggle item,開關道具
+Position %s,Position %s,位置 %s
+Reload,Reload,重新載入
+Screenshot,Screenshot,截圖

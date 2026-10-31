@@ -232,6 +232,8 @@ func _screen_button_label(graph, node) -> String:
 		var target = graph.get_node_or_null(NodePath(c.to_node))
 		if target == null:
 			continue
+		if target.has_method("short_label"):
+			return target.short_label()
 		if "expression" in target and target.expression:
 			return target.expression
 		if target.has_node("%Animation"):
