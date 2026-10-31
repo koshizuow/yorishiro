@@ -1,15 +1,17 @@
 #!/bin/bash
 # Runs the app's automation checks one after another with the replay tracker (crema-d-60) and prints one
 # line per check: ok, FAILED, or the measured values. Shots and logs go to $1 (default a temp dir).
-# The profile is restored afterwards, the checks change settings on purpose.
+# They run on a copy of the development data (userdata/yorishiro) in the out dir, the checks change settings.
 #   tools/app_tests.sh [out dir]
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${1:-$(mktemp -d /tmp/yorishiro-tests.XXXX)}
 mkdir -p "$OUT"
 export YORISHIRO_TRACKER=$ROOT/tools/replay_tracker.sh
-PROFILE=$ROOT/userdata/yorishiro/default_profile.json
-cp "$PROFILE" "$OUT/profile.bak"
+# a copy without caches; models referenced by absolute path still point at the originals
+mkdir -p "$OUT/userdata"
+rsync -a --exclude shader_cache --exclude vulkan --exclude logs "$ROOT/userdata/yorishiro" "$OUT/userdata/"
+export YORISHIRO_USERDATA=$OUT/userdata
 HIYORI=$ROOT/userdata/yorishiro/Live2DModels/hiyori_free/hiyori_free_t08.model3.json
 PRO=$ROOT/userdata/yorishiro/Live2DModels/hiyori_pro/hiyori_pro_t11.model3.json
 fail=0
@@ -38,6 +40,5 @@ run cycle "$HIYORI" --cycle-models="$OUT/cycle" --pose-frames=40 --screenshot-wi
 run pose3 "$PRO" --play-motion=hiyori_m06.motion3.json --screenshot="$OUT/pose3.png"
 run subpage "$HIYORI" --open-panel=model --press=Settings --screenshot-window="$OUT/subpage.png"
 run pipewire "$HIYORI" --open-panel=settings --press=PipeWireToggle --show=PipeWireToggle --screenshot-window="$OUT/pipewire.png"
-cp "$OUT/profile.bak" "$PROFILE"
 echo "== $fail failing, shots and logs in $OUT"
 exit $((fail > 0))

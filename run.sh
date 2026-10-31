@@ -5,7 +5,8 @@
 set -e
 ROOT=$(cd "$(dirname "$0")" && pwd)
 GODOT=${GODOT:-"$ROOT/../tools/godot/godot.linuxbsd.editor.x86_64.llvm"}
-export XDG_DATA_HOME="$ROOT/userdata"
+# YORISHIRO_USERDATA: another data folder, so tests do not change (or depend on) the development settings
+export XDG_DATA_HOME="${YORISHIRO_USERDATA:-$ROOT/userdata}"
 # Under a zh_TW locale with many fonts installed, Godot's per-frame system font fallback lookup
 # took about 80 ms in fontconfig (app at 10 fps on the i3 desktop). The fontconfig language only
 # orders candidates, fallback still goes by the characters, so CJK text keeps rendering.

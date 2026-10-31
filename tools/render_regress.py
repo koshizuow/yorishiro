@@ -8,8 +8,8 @@ compared to a baseline.
     python3 tools/render_regress.py --compare testdata/render-runs/<time>   compare a finished run again
 
 Models are every folder with a .model3.json under testdata/models, plus the Hiyori samples in
-userdata/yorishiro/Live2DModels. Runs use --fixed-clock and --fixed-fps 60, so an unchanged app gives
-pixel-identical shots and any difference is real. Baselines live in testdata/render-baseline/<model>/
+userdata/yorishiro/Live2DModels. Runs use --fixed-clock and --fixed-fps 60 and an empty data folder per model (default settings), so an
+unchanged app gives pixel-identical shots and any difference is real. Baselines live in testdata/render-baseline/<model>/
 (private, D28). Output and report go to testdata/render-runs/<timestamp>/ (not committed).
 """
 import argparse
@@ -47,8 +47,13 @@ def render(model: Path, out: Path):
     cmd = [str(ROOT / "run.sh"), "--disable-vsync", "--fixed-fps", "60", "--",
            f"--model={model}", f"--screenshot={out / 'main.png'}", "--wait-frames=60",
            f"--poses={ROOT / 'tools/poses.json'}", "--pose-frames=40", "--hotkeys", "--expressions-all", "--fixed-clock", "--quit"]
+    # a fresh data folder per model: default settings, whatever earlier runs or tests saved does not count
+    data = out / "userdata"
+    shutil.rmtree(data, ignore_errors=True)
+    env = {**os.environ, "YORISHIRO_USERDATA": str(data), "YORISHIRO_TRACKER": str(ROOT / "tools/replay_tracker.sh")}
     with open(out / "run.log", "w") as log:
-        rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, timeout=600).returncode
+        rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, timeout=900, env=env).returncode
+    shutil.rmtree(data, ignore_errors=True)
     errors = [l for l in (out / "run.log").read_text(errors="replace").splitlines()
               if "SCRIPT ERROR" in l or "Parse Error" in l]
     # camera_panel.gd:117 fires when automation swaps in a pose tracker, known and harmless
