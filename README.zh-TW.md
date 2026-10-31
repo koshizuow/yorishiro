@@ -2,107 +2,107 @@
   <img alt="yorishiro" src="docs/images/logo-wordmark.png" width="360">
 </p>
 
-<p align="center">給 Linux 的 Live2D VTuber 軟體，內建自己的 GPU 臉部追蹤。</p>
+<p align="center">Linux 上的 Live2D VTuber 軟體，自帶 GPU 臉部追蹤。</p>
 
 <p align="center"><a href="README.md">English</a></p>
 
 ![Yorishiro 與ずんだもん](docs/images/hero.jpg)
 
-> Yorishiro 還在開發初期，功能和設定格式都可能變動。
+> Yorishiro 還在早期開發階段，功能和設定檔格式之後都可能會改。
 
 ## 功能
 
-- **Live2D 模型。** 模型會連同它通常附帶的設定一起載入（參數綁定、熱鍵、物理、待機動畫）。渲染使用獨立的 Live2D 渲染器 [Ayagami](https://github.com/AyagamiDev/ayagami)，不包含
-  Live2D Cubism SDK。
-- **內建臉部追蹤。** App 會自己啟動追蹤器：MediaPipe FaceMesh 特徵點對應到 ARKit 的 52 種表情；用合成眼睛訓練的
-  眼睛模型，戴著會反射螢幕的眼鏡也抓得到眨眼；還有視線和頭部位置。任何顯示卡都能透過 Vulkan 執行，NVIDIA 可用
-  CUDA 或 TensorRT，也能只用 CPU。
-- **畫面上不出現攝影機影像。** 用一顆 3D 光頭顯示追蹤器看到的表情，就算不小心把設定視窗開在直播上，也不會露出房間。
-  偵測到你戴眼鏡時，光頭也會戴上眼鏡。
-- **依你的臉調整模型。** 引導式校正、每個參數的範圍和平滑、雙眼一起眨、自動眨眼、模型跟著臉移動、追蹤不到臉時的行為、
-  各部位的物理強度。
-- **熱鍵、表情和道具。** 熱鍵清單與畫面按鈕、表情切換、Live2D 姿勢群組、圖片和動畫的道具庫、道具場景。
-- **透明背景送進 OBS。** 舞台以帶透明度的 PipeWire 影像串流送到 OBS，不含 app 的按鈕和選單。也支援 v4l2loopback
-  虛擬攝影機和透明視窗。
-- **把追蹤資料給其他軟體。** 追蹤器也能用常見的臉部追蹤協定送出資料（iFacialMocap，以及其他 VTuber 軟體
-  讀取的 iPhone 追蹤協定）。
-- **外掛。** 本機的 WebSocket API（連接埠 8001，預設關閉），使用 VTuber 外掛已在用的訊息格式：移動模型、
-  觸發熱鍵和表情、送出追蹤數值。每個外掛第一次連線時會先問你。
-- **英文與繁體中文介面。**
+- **Live2D 模型。** 載入模型時會一併讀取它附帶的設定，像是參數綁定、熱鍵、物理和待機動畫。渲染用的是獨立開發的
+  Live2D 渲染器 [Ayagami](https://github.com/AyagamiDev/ayagami)，沒有用到 Live2D Cubism SDK。
+- **內建臉部追蹤。** 打開 app 就會自動啟動追蹤器。它用 MediaPipe FaceMesh 抓臉部特徵點，換算成 ARKit 的 52 種表情，
+  也會追蹤視線和頭部位置。眨眼由一個用合成眼睛圖片訓練的模型判斷，就算眼鏡反射螢幕光也抓得到。各家顯示卡都能透過
+  Vulkan 執行，NVIDIA 也可以用 CUDA 或 TensorRT，沒有顯示卡的話用 CPU 也行。
+- **不會出現攝影機畫面。** 追蹤狀態是用一顆 3D 光頭來顯示，就算直播時不小心打開設定，也不會讓觀眾看到你的房間。
+  你戴眼鏡的時候，光頭也會跟著戴上。
+- **依照你的臉調整模型。** 有引導式校正，每個參數都能調範圍和平滑度，另外還有雙眼同步眨眼、自動眨眼、模型跟著臉移動、
+  追蹤不到臉時要怎麼處理，以及各部位的物理強度。
+- **熱鍵、表情和道具。** 熱鍵清單和畫面按鈕、切換表情、Live2D 姿勢群組、放圖片和動畫的道具庫，還有道具場景。
+- **透明背景直接進 OBS。** 舞台畫面會透過 PipeWire 帶著透明度傳到 OBS，不會拍到 app 的按鈕和選單。也可以用
+  v4l2loopback 虛擬攝影機，或是把視窗設成透明。
+- **追蹤資料也能給其他軟體用。** 追蹤器可以用常見的臉部追蹤協定送出資料，包括 iFacialMocap，以及其他 VTuber
+  軟體支援的 iPhone 追蹤協定。
+- **外掛。** 提供本機的 WebSocket API（連接埠 8001，預設關閉），訊息格式和現有的 VTuber 外掛相同。外掛可以移動模型、
+  觸發熱鍵和表情、送入追蹤數值。每個外掛第一次連線前都會先問過你。
+- **介面支援英文和繁體中文。**
 
 | | |
 |---|---|
 | ![追蹤設定與 3D 預覽頭](docs/images/tracking.jpg) | ![模型與道具](docs/images/models.jpg) |
-| 臉部追蹤設定。3D 光頭跟著你的表情動，攝影機畫面不會出現。 | 模型與道具，縮圖直接從舞台截取。 |
+| 臉部追蹤設定。3D 光頭會跟著你的表情動，攝影機畫面不會出現在螢幕上。 | 模型和道具，縮圖直接從舞台截取。 |
 | ![靈敏度與物理設定](docs/images/sensitivity.jpg) | ![OBS 裡的舞台](docs/images/obs.jpg) |
-| 靈敏度、跟著臉移動、各部位物理。 | 透過 PipeWire 送進 OBS，模型以外是透明的。 |
+| 靈敏度、跟著臉移動，以及各部位的物理。 | 透過 PipeWire 傳進 OBS，模型以外的地方都是透明的。 |
 
-## 需求
+## 系統需求
 
-- x86_64 的 Linux，支援 Vulkan 的顯示卡（AMD、Intel 用 Mesa 驅動，NVIDIA 用官方驅動）。
+- x86_64 的 Linux，以及支援 Vulkan 的顯示卡（AMD 和 Intel 用 Mesa 驅動，NVIDIA 用官方驅動）。
 - 網路攝影機。
-- 用 PipeWire 送到 OBS：建置需要 PipeWire 1.4 以上（NVIDIA 執行時需要 1.2 以上），OBS 31 以上並安裝
-  [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) 外掛。
+- 想透過 PipeWire 傳到 OBS 的話：編譯時需要 PipeWire 1.4 以上（NVIDIA 執行時需要 1.2 以上），OBS 要 31 以上，
+  並裝好 [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) 外掛。
 
-## 建置
+## 編譯
 
-App 使用 Ayagami 專案發布、加上混合模式修補的 Godot 4.7.1。
+App 跑在 Ayagami 專案發布的 Godot 4.7.1 上，這個版本加了混合模式的修補。
 
-1. **引擎。** 從 [AyagamiDev/ayagami-gd](https://github.com/AyagamiDev/ayagami-gd/releases/tag/godot) 的 `godot`
-   release 下載 `godot.linuxbsd.editor.x86_64.llvm` 並核對 sha256。`run.sh` 會在 repo 旁邊的 `../tools/godot/`
-   找它，也可以用 `GODOT=/path/to/godot` 指定。
-2. **系統套件**（Debian / Ubuntu 名稱）：
+1. **引擎。** 到 [AyagamiDev/ayagami-gd](https://github.com/AyagamiDev/ayagami-gd/releases/tag/godot) 的 `godot`
+   release 下載 `godot.linuxbsd.editor.x86_64.llvm`，並核對 sha256。`run.sh` 預設會到 repo 旁邊的 `../tools/godot/`
+   找它，也可以用 `GODOT=/path/to/godot` 指定位置。
+2. **系統套件**（以 Debian / Ubuntu 的套件名稱為例）：
    `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
-3. **Rust** 1.94 以上，用 [rustup](https://rustup.rs) 安裝（發行版的套件通常太舊）。
+3. **Rust** 1.94 以上。建議用 [rustup](https://rustup.rs) 安裝，發行版內建的版本通常太舊。
 4. **原生擴充：**
    ```sh
    git submodule update --init
    cd app && ./build_dependencies.sh && cd ..
    ```
-5. **追蹤器**（用 [uv](https://docs.astral.sh/uv/) 管理 Python 3.12 環境）：
+5. **追蹤器**（Python 3.12 環境由 [uv](https://docs.astral.sh/uv/) 管理）：
    ```sh
    cd tracker
    uv sync                                   # CPU 與 Vulkan
    uv run python tools/export_mediapipe.py   # 下載並轉換臉部模型
-   # 只有 NVIDIA：CUDA 與 TensorRT 放在另一個環境，app 會優先使用
+   # 只有 NVIDIA 需要：CUDA 和 TensorRT 裝在另一個環境，app 會優先使用它
    UV_PROJECT_ENVIRONMENT=.venv-nvidia uv sync --no-group ort-cpu --group ort-nvidia
    cd ..
    ```
-6. **PipeWire 輸出小幫手：** `app/native/funnel_out/build.sh`
-7. **第一次匯入專案：** `../tools/godot/godot.linuxbsd.editor.x86_64.llvm --headless --path app --import`
+6. **PipeWire 輸出程式：** `app/native/funnel_out/build.sh`
+7. **第一次使用前先匯入專案：** `../tools/godot/godot.linuxbsd.editor.x86_64.llvm --headless --path app --import`
 
-## 使用
+## 使用方式
 
 ```sh
 ./run.sh
 ```
 
-- 第一次開啟時，舞台中央會有一張卡片帶你完成：選擇模型、確認臉部追蹤、擺好模型。
-- Live2D 模型是一個有 `.model3.json` 檔的資料夾。模型附帶的設定只會讀取，不會被改寫。放在
-  `userdata/yorishiro/Live2DModels/` 的模型會自動出現。
-- 追蹤器會跟著 app 啟動。開始時請放鬆、看著鏡頭一下，讓它記下你的自然表情，或在「靈敏度」頁使用「自動校正」。
-- 拖曳模型可以移動，滾輪調整大小，Shift + 滾輪旋轉。角落的齒輪打開所有設定。
-- **OBS：** 在「設定」打開「把舞台傳到 OBS」，再到 OBS 新增「PipeWire video」來源並選 Yorishiro。
-- 從原始碼執行時，app 的資料（設定、模型庫、縮圖）放在 `userdata/yorishiro/`。
+- 第一次打開時，舞台中間會出現一張引導卡片，帶你選模型、確認臉部追蹤、把模型擺好。
+- Live2D 模型就是一個含有 `.model3.json` 的資料夾。模型附帶的設定只會讀取，不會被修改。放進
+  `userdata/yorishiro/Live2DModels/` 的模型會自動出現在清單裡。
+- 追蹤器會跟著 app 一起啟動。剛開始請放鬆表情、看著鏡頭幾秒，讓它記住你平常的樣子。也可以到「靈敏度」頁按「自動校正」。
+- 拖曳模型可以移動，滾輪縮放，按住 Shift 再滾滾輪可以旋轉。點角落的齒輪可以打開所有設定。
+- **OBS：** 在「設定」裡打開「把舞台傳到 OBS」，再到 OBS 新增「PipeWire video」來源，選擇 Yorishiro。
+- 從原始碼執行時，app 的資料（設定、模型庫、縮圖）會存在 `userdata/yorishiro/`。
 
 ## Repo 結構
 
 | 資料夾 | 內容 | 授權 |
 |--------|------|------|
-| `app/` | Yorishiro app（Godot）。最初 fork 自 erodozer 的 [OpenVT](https://github.com/erodozer/open-vt)，包含我們維護的 [ayagami-gd](https://github.com/AyagamiDev/ayagami-gd) 與 [libfunnel](https://github.com/hoshinolina/libfunnel) | MIT，見 `app/LICENSE.txt` |
-| `tracker/` | 臉部追蹤引擎 `yorishiro-tracker`（輸出 ARKit 52、可替換模型、Vulkan / CPU / CUDA / TensorRT） | Apache-2.0，見 `tracker/LICENSE` |
-| `tools/` | 開發與測試工具 | 跟隨所屬的部分 |
+| `app/` | Yorishiro app（Godot）。最早是從 erodozer 的 [OpenVT](https://github.com/erodozer/open-vt) fork 出來的，裡面包含我們自己維護的 [ayagami-gd](https://github.com/AyagamiDev/ayagami-gd) 和 [libfunnel](https://github.com/hoshinolina/libfunnel) | MIT，見 `app/LICENSE.txt` |
+| `tracker/` | 臉部追蹤引擎 `yorishiro-tracker`（輸出 ARKit 52 種表情，模型可替換，支援 Vulkan / CPU / CUDA / TensorRT） | Apache-2.0，見 `tracker/LICENSE` |
+| `tools/` | 開發和測試用的工具 | 依所屬的部分而定 |
 
-測試用的臉部錄影和模型放在 repo 之外，不會提交。
+測試用的臉部錄影和模型都放在 repo 外面，不會被提交。
 
-Yorishiro 是獨立的專案，不是上游的 OpenVT、Ayagami 或 libfunnel，也未經它們的作者背書；問題請回報到這裡。
-完整授權與第三方清單：[NOTICE](NOTICE)。
+Yorishiro 是獨立的專案，和上游的 OpenVT、Ayagami、libfunnel 是不同的專案，也沒有經過它們作者的背書。遇到問題請在這裡回報。
+完整的授權和第三方元件清單請見 [NOTICE](NOTICE)。
 
-## 截圖使用的素材
+## 截圖素材
 
-截圖中的模型是 Live2D 的範例模型ずんだもん（插畫：坂本アヒル，建模：Live2D Inc.）。
+截圖裡的模型是 Live2D 官方的範例模型ずんだもん（插畫：坂本アヒル，建模：Live2D Inc.）。
 本作品のキャラクターには株式会社Live2Dの著作物であるサンプルデータが株式会社Live2Dの定める規約に従って用いられています。
-ずんだもん：東北ずん子・ずんだもんプロジェクト。模型檔案不在這個 repo 裡，請到
+ずんだもん：東北ずん子・ずんだもんプロジェクト。模型檔案沒有放在這個 repo 裡，請到
 [Live2D 的範例頁面](https://www.live2d.com/learn/sample/zundamon/)下載。
 
-「Live2D」和「Cubism」是 Live2D Inc. 的商標。Yorishiro 與 Live2D Inc. 沒有關係。
+「Live2D」和「Cubism」是 Live2D Inc. 的商標。Yorishiro 和 Live2D Inc. 沒有任何關係。
