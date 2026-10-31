@@ -87,7 +87,9 @@ impl OrtModel {
     pub fn open_on(path: &Path, threads: usize, provider: &Provider) -> Result<Self, Error> {
         use ort::ep::{TensorRT, CUDA};
         let env = runtime(None)?;
-        let mut builder = Session::builder(env)?.with_intra_threads(threads).map_err(ort::Error::<()>::from)?;
+        // idle worker threads would otherwise spin between frames (the Python backend turns it off too)
+        let mut builder = Session::builder(env)?.with_intra_threads(threads).map_err(ort::Error::<()>::from)?
+            .with_intra_op_spinning(false).map_err(ort::Error::<()>::from)?;
         let name = match provider {
             Provider::Cpu => "ort-cpu-fp32",
             Provider::Cuda => {
