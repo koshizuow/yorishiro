@@ -112,7 +112,10 @@ func _ready() -> void:
 func _on_tracker_system_tracker_changed(new_tracker: Tracker) -> void:
 	var config = Control.new()
 	if new_tracker != null:
-		config = new_tracker.create_config()
+		# trackers without settings (the fixed-pose test tracker) return null
+		var made = new_tracker.create_config()
+		if made != null:
+			config = made
 	config.name = "Config"
 	
 	var prev_config = %FaceTracking.get_node("Config")

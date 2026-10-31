@@ -31,7 +31,18 @@ func _init() -> void:
 	hint.text = "The dot is your face right now. Drag the two handles to the range you actually move: a narrower range reacts more. Smoothing steadies the motion but adds delay."
 	hint.theme_type_variation = &"FieldLabel"
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(hint)
+	var top := HBoxContainer.new()
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(hint)
+	var calibrate := Button.new()
+	calibrate.name = "CalibrateBtn"
+	calibrate.text = "Auto calibrate..."
+	calibrate.theme_type_variation = &"AccentButton"
+	calibrate.tooltip_text = "Guides you through a few expressions and sets the ranges to how your face moves."
+	calibrate.pressed.connect(calibrate_guided)
+	top.add_child(calibrate)
+	add_child(top)
+	_build_guide()
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -210,6 +221,115 @@ func _display_names() -> Dictionary:
 		for p in info.get("Parameters", []):
 			out[p.get("Id", "")] = String(p.get("Name", "")).replace("\u3000", " ").strip_edges()
 	return out
+
+#region guided calibration
+
+## [id, instruction, seconds]. Samples from the last 60% of each step, after the face has changed
+const STEPS = [
+	["neutral", "Relax your face and look at the camera", 3.0],
+	["eyes_closed", "Close both eyes", 2.5],
+	["mouth_open", "Open your mouth as wide as is comfortable", 3.0],
+	["smile", "Smile broadly", 3.0],
+	["brows_up", "Raise your eyebrows", 3.0],
+]
+const MEASURED = ["EyeOpenLeft", "EyeOpenRight", "MouthOpen", "MouthSmile", "Brows"]
+
+var _guide := PanelContainer.new()
+var _guide_text := Label.new()
+var _guide_bar := ProgressBar.new()
+var _guide_step := Label.new()
+var _cancelled := false
+## the result of the last calibration, for the summary and tests
+var last_calibration := {}
+
+func _build_guide() -> void:
+	_guide.name = "CalibrationGuide"
+	_guide.theme_type_variation = &"SubPanelContainer"
+	_guide.visible = false
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	_guide_step.theme_type_variation = &"FieldLabel"
+	box.add_child(_guide_step)
+	_guide_text.add_theme_font_size_override("font_size", 26)
+	_guide_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(_guide_text)
+	_guide_bar.show_percentage = false
+	_guide_bar.max_value = 1.0
+	box.add_child(_guide_bar)
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	cancel.pressed.connect(func (): _cancelled = true)
+	box.add_child(cancel)
+	_guide.add_child(box)
+	add_child(_guide)
+
+## runs the steps, then narrows each measured parameter's band to the user's own movement
+func calibrate_guided() -> void:
+	var tracking = get_tree().get_first_node_in_group("system:tracking")
+	if model == null or tracking == null:
+		return
+	_cancelled = false
+	_guide.visible = true
+	var samples := {}  # step -> param -> [values]
+	for i in STEPS.size():
+		var step: Array = STEPS[i]
+		_guide_step.text = tr("Step %d of %d") % [i + 1, STEPS.size()]
+		_guide_text.text = tr(step[1])
+		var per := {}
+		var start := Time.get_ticks_msec()
+		var length := int(step[2] * 1000)
+		while Time.get_ticks_msec() - start < length:
+			await get_tree().process_frame
+			if _cancelled:
+				_guide.visible = false
+				return
+			var t := float(Time.get_ticks_msec() - start) / length
+			_guide_bar.value = t
+			if t >= 0.4:
+				for p in MEASURED:
+					per.get_or_add(p, []).append(float(tracking.parameters.get(p, 0.0)))
+		samples[step[0]] = per
+	_guide.visible = false
+	last_calibration = _apply_calibration(samples)
+	refresh()
+	var parts: Array = last_calibration.applied.map(func (p): return tr(p))
+	var alert = get_tree().get_first_node_in_group("system:alert")
+	if alert:
+		alert.alert(tr("Calibrated: %s") % ", ".join(parts) if parts else tr("No clear movement measured, nothing changed."))
+
+func _pct(values: Array, q: float) -> float:
+	if values.is_empty():
+		return 0.0
+	var v := values.duplicate()
+	v.sort()
+	return v[clampi(int(round(q * (v.size() - 1))), 0, v.size() - 1)]
+
+## {applied: [part names], bands: {tracker param: Vector2}}
+func _apply_calibration(samples: Dictionary) -> Dictionary:
+	var bands := {}
+	var neutral: Dictionary = samples.get("neutral", {})
+	var span := func (p): return Registry.get(p).range.y - Registry.get(p).range.x
+	for eye in ["EyeOpenLeft", "EyeOpenRight"]:
+		var open := _pct(neutral.get(eye, []), 0.5)
+		var closed := _pct(samples.get("eyes_closed", {}).get(eye, []), 0.1)
+		if open - closed > 0.2 * span.call(eye):
+			bands[eye] = Vector2(closed + 0.1 * (open - closed), open - 0.05 * (open - closed))
+	for pair in [["MouthOpen", "mouth_open"], ["MouthSmile", "smile"], ["Brows", "brows_up"]]:
+		var rest := _pct(neutral.get(pair[0], []), 0.5)
+		var peak := _pct(samples.get(pair[1], {}).get(pair[0], []), 0.9)
+		if peak - rest > 0.15 * span.call(pair[0]):
+			bands[pair[0]] = Vector2(rest + 0.05 * (peak - rest), rest + 0.95 * (peak - rest))
+	var applied := []
+	for chain in chains():
+		if chain.tracker_param in bands:
+			_set_range(chain, bands[chain.tracker_param])
+			var part := _part(chain.tracker_param)
+			if part not in applied:
+				applied.append(part)
+	return {"applied": applied, "bands": bands}
+
+#endregion
 
 #region editing the graph
 

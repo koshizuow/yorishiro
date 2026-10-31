@@ -147,3 +147,13 @@ Automatic blinking,Automatic blinking,自動眨眼
 When the face is lost,When the face is lost,追蹤不到臉時
 Always,Always,一直
 Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you.,Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you.,每隔幾秒自動眨一次眼。選「追蹤不到臉時」只在追蹤器看不到你時才自動眨。
+Auto calibrate...,Auto calibrate...,自動校正…
+Guides you through a few expressions and sets the ranges to how your face moves.,Guides you through a few expressions and sets the ranges to how your face moves.,引導你做幾個表情，依你的臉實際的動作範圍自動設定。
+Relax your face and look at the camera,Relax your face and look at the camera,放鬆臉部，看著鏡頭
+Close both eyes,Close both eyes,閉上雙眼
+Open your mouth as wide as is comfortable,Open your mouth as wide as is comfortable,嘴巴張到最大（不勉強）
+Smile broadly,Smile broadly,大大地笑
+Raise your eyebrows,Raise your eyebrows,抬起眉毛
+Step %d of %d,Step %d of %d,第 %d 步，共 %d 步
+Calibrated: %s,Calibrated: %s,已校正：%s
+"No clear movement measured, nothing changed.","No clear movement measured, nothing changed.",沒有量到明顯的動作，設定沒有改變。

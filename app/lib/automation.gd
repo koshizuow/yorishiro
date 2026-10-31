@@ -30,6 +30,8 @@
 ##                          that model parameter's row, check the graph, the mapping and that both survive a reload
 ##   --eye-test             with the Yorishiro tracker running: toggle "blink both eyes together" and automatic
 ##                          blinking on the tracking input, sample EyeOpenLeft/Right as the graph sees them for 8 s
+##   --calibration-test     after --open-panel=sensitivity, run the guided calibration with a fixed-pose tracker
+##                          that follows each instruction like a user would, and check the bands it sets
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -135,6 +137,8 @@ func _ready() -> void:
 			await _sensitivity_test(args["sensitivity-test"])
 		if args.has("eye-test"):
 			await _eye_test()
+		if args.has("calibration-test"):
+			await _calibration_test(args)
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
@@ -471,6 +475,42 @@ func _eye_test():
 		print("[automation] eye test %s: max |left-right| %.3f, %d closes in 8 s (%d frames, face %s)" % [mode[0], diffs, closes, frames, tracking.face_present])
 	tracker.link_eyes = false
 	tracker.auto_blink = 0
+
+func _calibration_test(args: Dictionary):
+	var page = get_tree().root.find_child("SensitivityPage", true, false)
+	var check := func (what: String, ok: bool): print("[automation] calibration %s: %s" % [what, "ok" if ok else "FAILED"])
+	var tracker = get_tree().get_first_node_in_group("system:tracking").activate_tracker(CameraTracker.new())
+	# what a cooperative user's face gives at each instruction
+	var faces := {
+		"neutral": {"EyeOpenLeft": 0.9, "EyeOpenRight": 0.9, "MouthOpen": 0.05, "MouthSmile": 0.1, "Brows": 0.5},
+		"eyes_closed": {"EyeOpenLeft": 0.1, "EyeOpenRight": 0.1, "MouthOpen": 0.05, "MouthSmile": 0.1, "Brows": 0.5},
+		"mouth_open": {"EyeOpenLeft": 0.9, "EyeOpenRight": 0.9, "MouthOpen": 0.8, "MouthSmile": 0.1, "Brows": 0.5},
+		"smile": {"EyeOpenLeft": 0.9, "EyeOpenRight": 0.9, "MouthOpen": 0.05, "MouthSmile": 0.85, "Brows": 0.5},
+		"brows_up": {"EyeOpenLeft": 0.9, "EyeOpenRight": 0.9, "MouthOpen": 0.05, "MouthSmile": 0.1, "Brows": 0.9},
+	}
+	page.refresh()
+	page.calibrate_guided()
+	var shot_taken := false
+	while true:
+		await get_tree().process_frame
+		if not page._guide.visible:
+			break
+		var current = page.STEPS.filter(func (st): return tr(st[1]) == page._guide_text.text)
+		if current:
+			tracker.update(faces[current[0][0]])
+			if current[0][0] == "mouth_open" and not shot_taken and page._guide_bar.value > 0.5:
+				get_viewport().get_texture().get_image().save_png(String(args.get("screenshot-window", "/tmp/calibration.png")).get_basename() + "_guide.png")
+				shot_taken = true
+	for i in 5:
+		await get_tree().process_frame
+	var bands: Dictionary = page.last_calibration.get("bands", {})
+	var expect := {"EyeOpenLeft": Vector2(0.18, 0.86), "MouthOpen": Vector2(0.0875, 0.7625), "MouthSmile": Vector2(0.1375, 0.8125), "Brows": Vector2(0.52, 0.88)}
+	for p in expect:
+		var got: Vector2 = bands.get(p, Vector2(-1, -1))
+		check.call("%s band %s, expected %s" % [p, got, expect[p]], got.distance_to(expect[p]) < 0.03)
+	var mouth = page.chains().filter(func (c): return c.tracker_param == "MouthOpen")
+	check.call("mouth row rangemap %s" % (mouth[0].rangemap.a if mouth and mouth[0].rangemap else null), mouth and mouth[0].rangemap and mouth[0].rangemap.a.distance_to(expect.MouthOpen) < 0.03)
+	check.call("parts %s" % [page.last_calibration.get("applied")], page.last_calibration.get("applied", []).size() >= 3)
 
 func _open_panel(which: String):
 	# --open-panel names: model and item open the models page, camera the settings page, others by page id
