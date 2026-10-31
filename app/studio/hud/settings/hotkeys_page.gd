@@ -2,6 +2,8 @@
 ## the advanced tool and only gets a small button at the bottom.
 extends VBoxContainer
 
+const HotkeyList = preload("res://studio/hud/settings/hotkey_list.gd")
+
 func _init() -> void:
 	name = "HotkeysPage"
 	var screen := CheckButton.new()
@@ -18,12 +20,14 @@ func _init() -> void:
 		var hud = find_parent("HUD")
 		if hud and is_visible_in_tree():
 			screen.set_pressed_no_signal(hud.show_screen_buttons))
-	var list := Label.new()
-	list.name = "Placeholder"
-	list.text = "The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now."
-	list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_child(list)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var list := HotkeyList.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+	add_child(scroll)
+	visibility_changed.connect(func (): if is_visible_in_tree(): list.refresh())
 
 	var advanced := HBoxContainer.new()
 	advanced.alignment = BoxContainer.ALIGNMENT_END

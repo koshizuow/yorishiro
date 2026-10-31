@@ -23,6 +23,9 @@
 ##   --gestures=<prefix>    after the screenshot, operate the model with synthetic mouse and key events (drag,
 ##                          wheel, wheel while dragging, shift+wheel, right drag), save <prefix>_<step>.png and print
 ##                          the model transform after each step
+##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
+##                          events, switch it to an animation, hold mode, screen button 3, press that button,
+##                          save, reload the model and check it is still there, then delete it
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -122,6 +125,8 @@ func _ready() -> void:
 			await _cycle_models(args)
 		if args.has("gestures"):
 			await _gestures(args["gestures"])
+		if args.has("hotkey-test"):
+			await _hotkey_test(args["hotkey-test"])
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
@@ -273,6 +278,95 @@ func _mouse_motion(at: Vector2, rel: Vector2) -> void:
 	m.relative = rel
 	m.button_mask = MOUSE_BUTTON_MASK_LEFT if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) else 0
 	Input.parse_input_event(m)
+
+func _hotkey_test(prefix: String):
+	var list = get_tree().root.find_child("HotkeyList", true, false)
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var check := func (what: String, ok: bool): print("[automation] hotkey %s: %s" % [what, "ok" if ok else "FAILED"])
+	list.refresh()
+	var before: int = list.entries().size()
+	list.get_node("AddHotkeyBtn").pressed.emit()
+	for i in 3:
+		await get_tree().process_frame
+	var entries: Array = list.entries()
+	check.call("add (%d -> %d)" % [before, entries.size()], entries.size() == before + 1)
+	var row = list._rows.get_child(list._rows.get_child_count() - 1)
+	# key capture: click the keys button, then Ctrl+K as real key events
+	row.get_child(1).pressed.emit()
+	for k in [[KEY_CTRL, true, false], [KEY_K, true, true], [KEY_K, false, true], [KEY_CTRL, false, false]]:
+		var ev := InputEventKey.new()
+		ev.keycode = k[0]
+		ev.physical_keycode = k[0]
+		ev.pressed = k[1]
+		ev.ctrl_pressed = k[2]
+		Input.parse_input_event(ev)
+		await get_tree().process_frame
+	var e: Dictionary = list.entries()[-1]
+	var keys: Array = e.key.get_node("%Handler").input_as_list
+	check.call("keys %s" % [keys], keys == ["Ctrl", "K"])
+	# switch to the first animation, hold mode, screen button 3
+	var action: OptionButton = row.get_child(0)
+	var anim_index := -1
+	for i in action.item_count:
+		if action.get_item_text(i).begins_with(tr("Animation: %s") % ""):
+			anim_index = i
+			break
+	if anim_index >= 0:
+		action.select(anim_index)
+		action.item_selected.emit(anim_index)
+	(row.get_child(2) as CheckBox).button_pressed = true
+	var screen: OptionButton = row.get_child(3)
+	screen.select(3)
+	screen.item_selected.emit(3)
+	for i in 3:
+		await get_tree().process_frame
+	e = list.entries()[-1]
+	check.call("action %s" % e.kind, anim_index < 0 or e.kind == &"animation")
+	check.call("hold", e.hold)
+	check.call("screen button %d" % list._button_index(e), list._button_index(e) == 2)
+	list.refresh()
+	await get_tree().process_frame
+	get_viewport().get_texture().get_image().save_png("%s_edited.png" % prefix)
+	var hud = get_tree().root.find_child("HUD", true, false)
+	hud.refresh_screen_buttons()
+	var btn: Button = hud.onscreen_buttons.get_node("%Buttons").get_child(2)
+	check.call("stage shows screen button 3 (%s)" % btn.text, btn.visible)
+	# clicking it plays the animation, or toggles the expression, it was wired to
+	var player: AnimationPlayer = stage.active_model.get_animation_player()
+	var controller = stage.active_model.get_expression_controller()
+	var was_on: bool = e.kind == &"expression" and controller.is_activated(e.target.expression)
+	hud.onscreen_buttons.get_node("%Buttons").get_child(2).pressed.emit()
+	for i in 5:
+		await get_tree().process_frame
+	if e.kind == &"animation":
+		check.call("screen button 3 plays %s" % player.current_animation, player.is_playing())
+	else:
+		var now_on: bool = controller.is_activated(e.target.expression)
+		check.call("screen button 3 toggles %s (%s -> %s)" % [e.target.expression, was_on, now_on], now_on != was_on)
+	# save, load the same model again, the hotkey must come back from .yori.json
+	var path: String = stage.active_model.modelmeta.model
+	var count: int = list.entries().size()
+	stage.active_model.save_settings()
+	ModelLibrary.open(path)
+	for i in 600:
+		await get_tree().process_frame
+		if stage.active_model and stage.active_model.modelmeta.model == path and stage.active_model != list.model and not stage.active_model.blueprints.is_empty():
+			break
+	for i in 30:
+		await get_tree().process_frame
+	list.refresh()
+	entries = list.entries()
+	check.call("after reload %d entries (expected %d)" % [entries.size(), count], entries.size() == count)
+	var found := entries.filter(func (x): return x.key and x.key.get_node("%Handler").input_as_list == ["Ctrl", "K"])
+	check.call("Ctrl+K kept", found.size() == 1)
+	if found:
+		list._delete(found[0])
+		await get_tree().process_frame
+		await get_tree().process_frame
+		check.call("delete (%d left, expected %d)" % [list.entries().size(), before], list.entries().size() == before)
+		# quitting from here skips the save a window close does
+		stage.active_model.save_settings()
+	get_viewport().get_texture().get_image().save_png("%s_after.png" % prefix)
 
 func _open_panel(which: String):
 	# --open-panel names: model and item open the models page, camera the settings page, others by page id
