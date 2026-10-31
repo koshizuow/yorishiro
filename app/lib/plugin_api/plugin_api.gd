@@ -5,11 +5,12 @@
 ## main window, then the plugin authenticates each session with that token.
 ## Supported: status, statistics, folders, current/available/load model, move model, hotkeys (list, trigger),
 ## expressions (state, activate), input and Live2D parameters, creating/deleting custom parameters,
-## injecting parameter values, face found, and events (EventSubscriptionRequest): TestEvent,
+## injecting parameter values, face found, items (list, load, unload), and events (EventSubscriptionRequest): TestEvent,
 ## ModelLoadedEvent, ModelMovedEvent, TrackingStatusChangedEvent, HotkeyTriggeredEvent, BackgroundChangedEvent.
 extends Node
 
 const PluginInput = preload("./plugin_input.gd")
+const VtItem = preload("res://lib/items/vt_item.gd")
 
 const PORT = 8001
 const API_NAME = "VTubeStudioPublicAPI"
@@ -40,6 +41,8 @@ const ERR_PARAMETER_NOT_FOUND = 353
 const ERR_PARAMETER_DEFAULT = 354
 const ERR_INJECT = 453
 const ERR_EVENT = 500
+const ERR_ITEM_FILE = 750
+const ERR_ITEM_NO_MODEL = 751
 
 ## a plugin is waiting for the user's answer: {name, developer, icon (Texture2D or null)}
 signal approval_requested(plugin: Dictionary)
@@ -156,6 +159,7 @@ func _process(_delta: float) -> void:
 		match peer.get_ready_state():
 			WebSocketPeer.STATE_CLOSED:
 				_sessions.erase(s)
+				_unload_plugin_items(s)
 				if not _pending.is_empty() and _pending.session == s:
 					_pending = {}
 					approval_finished.emit()
@@ -498,6 +502,110 @@ func _on_inject_parameter_data(s: Dictionary, req: Dictionary):
 func _on_face_found(_s: Dictionary, _req: Dictionary):
 	var t = _tracking()
 	return {"found": t.face_present if t else false}
+
+# --- items ---
+
+func _stage():
+	return get_tree().get_first_node_in_group("system:stage")
+
+func _stage_items() -> Array:
+	var stage = _stage()
+	return stage.canvas.get_children().filter(func (i): return i is VtItem and not i.is_queued_for_deletion()) if stage else []
+
+## an item's file name as plugins see it: the picture's file, or the folder of an animation's frames
+func _item_file(paths: PackedStringArray) -> String:
+	return paths[0].get_file() if paths.size() == 1 else paths[0].get_base_dir().get_file()
+
+func _on_item_list(_s: Dictionary, req: Dictionary):
+	var d: Dictionary = req.data
+	var only_file := str(d.get("onlyItemsWithFileName", ""))
+	var only_id := str(d.get("onlyItemsWithInstanceID", ""))
+	var items := _stage_items()
+	var in_scene := []
+	if d.get("includeItemInstancesInScene", true):
+		for i in items:
+			var file := _item_file(i.path)
+			if (only_file and file != only_file) or (only_id and str(i.uid) != only_id):
+				continue
+			in_scene.append({"fileName": file, "instanceID": str(i.uid), "order": i.sort_order,
+				"type": "AnimationFolder" if i.item_type == VtItem.ItemType.ANIMATED else "PNG",
+				"censored": false, "flipped": i.render.scale.x < 0, "locked": false, "smoothing": 0,
+				"framerate": i.render.sprite_frames.get_animation_speed("default") if i.item_type == VtItem.ItemType.ANIMATED else 0,
+				"frameCount": i.render.sprite_frames.get_frame_count("default") if i.item_type == VtItem.ItemType.ANIMATED else 1,
+				"currentFrame": i.render.frame if i.item_type == VtItem.ItemType.ANIMATED else 0,
+				"pinnedToModel": i.pinned_to != null, "pinnedModelID": "", "pinnedArtMeshID": i.pinned_to.name if i.pinned_to else "",
+				"groupName": str(i.group_name), "sceneName": "", "fromWorkshop": false})
+	var files := []
+	if d.get("includeAvailableItemFiles", false):
+		for e in ItemLibrary.list():
+			var file := _item_file(e.paths)
+			if only_file and file != only_file:
+				continue
+			files.append({"fileName": file, "type": "AnimationFolder" if e.paths.size() > 1 else "PNG",
+				"loadedCount": items.filter(func (i): return PackedStringArray(i.path) == e.paths).size()})
+	return {"itemsInSceneCount": items.size(), "totalItemsAllowedCount": 64, "canLoadItemsRightNow": _model() != null,
+		"availableSpots": [], "itemInstancesInScene": in_scene, "availableItemFiles": files}
+
+func _on_item_load(s: Dictionary, req: Dictionary):
+	var d: Dictionary = req.data
+	var file := str(d.get("fileName", ""))
+	var entry = null
+	for e in ItemLibrary.list():
+		if _item_file(e.paths) == file:
+			entry = e
+			break
+	if entry == null:
+		return _error(s, req, ERR_ITEM_FILE, "No item %s in the item library." % file)
+	var stage = _stage()
+	if stage == null or stage.active_model == null:
+		return _error(s, req, ERR_ITEM_NO_MODEL, "Items need a model on the stage.")
+	_load_item(s, req, entry.paths, file)
+	return null  # answered when the item is on the stage
+
+func _load_item(s: Dictionary, req: Dictionary, paths: PackedStringArray, file: String) -> void:
+	var d: Dictionary = req.data
+	var stage = _stage()
+	var item = await ItemManager.create_item(paths)
+	if item == null:
+		_error(s, req, ERR_ITEM_FILE, "%s could not be loaded." % file)
+		return
+	stage.spawn_item(item, float(d.get("fadeTime", 0.5)) > 0.0)
+	var view: Vector2 = stage.get_viewport().get_visible_rect().size
+	if d.get("size") != null:
+		# size is the item's height as a part of the window height
+		item.scale = Vector2.ONE * clampf(float(d.size), 0.01, 1.0) * view.y / maxf(item.size.y, 1.0)
+	var target := view / 2.0 + Vector2(float(d.get("positionX", 0.0)) * view.x / 2.0, -float(d.get("positionY", 0.0)) * view.y / 2.0)
+	item.rotation_degrees = float(d.get("rotation", 0.0))
+	item.global_position = target - item.scale * item.center
+	if d.get("order") != null:
+		item.sort_order = int(d.order)
+	if d.get("flipped", false):
+		item.render.scale.x = -absf(item.render.scale.x)
+	item.set_meta("plugin", s.plugin)
+	if d.get("unloadWhenPluginDisconnects", true):
+		s.get_or_add("items", []).append(item)
+	_reply(s, req, "ItemLoadResponse", {"instanceID": str(item.uid), "fileName": file})
+
+func _on_item_unload(s: Dictionary, req: Dictionary):
+	var d: Dictionary = req.data
+	var others := bool(d.get("allowUnloadingItemsLoadedByUserOrOtherPlugins", true))
+	var ids: Array = d.get("instanceIDs", []) if d.get("instanceIDs") is Array else []
+	var files: Array = d.get("fileNames", []) if d.get("fileNames") is Array else []
+	var out := []
+	for i in _stage_items():
+		var mine: bool = i.get_meta("plugin", "") == s.plugin
+		var hit: bool = bool(d.get("unloadAllInScene", false)) or (bool(d.get("unloadAllLoadedByThisPlugin", false)) and mine) \
+			or str(i.uid) in ids or _item_file(i.path) in files
+		if hit and (mine or others):
+			out.append({"instanceID": str(i.uid), "fileName": _item_file(i.path)})
+			_stage().remove_item(i)
+	return {"unloadedItems": out}
+
+func _unload_plugin_items(s: Dictionary) -> void:
+	var stage = _stage()
+	for i in s.get("items", []):
+		if stage and is_instance_valid(i) and i.is_inside_tree() and not i.is_queued_for_deletion():
+			stage.remove_item(i)
 
 # --- events ---
 
