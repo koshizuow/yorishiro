@@ -477,6 +477,19 @@ func _hand_test(shots: String):
 		await get_tree().process_frame
 		if shots and shots != "true" and Time.get_ticks_msec() - t0 >= next_shot:
 			get_viewport().get_texture().get_image().save_png("%s_%d.png" % [shots, next_shot / 1000])
+			# and a close-up: the preview's camera right in front of a shown hand
+			var preview = get_tree().root.find_child("PreviewHandLeft", true, false)
+			var hand = preview if preview and preview.visible else get_tree().root.find_child("PreviewHandRight", true, false)
+			if hand and hand.visible:
+				var cam: Camera3D = hand.get_viewport().get_camera_3d()
+				var keep := cam.position
+				cam.set_meta("hold", true)
+				cam.position = hand.global_position + Vector3(0, 0, 0.22)
+				await RenderingServer.frame_post_draw
+				await RenderingServer.frame_post_draw
+				hand.get_viewport().get_texture().get_image().save_png("%s_%d_close.png" % [shots, next_shot / 1000])
+				cam.position = keep
+				cam.remove_meta("hold")
 			next_shot += 2000
 		var p: Dictionary = tracking.parameters
 		for k in seen:

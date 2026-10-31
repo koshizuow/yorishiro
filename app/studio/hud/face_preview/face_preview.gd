@@ -196,13 +196,15 @@ func _update_hands(p: Dictionary, face) -> void:
 			hand.visible = false
 			continue
 		any = true
-		hand.show_points(points[side])
+		# the points come mirrored (the avatar's sides), so the avatar's left hand has a left hand's shape
+		hand.show_points(points[side], -1.0 if side == "Left" else 1.0)
 		var out := 1.0 if side == "Left" else -1.0
 		var target := Vector3(out * (0.13 + 0.006 * float(p.get("Hand%sPositionX" % side, 0.0))),
 			-0.06 + 0.008 * float(p.get("Hand%sPositionY" % side, 0.0)), 0.02)
 		hand.position = target if not hand.has_meta("placed") else hand.position.lerp(target, 0.3)
 		hand.set_meta("placed", true)
-	_camera.position.z = lerpf(_camera.position.z, CAMERA_FAR if any else CAMERA_NEAR, 0.08)
+	if not _camera.has_meta("hold"):  # tests hold it for a close-up
+		_camera.position.z = lerpf(_camera.position.z, CAMERA_FAR if any else CAMERA_NEAR, 0.08)
 
 ## rough ARKit values from the inputs any face tracker sends, for trackers without blendshapes
 func _from_inputs(p: Dictionary) -> Dictionary:
