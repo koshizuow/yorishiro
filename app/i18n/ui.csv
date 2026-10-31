@@ -125,3 +125,19 @@ Animation: %s,Animation: %s,動畫：%s
 Set keys,Set keys,設定按鍵
 Press keys...,Press keys...,請按下按鍵…
 This model has no expressions or animations.,This model has no expressions or animations.,這個模型沒有表情或動畫。
+Sensitivity,Sensitivity,靈敏度
+Eyes: open and close,Eyes: open and close,眼睛：開合
+Eyes: gaze,Eyes: gaze,眼睛：視線
+Eyebrows,Eyebrows,眉毛
+Mouth: smile,Mouth: smile,嘴巴：笑
+Mouth: open,Mouth: open,嘴巴：張開
+Mouth: other,Mouth: other,嘴巴：其他
+Cheeks,Cheeks,臉頰
+Head: angle,Head: angle,頭部：角度
+Head: position,Head: position,頭部：位置
+Other,Other,其他
+The dot is your face right now. Drag the two handles to the range you actually move: a narrower range reacts more. Smoothing steadies the motion but adds delay.,The dot is your face right now. Drag the two handles to the range you actually move: a narrower range reacts more. Smoothing steadies the motion but adds delay.,圓點是你現在的臉。把兩個把手拉到你實際會動到的範圍：範圍越窄，反應越大。平滑會讓動作更穩，但會稍微延遲。
+from %s,from %s,來自 %s
+Input range %.2f to %.2f,Input range %.2f to %.2f,輸入範圍 %.2f 到 %.2f
+Smoothing %d%%,Smoothing %d%%,平滑 %d%%
+%s from %s,%s from %s,%s，來自 %s

@@ -345,6 +345,12 @@ func variations() -> void:
 	v.call("StagePanel", "PanelContainer")
 	t.set_stylebox("panel", "StagePanel", box(Color(PANEL, 0.92), PANEL_RADIUS, 12, 12))
 
+	# ui/range_meter.gd
+	t.set_color("track", "RangeMeter", FIELD)
+	t.set_color("band", "RangeMeter", ACCENT_DIM.lightened(0.15))
+	t.set_color("handle", "RangeMeter", ACCENT)
+	t.set_color("value", "RangeMeter", TEXT)
+
 	v.call("LockButton", "CheckButton")
 	t.set_icon("checked", "LockButton", shared_icon("lock"))
 	t.set_icon("unchecked", "LockButton", shared_icon("unlock"))

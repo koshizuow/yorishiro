@@ -26,6 +26,8 @@
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
 ##                          events, switch it to an animation, hold mode, screen button 3, press that button,
 ##                          save, reload the model and check it is still there, then delete it
+##   --sensitivity-test=<param> after --open-panel=sensitivity, drag the range handles and the smoothing slider of
+##                          that model parameter's row, check the graph, the mapping and that both survive a reload
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -127,6 +129,8 @@ func _ready() -> void:
 			await _gestures(args["gestures"])
 		if args.has("hotkey-test"):
 			await _hotkey_test(args["hotkey-test"])
+		if args.has("sensitivity-test"):
+			await _sensitivity_test(args["sensitivity-test"])
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
@@ -367,6 +371,69 @@ func _hotkey_test(prefix: String):
 		# quitting from here skips the save a window close does
 		stage.active_model.save_settings()
 	get_viewport().get_texture().get_image().save_png("%s_after.png" % prefix)
+
+func _sensitivity_test(param: String):
+	var page = get_tree().root.find_child("SensitivityPage", true, false)
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var check := func (what: String, ok: bool): print("[automation] sensitivity %s: %s" % [what, "ok" if ok else "FAILED"])
+	page.refresh()
+	var row = page._rows.filter(func (r): return r.chain.param == param)
+	check.call("row for %s" % param, not row.is_empty())
+	if row.is_empty():
+		return
+	var meter: RangeMeter = row[0].meter
+	var had_rangemap: bool = row[0].chain.rangemap != null
+	# drag the high handle to 60% of the track, the low one to 10%
+	for target in [[1.0, 0.6], [0.0, 0.1]]:
+		for step in [[true, target[0]], [false, target[1]]]:
+			var e: InputEventMouse = InputEventMouseButton.new() if step[0] else InputEventMouseMotion.new()
+			e.position = Vector2(meter._x(lerpf(meter.domain.x, meter.domain.y, step[1])), meter.size.y / 2)
+			if e is InputEventMouseButton:
+				e.button_index = MOUSE_BUTTON_LEFT
+				e.pressed = true
+			meter._gui_input(e)
+		var up := InputEventMouseButton.new()
+		up.button_index = MOUSE_BUTTON_LEFT
+		meter._gui_input(up)
+		for i in 3:
+			await get_tree().process_frame
+	var chain: Dictionary = row[0].chain
+	var span: float = meter.domain.y - meter.domain.x
+	var want := Vector2(meter.domain.x + span * 0.1, meter.domain.x + span * 0.6)
+	check.call("rangemap %s (was there: %s)" % ["inserted" if not had_rangemap else "kept", had_rangemap], chain.rangemap != null)
+	check.call("band %s, expected about %s" % [chain.rangemap.a, want], chain.rangemap.a.distance_to(want) < span * 0.02)
+	# the middle of the band drives the middle of the parameter range
+	var b: Vector2 = chain.rangemap.b
+	chain.rangemap.update_value(chain.rangemap.v_slot, (want.x + want.y) / 2)
+	var mid: float = chain.rangemap.get_value(0)
+	check.call("mapping middle -> %.3f (expected %.3f)" % [mid, (b.x + b.y) / 2], absf(mid - (b.x + b.y) / 2) < absf(b.y - b.x) * 0.03)
+	# smoothing slider to 40
+	var slider: HSlider = meter.get_parent().get_child(2).get_child(1)
+	slider.value = 40
+	for i in 3:
+		await get_tree().process_frame
+	check.call("smoothing %s" % (chain.smoothing.smoothing if chain.smoothing else -1.0), chain.smoothing != null and is_equal_approx(chain.smoothing.smoothing, 0.4))
+	var order := []
+	for c in page.chains():
+		if c.param == param:
+			order = [c.tracker != null, c.smoothing != null, c.rangemap != null]
+	check.call("chain tracker, smoothing, rangemap found again %s" % [order], order == [true, true, true])
+	# save and reload
+	var path: String = stage.active_model.modelmeta.model
+	var old_model = stage.active_model
+	old_model.save_settings()
+	ModelLibrary.open(path)
+	for i in 600:
+		await get_tree().process_frame
+		if stage.active_model != old_model and stage.active_model and not stage.active_model.blueprints.is_empty():
+			break
+	for i in 30:
+		await get_tree().process_frame
+	page.refresh()
+	var again = page.chains().filter(func (c): return c.param == param)
+	check.call("after reload band %s smoothing %s" % [again[0].rangemap.a if again and again[0].rangemap else null,
+		again[0].smoothing.smoothing if again and again[0].smoothing else null],
+		again and again[0].rangemap and again[0].rangemap.a.distance_to(want) < span * 0.02 and again[0].smoothing and is_equal_approx(again[0].smoothing.smoothing, 0.4))
 
 func _open_panel(which: String):
 	# --open-panel names: model and item open the models page, camera the settings page, others by page id
