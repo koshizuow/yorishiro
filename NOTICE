@@ -14,6 +14,8 @@ Licensing by directory
             git history. Some changes were adapted from upstream pull requests
             and keep their original authors in git.
   tracker/  Apache-2.0, see tracker/LICENSE.
+  core/     Apache-2.0, see core/LICENSE. The tracker's runtime path in Rust
+            (Phase B), built into the app as addons/yorishiro_core.
   tools/    Same license as the component they belong to (app MIT, tracker
             Apache-2.0).
 
@@ -44,10 +46,23 @@ Fonts shipped in app/ui/fonts/
                         SIL Open Font License 1.1, see app/ui/fonts/OFL.txt.
                         Copyright 2025 The Huninn Project Authors.
 
+Third-party components used by core/
+
+  ONNX Runtime          https://github.com/microsoft/onnxruntime, MIT,
+                        Copyright (c) Microsoft Corporation. Not linked: the
+                        core loads a libonnxruntime the install provides
+                        (the CPU build, or the GPU build with NVIDIA's CUDA,
+                        cuDNN and TensorRT libraries under their own terms).
+  ncnn                  https://github.com/Tencent/ncnn, BSD-3-Clause,
+                        Copyright (C) 2017 THL A29 Limited, a Tencent company.
+                        Optional (the ncnn feature), shipped as libncnn.so.1
+                        beside the core's library.
+
 Copies of these licenses are placed in app/license/ by app/build_dependencies.sh.
 The native addons also statically link Rust crates from crates.io, for example
-godot-rust (MPL-2.0). A complete list of their licenses must be generated and
-shipped with any binary release.
+godot-rust (MPL-2.0, file-level: their published sources are used unchanged).
+tools/crate_licenses.py lists them with their licenses; the core's list is in
+core/THIRD_PARTY.md and is regenerated for any binary release.
 
 Data that is not part of this repository
 
@@ -73,6 +88,11 @@ Models the default tracker (facemesh) uses, all commercially usable
     smartphone photos taken through an AR app, depth from synthetic data;
     Blendshapes V2 on samples generated from multi-view lab captures fitted
     with Google's GHUM face model. The data is not distributed.
+  MediaPipe Hand Landmarker   Google, Apache-2.0 (hand tracking, optional)
+    https://storage.googleapis.com/mediapipe-models/hand_landmarker/
+    The hand_landmarker.task bundle holds the palm detector and the hand
+    landmark model. Converted, weights unchanged: tflite2onnx and tf2onnx to
+    ONNX, pnnx to ncnn (tracker/tools/export_hands.py).
   ICT-FaceKit                 USC Institute for Creative Technologies, MIT
     https://github.com/ICT-VGL/ICT-FaceKit
     Neutral head and 53 ARKit-named expression shapes, used by the expression
@@ -91,7 +111,9 @@ Code adapted from MediaPipe (Apache-2.0)
   Face Landmarker's smoothing settings. adapters/mediapipe_blendshapes.py
   copies the landmark subset and output order of face_blendshapes_graph.cc.
   mediapipe_ncnn/ reimplements MediaPipe's face detector decoding and
-  landmark ROI handling. Copyright Google LLC, Apache-2.0.
+  landmark ROI handling, mediapipe_ncnn/hands.py its palm detector decoding
+  and hand crops. core/src/inference.rs and core/src/hands.rs port the same
+  to Rust. Copyright Google LLC, Apache-2.0.
 
 Evaluation only, not used by the tracker and not distributed
 
@@ -99,7 +121,8 @@ Evaluation only, not used by the tracker and not distributed
   in their own environments for comparison (tracker/tools/osf_worker.py,
   tracker/tools/omz_worker.py). Research datasets (for example CREMA-D, ODbL)
   are used for evaluation only, never for training (see the tracker's
-  design notes).
+  design notes). Hand tracking is evaluated on a sample of HaGRID
+  (CC BY-SA 4.0, tracker/tools/eval_hands.py), also never for training.
   Live2D sample models and the Live2D Cubism SDK are not included and are not
   redistributed. Users download them and accept Live2D's terms themselves.
   Yorishiro renders Live2D models with Ayagami and does not ship Live2D Cubism
