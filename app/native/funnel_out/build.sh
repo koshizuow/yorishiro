@@ -1,6 +1,6 @@
 #!/bin/sh
-# Builds yorishiro-funnel into build/. PIPEWIRE_PREFIX: a PipeWire 1.4+ install when the system's is older
-# (this PC: Mint 22 ships 1.0.5, the client was built into /media/koshizu/Work/dev/external/pw16-prefix).
+# Builds yorishiro-funnel into build/ (needs libpipewire-0.3-dev 1.4+). PIPEWIRE_PREFIX: a PipeWire 1.4+ install
+# when the system's is older (Mint 22 ships 1.0.5; the development PC runs 1.6 from ppa:savoury1/pipewire).
 set -e
 cd "$(dirname "$0")"
 if [ -n "${PIPEWIRE_PREFIX:-}" ]; then
