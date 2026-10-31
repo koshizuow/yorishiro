@@ -33,6 +33,8 @@ class FaceMeshGpuTracker(Tracker):
         self.mp_blendshapes = MediaPipeBlendshapes()
         self.smoother = LandmarkSmoother()
         flip = " flip-averaged" if self.mesh.flip_average else ""
+        if self.mesh.pass_ms is not None:  # the flip choice came from the measured landmark pass
+            flip += f" (pass {self.mesh.pass_ms:.1f} ms)"
         self.info = replace(self.info, runtime=f"{self.mesh.landmarker.name}{flip} + blendshape model + numpy solver")
 
     def process(self, bgr: np.ndarray, timestamp_ms: int) -> TrackResult | None:
