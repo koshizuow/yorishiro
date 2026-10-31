@@ -342,3 +342,5 @@ VTube Studio (as an iPhone),VTube Studio (as an iPhone),VTube Studio（當作 iP
 "VSeeFace, Warudo, VNyan (iFacialMocap)","VSeeFace, Warudo, VNyan (iFacialMocap)",VSeeFace、Warudo、VNyan（iFacialMocap）
 In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT.,In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT.,在 VTube Studio 選擇 iPhone 當作追蹤來源，輸入 127.0.0.1。OpenVT 也讀得到。
 In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,在那個軟體選擇 iFacialMocap 當作追蹤來源，輸入 127.0.0.1。
+Add item...,Add item...,加入道具…
+Pictures in the Items folder show up here. Add one from anywhere on this computer.,Pictures in the Items folder show up here. Add one from anywhere on this computer.,Items 資料夾裡的圖片會出現在這裡，也可以從這台電腦的任何地方加入。
