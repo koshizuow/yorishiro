@@ -70,6 +70,7 @@ def main() -> None:
         p.add_argument("--no-mirror", dest="mirror", action="store_false")
     s.add_argument("--control-port", type=int, default=39571, help="commands from the app, 0 to disable")
     s.add_argument("--parent-pid", type=int, default=None, help="exit when this process is gone")
+    s.add_argument("--hands", action="store_true", help="also track hands (MediaPipe hands on the CPU, beside the face)")
     for p in (s, t):
         p.add_argument("--vts-iphone", type=int, nargs="?", const=21412, default=None, metavar="PORT",
                        help="also act as an iPhone running VTube Studio (VTube Studio, OpenVT), requests on PORT")
@@ -115,7 +116,7 @@ def main() -> None:
             raise SystemExit(2)
         extra = _extra_sinks(args)
         raise SystemExit(run_serve(args.tracker, args.runtime, sink, args.camera, args.size, args.replay,
-                                   args.loop, args.smoothing, control, args.parent_pid, extra))
+                                   args.loop, args.smoothing, control, args.parent_pid, extra, args.hands))
     from . import app
 
     if args.cmd == "preview":

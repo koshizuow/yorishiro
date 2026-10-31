@@ -52,6 +52,8 @@ var runtime := "vulkan"
 ## VTube Studio and OpenVT read the VTube Studio iPhone protocol, VSeeFace, Warudo and VNyan iFacialMocap
 var send_vts_iphone := false
 var send_ifacialmocap := false
+## also track hands (MediaPipe hands on the CPU beside the face), the Hand* inputs
+var track_hands := false
 
 var found := false
 ## latest raw ARKit 52 values, for bindings that want more than the VTS style inputs
@@ -108,6 +110,8 @@ func start():
 		args.append("--vts-iphone")
 	if send_ifacialmocap:
 		args.append("--ifacialmocap")
+	if track_hands:
+		args.append("--hands")
 	_append_log("$ %s %s" % [cmd.get_file(), " ".join(args)])
 	OS.set_environment("PYTHONUNBUFFERED", "1")  # otherwise its log arrives in 4 KB bursts
 	_proc = OS.execute_with_pipe(cmd, args, false)
@@ -179,6 +183,9 @@ func _receive():
 			_lost_msec = 0
 			arkit = latest_frame.get("arkit", {})
 			update(latest_frame.get("vts", {}))
+		# hands are tracked apart from the face, a hand can be seen without it
+		if latest_frame.has("hands"):
+			update(latest_frame["hands"])
 
 func _count_glare(g: Array):
 	var now := Time.get_ticks_msec()
@@ -264,10 +271,11 @@ func load_settings():
 		lost_delay = float(data.get("lost_delay", lost_delay))
 		send_vts_iphone = bool(data.get("send_vts_iphone", send_vts_iphone))
 		send_ifacialmocap = bool(data.get("send_ifacialmocap", send_ifacialmocap))
+		track_hands = bool(data.get("track_hands", track_hands))
 
 func save_settings():
 	var f = FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"camera": camera, "tracker": tracker_name, "runtime": runtime,
 			"when_lost": when_lost, "lost_delay": lost_delay, "glasses": glasses,
-			"send_vts_iphone": send_vts_iphone, "send_ifacialmocap": send_ifacialmocap}))
+			"send_vts_iphone": send_vts_iphone, "send_ifacialmocap": send_ifacialmocap, "track_hands": track_hands}))

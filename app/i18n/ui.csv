@@ -413,3 +413,6 @@ Makes a quiet microphone louder.,Makes a quiet microphone louder.,把太小聲�
 Noise gate,Noise gate,噪音門檻
 "Sounds quieter than this do not move the mouth, like a fan or keyboard.","Sounds quieter than this do not move the mouth, like a fan or keyboard.",比這個小聲的聲音（例如電扇、鍵盤）不會讓嘴巴動。
 "Higher is calmer, lower follows every syllable.","Higher is calmer, lower follows every syllable.",越高越穩定，越低越會跟著每個音節動。
+Track hands,Track hands,追蹤手部
+"Hand position, angle and fingers for models with hand parameters. Uses more CPU.","Hand position, angle and fingers for models with hand parameters. Uses more CPU.",給有手部參數的模型用：手的位置、角度和手指。會多用一些 CPU。
+Hands,Hands,手部

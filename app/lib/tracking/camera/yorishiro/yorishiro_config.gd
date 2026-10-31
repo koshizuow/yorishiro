@@ -163,6 +163,16 @@ func _glasses_option():
 
 ## sending the tracking to other apps; changing one restarts the tracker with the new outputs
 func _output_options():
+	var hands = CheckButton.new()
+	hands.name = "TrackHands"
+	hands.text = "Track hands"
+	hands.tooltip_text = "Hand position, angle and fingers for models with hand parameters. Uses more CPU."
+	hands.button_pressed = tracker.track_hands
+	hands.toggled.connect(func (on):
+		tracker.track_hands = on
+		tracker.save_settings()
+		tracker.restart())
+	add_child(hands)
 	var title = Label.new()
 	title.text = "Send tracking to other apps on this computer"
 	title.theme_type_variation = &"FieldLabel"

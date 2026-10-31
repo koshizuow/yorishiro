@@ -35,6 +35,8 @@
 ##   --mic-test=<wav>       lip sync: play the wav (tools/lip_sync_vowels.py, with its .json timeline) through
 ##                          the voice bus instead of the microphone, print the voice values per part and check
 ##                          silence, volume and the vowel that wins in each
+##   --hand-test            switch hand tracking on (restarts the Yorishiro tracker with --hands), run with a
+##                          recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands), check the Hand* inputs
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
 ##                          (saved position, background, change model) and check what pressing it does
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
@@ -226,6 +228,8 @@ func _ready() -> void:
 			await _app_action_test()
 		if args.has("expression-editor-test"):
 			await _expression_editor_test(str(args["expression-editor-test"]))
+		if args.has("hand-test"):
+			await _hand_test()
 		if args.has("mic-test"):
 			await _mic_test(str(args["mic-test"]))
 		if args.has("plugin-api-test"):
@@ -455,6 +459,35 @@ func _expression_editor_test(shot: String):
 	await wait.call(15)
 	names = model.get_expression_controller().expressions.map(func (e): return e.get_name())
 	check.call("deleted", not FileAccess.file_exists(file) and not ("yori_test" in names))
+
+func _hand_test():
+	var check := func (what: String, ok: bool): print("[automation] hands %s: %s" % [what, "ok" if ok else "FAILED"])
+	var tracking = get_tree().get_first_node_in_group("system:tracking")
+	var face = tracking.get_node("FaceTracker")
+	check.call("Yorishiro tracker", "track_hands" in face)
+	face.track_hands = true
+	face.restart()
+	var seen := {"HandLeftFound": 0, "HandRightFound": 0}
+	var open_hi := 0.0
+	var open_lo := 1.0
+	var frames := 0
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 20000:
+		await get_tree().process_frame
+		var p: Dictionary = tracking.parameters
+		for k in seen:
+			if p.get(k, 0.0) > 0.5:
+				seen[k] += 1
+		if p.get("HandLeftFound", 0.0) > 0.5:
+			frames += 1
+			open_hi = maxf(open_hi, p.get("HandLeftOpen", 0.0))
+			open_lo = minf(open_lo, p.get("HandLeftOpen", 1.0))
+	print("[automation] hands status %s" % JSON.stringify(face.status))
+	check.call("left hand seen (%d frames)" % seen.HandLeftFound, seen.HandLeftFound > 30)
+	check.call("right hand seen (%d frames)" % seen.HandRightFound, seen.HandRightFound > 10)
+	check.call("open and closed hand apart (Open %.2f to %.2f)" % [open_lo, open_hi], open_hi > 0.6 and open_lo < 0.35)
+	face.track_hands = false
+	face.save_settings()
 
 func _mic_test(wav: String):
 	var check := func (what: String, ok: bool): print("[automation] lip sync %s: %s" % [what, "ok" if ok else "FAILED"])

@@ -206,3 +206,105 @@ def finger_curl(hand: Hand) -> dict[str, float]:
         full = math.radians(120 if name == "Thumb" else 250)
         out[name] = max(0.0, min(1.0, bend / full))
     return out
+
+
+# palm length (wrist to middle finger base) as a share of the image height that counts as depth 0
+PALM_AT_ZERO_DEPTH = 0.12
+PALM_PER_DEPTH_UNIT = 0.006
+
+
+def hand_params(hands: list[Hand], width: int, height: int) -> dict[str, float]:
+    """Hand tracking inputs as VTube Studio models bind them (HandLeftFound, HandLeftPositionX, ...,
+    HandLeftFinger_1_Thumb). Left and right are the person's hands. Positions run -10 to 10 with + outward
+    (away from the body's middle), up and towards the camera; fingers 0 curled to 1 straight; angles in degrees."""
+    out: dict[str, float] = {}
+    centers = {}
+    for side in ("Left", "Right"):
+        hand = next((h for h in hands if h.right == (side == "Right")), None)
+        out[f"Hand{side}Found"] = 1.0 if hand else 0.0
+        if hand is None:
+            continue
+        lm = hand.landmarks
+        center = (lm[WRIST, :2] + lm[MIDDLE_MCP, :2]) / 2
+        centers[side] = center
+        # the person's left hand is on the image's right; outward for it is towards the image's right
+        outward = 1.0 if side == "Left" else -1.0
+        x = (center[0] / width * 2 - 1) * outward
+        y = -(center[1] / height * 2 - 1)
+        palm = float(np.linalg.norm(lm[MIDDLE_MCP, :2] - lm[WRIST, :2])) / height
+        out[f"Hand{side}PositionX"] = float(np.clip(x * 10, -10, 10))
+        out[f"Hand{side}PositionY"] = float(np.clip(y * 10, -10, 10))
+        out[f"Hand{side}PositionZ"] = float(np.clip((palm - PALM_AT_ZERO_DEPTH) / PALM_PER_DEPTH_UNIT, -10, 10))
+        # lean: 0 with the fingers up, + leaning outward
+        d = lm[MIDDLE_MCP, :2] - lm[WRIST, :2]
+        out[f"Hand{side}AngleZ"] = float(math.degrees(math.atan2(d[0] * outward, -d[1])))
+        # rotation: which way the palm faces, 0 towards the camera, + turned outward (world points, y down, z away)
+        w = hand.world
+        normal = np.cross(w[5] - w[WRIST], w[17] - w[WRIST])
+        if side == "Left":
+            normal = -normal  # the same palm side for both hands
+        out[f"Hand{side}AngleX"] = float(math.degrees(math.atan2(normal[0] * outward, -normal[2])))
+        curl = finger_curl(hand)
+        for i, name in enumerate(FINGERS, 1):
+            out[f"Hand{side}Finger_{i}_{name}"] = 1.0 - curl[name]
+        out[f"Hand{side}Open"] = float(np.mean([1.0 - curl[n] for n in FINGERS]))
+    out["BothHandsFound"] = 1.0 if len(centers) == 2 else 0.0
+    if len(centers) == 2:
+        out["HandDistance"] = float(np.linalg.norm(centers["Left"] - centers["Right"]) / width * 10)
+    return out
+
+
+class HandWorker:
+    """Hand tracking beside the face tracker: a thread works on the newest frame handed to it and the
+    loop takes whatever result is ready, so hands never slow the face down."""
+
+    SMOOTHING = 0.5  # share of the previous value kept per result
+
+    def __init__(self, max_hands: int = 2):
+        import threading
+
+        self.tracker = HandTracker(max_hands)
+        self._lock = threading.Lock()
+        self._wake = threading.Event()
+        self._frame = None
+        self._params: dict[str, float] = {}
+        self.infer_ms = 0.0
+        self._stop = False
+        self._thread = threading.Thread(target=self._run, name="hands", daemon=True)
+        self._thread.start()
+
+    def submit(self, bgr) -> None:
+        with self._lock:
+            self._frame = bgr
+        self._wake.set()
+
+    def latest(self) -> dict[str, float]:
+        with self._lock:
+            return dict(self._params)
+
+    def close(self) -> None:
+        self._stop = True
+        self._wake.set()
+        self._thread.join(timeout=2)
+
+    def _run(self) -> None:
+        import time
+
+        while not self._stop:
+            self._wake.wait()
+            self._wake.clear()
+            with self._lock:
+                frame, self._frame = self._frame, None
+            if frame is None:
+                continue
+            t = time.perf_counter()
+            hands = self.tracker.process(frame)
+            params = hand_params(hands, frame.shape[1], frame.shape[0])
+            self.infer_ms = 0.9 * self.infer_ms + 100 * (time.perf_counter() - t)
+            with self._lock:
+                prev = self._params
+                for k, v in params.items():
+                    # a hand that just appeared starts at its value; angles near +-180 are not averaged across the wrap
+                    if k in prev and not k.endswith("Found") and not (k.endswith(("AngleX", "AngleZ")) and abs(v - prev[k]) > 180):
+                        params[k] = self.SMOOTHING * prev[k] + (1 - self.SMOOTHING) * v
+                self._params = params

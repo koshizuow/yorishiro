@@ -47,7 +47,7 @@ def _camera_frames(index: int, width: int, height: int):
 def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: int = 0,
               size: tuple[int, int] = (1280, 720), replay: Path | None = None, loop: bool = False,
               smoothing: bool = True, control: LinkControl | None = None, parent_pid: int | None = None,
-              extra_sinks: list | None = None) -> int:
+              extra_sinks: list | None = None, hands: bool = False) -> int:
     """Returns a process exit code. Every failure is also reported to the app as a status message."""
     source = f"recording {replay.name}" if replay else f"camera {camera}"
     sink.status("starting", f"loading tracker {tracker_name}", source=source)
@@ -58,6 +58,15 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
     info = {"tracker": tracker.info.name, "runtime": tracker.info.runtime, "source": source,
             "commercial_use": tracker.info.commercial_use}
     print(f"tracker {tracker.info.name} ({tracker.info.runtime}) -> {sink.addr[0]}:{sink.addr[1]}")
+    hand_worker = None
+    if hands:
+        try:
+            from .mediapipe_ncnn.hands import HandWorker
+            hand_worker = HandWorker()
+            info["hands"] = True
+        except Exception as e:  # the face keeps working without hands
+            print(f"hand tracking unavailable: {e}")
+            sink.status("starting", f"hand tracking unavailable: {e}", source=source)
     calibration = NeutralCalibration()
     smoother = FrameSmoother()
     frames = _recording_frames(replay, loop) if replay else _camera_frames(camera, *size)
@@ -77,6 +86,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
                     preview_on = bool(cmd.get("on", True))
                 elif cmd.get("cmd") == "quit":
                     return 0
+            if hand_worker:
+                hand_worker.submit(img)
             ts = max(int((time.monotonic() - t0) * 1000), last_ts + 1)
             last_ts = ts
             t_infer = time.perf_counter()
@@ -101,7 +112,7 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
                 frame = calibration(res.frame)
                 if smoothing:
                     frame = smoother(frame)
-            sink.send(frame, ts)
+            sink.send(frame, ts, hand_worker.latest() if hand_worker else None)
             for extra in extra_sinks or []:
                 extra.send(frame, ts)
             sent += 1
@@ -119,7 +130,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
                 fps = sent / (now - t_report)
                 sent, t_report = 0, now
                 sink.status("running", "tracking" if res is not None else "no face in view", fps=round(fps, 1),
-                            infer_ms=round(infer_ms, 1), face=res is not None, calibrated=calibrated, **info)
+                            infer_ms=round(infer_ms, 1), face=res is not None, calibrated=calibrated,
+                            **({"hands_ms": round(hand_worker.infer_ms, 1)} if hand_worker else {}), **info)
         if not replay:
             return _fail(sink, f"camera {camera} stopped delivering frames (unplugged or used by another app?)")
         return 0
@@ -129,6 +141,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
         return 0
     finally:
         tracker.close()
+        if hand_worker:
+            hand_worker.close()
         if control:
             control.close()
         for extra in extra_sinks or []:

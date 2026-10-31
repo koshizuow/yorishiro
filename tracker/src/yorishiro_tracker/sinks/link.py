@@ -38,8 +38,12 @@ class LinkSink:
         except OSError:
             pass  # nobody listening yet is normal
 
-    def send(self, frame: FaceFrame | None, timestamp_ms: int) -> None:
+    def send(self, frame: FaceFrame | None, timestamp_ms: int, hands: dict[str, float] | None = None) -> None:
         msg = {"v": 1, "t": timestamp_ms, "found": frame is not None}
+        if hands:
+            # named by the person's hands; mirrored, the user's left hand moves the avatar's right one
+            swap = (lambda k: k.replace("Left", "\0").replace("Right", "Left").replace("\0", "Right")) if self.mirror else (lambda k: k)
+            msg["hands"] = {swap(k): round(v, 3) for k, v in hands.items()}
         if frame is not None:
             deg = lambda a: [round(math.degrees(float(x)), 3) for x in a]  # noqa: E731
             msg.update(

@@ -32,33 +32,18 @@ static func _static_init() -> void:
 	
 	Registry.add_parameter("MouthX", Vector2(-1, 1))
 	
-	# hand tracking (pc only)
-	#Registry.add_parameter("HandLeftFound")
-	#Registry.add_parameter("HandRightFound")
-	#Registry.add_parameter("BothHandsFound")
-	#Registry.add_parameter("HandDistance")
-	#Registry.add_parameter("HandLeftPositionX", Vector2(-1, 1))
-	#Registry.add_parameter("HandLeftPositionY", Vector2(-1, 1))
-	#Registry.add_parameter("HandLeftPositionZ", Vector2(-1, 1))
-	#Registry.add_parameter("HandRightPositionX", Vector2(-1, 1))
-	#Registry.add_parameter("HandRightPositionY", Vector2(-1, 1))
-	#Registry.add_parameter("HandRightPositionZ", Vector2(-1, 1))
-	#Registry.add_parameter("HandLeftAngleX", Vector2(-1, 1))
-	#Registry.add_parameter("HandLeftAngleZ", Vector2(-1, 1))
-	#Registry.add_parameter("HandRightAngleX", Vector2(-1, 1))
-	#Registry.add_parameter("HandRightAngleZ", Vector2(-1, 1))
-	#Registry.add_parameter("HandLeftOpen")
-	#Registry.add_parameter("HandRightOpen")
-	#Registry.add_parameter("HandLeftFinger1Thumb")
-	#Registry.add_parameter("HandLeftFinger2Index")
-	#Registry.add_parameter("HandLeftFinger3Middle")
-	#Registry.add_parameter("HandLeftFinger4Ring")
-	#Registry.add_parameter("HandLeftFinger5Pinky")
-	#Registry.add_parameter("HandRightFinger1Thumb")
-	#Registry.add_parameter("HandRightFinger2Index")
-	#Registry.add_parameter("HandRightFinger3Middle")
-	#Registry.add_parameter("HandRightFinger4Ring")
-	#Registry.add_parameter("HandRightFinger5Pinky")
+	# hand tracking (yorishiro tracker with hands on), names as VTube Studio models bind them
+	for side in ["Left", "Right"]:
+		Registry.add_parameter("Hand%sFound" % side, Vector2(0, 1), 0.0, "Hands")
+		for axis in ["X", "Y", "Z"]:
+			Registry.add_parameter("Hand%sPosition%s" % [side, axis], Vector2(-10, 10), 0.0, "Hands")
+		Registry.add_parameter("Hand%sAngleX" % side, Vector2(-180, 180), 0.0, "Hands")
+		Registry.add_parameter("Hand%sAngleZ" % side, Vector2(-180, 180), 0.0, "Hands")
+		Registry.add_parameter("Hand%sOpen" % side, Vector2(0, 1), 0.0, "Hands")
+		for finger in ["1_Thumb", "2_Index", "3_Middle", "4_Ring", "5_Pinky"]:
+			Registry.add_parameter("Hand%sFinger_%s" % [side, finger], Vector2(0, 1), 0.0, "Hands")
+	Registry.add_parameter("BothHandsFound", Vector2(0, 1), 0.0, "Hands")
+	Registry.add_parameter("HandDistance", Vector2(0, 10), 0.0, "Hands")
 
 func _ready() -> void:
 	reset()

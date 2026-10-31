@@ -22,7 +22,7 @@ run() {  # name, model, app options...
   timeout 400 "$ROOT/run.sh" --disable-vsync -- --model="$model" "$@" --wait-frames=90 --quit > "$OUT/$name.log" 2>&1
   local code=$?
   local lines
-  lines=$(grep -E "^\[automation\] (.*: ok|.*FAILED|eye test|cycle |gesture|hotkey|expression|playing|app action|plugin api|expression editor|lip sync)" "$OUT/$name.log" | grep -v "window screenshot")
+  lines=$(grep -E "^\[automation\] (.*: ok|.*FAILED|eye test|cycle |gesture|hotkey|expression|playing|app action|plugin api|expression editor|lip sync|hands)" "$OUT/$name.log" | grep -v "window screenshot")
   echo "== $name (exit $code)"
   echo "$lines" | sed 's/^\[automation\] /   /' | head -40
   grep -E "SCRIPT ERROR" -A2 "$OUT/$name.log" | head -6
@@ -38,6 +38,11 @@ run pluginapi "$HIYORI" --plugin-api-test="$OUT/plugin_card.png" --screenshot-wi
 run expressioneditor "$HIYORI" --open-panel=model --expression-editor-test="$OUT/expression_editor.png" --screenshot-window="$OUT/expressioneditor.png"
 "$ROOT/tracker/.venv/bin/python" "$ROOT/tools/lip_sync_vowels.py" "$OUT/vowels.wav"
 run lipsync "$HIYORI" --mic-test="$OUT/vowels.wav" --screenshot-window="$OUT/lipsync.png"
+# hands need a recording that shows hands (built from HaGRID pictures, testdata/recordings/hagrid-hands)
+HANDS_REC=$ROOT/../testdata/recordings/hagrid-hands
+if [ -f "$HANDS_REC/meta.json" ]; then
+  YORISHIRO_RECORDING=$HANDS_REC run hands "$HIYORI" --hand-test --screenshot-window="$OUT/hands.png"
+fi
 run sensitivity "$HIYORI" --open-panel=sensitivity --sensitivity-test=ParamAngleX --screenshot-window="$OUT/sens.png"
 run calibration "$HIYORI" --open-panel=sensitivity --calibration-test --screenshot-window="$OUT/cal.png"
 run eyes "$HIYORI" --eye-test --screenshot-window="$OUT/eyes.png"
