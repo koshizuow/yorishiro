@@ -493,7 +493,7 @@ impl AyagamiLoader {
         let duration: f64 = meta.get("Duration").map_or(1.0, |v| v.to());
 
         anim.set_length(duration.max(last_frame) as f32);
-        anim.set_path(&file_path);
+        anim.take_over_path(&file_path);  // a reload while the old one is cached must not fail
 
         Some(anim)
     }
@@ -586,7 +586,7 @@ impl AyagamiLoader {
             .trim_suffix(EXPRESSION_EXTENSION)
             .left(-1);
         expression.set_name(&name);
-        expression.set_path(&file_path);
+        expression.take_over_path(&file_path);
 
         Some(expression)
     }
