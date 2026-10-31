@@ -91,11 +91,10 @@ func _on_file_dialog_files_selected(paths: PackedStringArray) -> void:
 	ItemLibrary.add_imported(paths)
 	_preview_item(paths)
 
-## the preview where an item gets placed on the stage
+## a picked item goes straight onto the stage, its row below has pin, flip, order and frame rate
 func _preview_item(paths: PackedStringArray) -> void:
 	var item = await ItemManager.create_item(paths)
 	if item == null:
 		return
-	var preview = preload("./preview/item_preview.tscn").instantiate()
-	preview.item = item
-	add_child(preview)
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	stage.spawn_item(item)

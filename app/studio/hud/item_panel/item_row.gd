@@ -22,6 +22,7 @@ func _ready() -> void:
 	else:
 		item.pin_changed.connect(_update_pin_name)
 		%PinToggle.button_pressed = item.pinnable
+		_flip_button()
 		if item.item_type == VtItem.ItemType.IMAGE:
 			%Icon.icon = preload("./static_image.svg")
 		elif item.item_type == VtItem.ItemType.ANIMATED:
@@ -56,6 +57,21 @@ func _update_pin_name(mesh: MeshInstance2D) -> void:
 		%PinTarget.text = ""
 	else:
 		%PinTarget.text = mesh.name
+
+## mirrors the picture, next to the pin button
+func _flip_button() -> void:
+	var flip := Button.new()
+	flip.name = "FlipToggle"
+	flip.toggle_mode = true
+	flip.focus_mode = Control.FOCUS_NONE
+	flip.custom_minimum_size = Vector2(32, 24)
+	flip.icon = preload("res://ui/icons/left-right.svg")
+	flip.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	flip.expand_icon = true
+	flip.tooltip_text = "Flip"
+	flip.button_pressed = item.render.scale.x < 0
+	flip.toggled.connect(func (on): item.render.scale.x = -absf(item.render.scale.x) if on else absf(item.render.scale.x))
+	%PinToggle.add_sibling(flip)
 
 func _on_pin_toggle_toggled(toggled_on: bool) -> void:
 	item.pinnable = toggled_on
