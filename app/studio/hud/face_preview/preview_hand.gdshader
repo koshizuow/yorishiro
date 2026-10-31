@@ -9,8 +9,10 @@ const int MAX_SEGMENTS = 32;
 uniform vec4 seg_a[MAX_SEGMENTS];
 uniform vec4 seg_b[MAX_SEGMENTS];
 uniform int segment_count = 0;
-// the first finger_count segments are fingers, the rest the palm
-uniform int finger_count = 0;
+// which finger a segment belongs to (0 thumb .. 4 little finger), 5 for the palm and its muscles
+uniform int seg_group[MAX_SEGMENTS];
+// how much a segment narrows in its middle (metres): finger bones are slimmer between the knuckles
+uniform float seg_waist[MAX_SEGMENTS];
 // how far blends reach: fingers barely (they must not stick together), the palm's parts into one mass,
 // and the fingers into the palm
 uniform float finger_blend = 0.003;
@@ -30,27 +32,34 @@ float smin(float a, float b, float k) {
 	return mix(b, a, h) - k * h * (1.0 - h);
 }
 
-// a segment whose radius runs from a.w to b.w
-float segment(vec3 p, vec4 a, vec4 b) {
+// a segment whose radius runs from a.w to b.w, narrower by waist in its middle
+float segment(vec3 p, vec4 a, vec4 b, float waist) {
 	vec3 pa = p - a.xyz;
 	vec3 ba = b.xyz - a.xyz;
 	float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-9), 0.0, 1.0);
-	return length(pa - ba * h) - mix(a.w, b.w, h);
+	return length(pa - ba * h) - (mix(a.w, b.w, h) - waist * sin(3.14159265 * h));
 }
 
 float hand(vec3 p) {
-	float fingers = 1e9;
+	// a finger's own bones join with a plain minimum: their radii meet at the joints, so the finger is one
+	// even tube (a smooth blend there made a bead at every joint)
+	float finger[5] = float[5](1e9, 1e9, 1e9, 1e9, 1e9);
 	float palm = 1e9;
 	for (int i = 0; i < MAX_SEGMENTS; i++) {
 		if (i >= segment_count) {
 			break;
 		}
-		float d = segment(p, seg_a[i], seg_b[i]);
-		if (i < finger_count) {
-			fingers = smin(fingers, d, finger_blend);
+		float d = segment(p, seg_a[i], seg_b[i], seg_waist[i]);
+		int g = seg_group[i];
+		if (g < 5) {
+			finger[g] = min(finger[g], d);
 		} else {
 			palm = smin(palm, d, palm_blend);
 		}
+	}
+	float fingers = finger[0];
+	for (int f = 1; f < 5; f++) {
+		fingers = smin(fingers, finger[f], finger_blend);
 	}
 	return smin(fingers, palm, join_blend);
 }

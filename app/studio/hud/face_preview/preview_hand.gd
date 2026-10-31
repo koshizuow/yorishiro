@@ -21,8 +21,10 @@ const SEGMENTS = [
 	[5, 9, 0.0110, 0.0112], [9, 13, 0.0112, 0.0106], [13, 17, 0.0106, 0.0098],
 	[0, 1, 0.0170, 0.0140], [1, 5, 0.0110, 0.0095],
 ]
-## SEGMENTS before this are fingers, the rest the palm
+## SEGMENTS before this are fingers (three per finger, thumb first), the rest the palm
 const FINGER_SEGMENTS = 15
+## how much a finger bone narrows between its knuckles, as a share of its radius
+const WAIST = 0.1
 ## palm side muscles: [from (point, toward point, share of the way), to (same), radius from, radius to,
 ## how far towards the palm side (metres)]
 const MUSCLES = [
@@ -70,11 +72,17 @@ func show_points(points: Array, palm_sign: float = 1.0) -> void:
 	_box.position = center
 	var seg_a := PackedVector4Array()
 	var seg_b := PackedVector4Array()
-	for s in SEGMENTS:
+	var groups := PackedInt32Array()
+	var waists := PackedFloat32Array()
+	for i in SEGMENTS.size():
+		var s: Array = SEGMENTS[i]
 		var a: Vector3 = p[s[0]] - center
 		var b: Vector3 = p[s[1]] - center
 		seg_a.append(Vector4(a.x, a.y, a.z, s[2]))
 		seg_b.append(Vector4(b.x, b.y, b.z, s[3]))
+		var finger := i < FINGER_SEGMENTS
+		groups.append(i / 3 if finger else 5)
+		waists.append(WAIST * minf(s[2], s[3]) if finger else 0.0)
 	var palm := (p[5] - p[0]).cross(p[17] - p[0]).normalized() * palm_sign
 	var at := func (spec: Array) -> Vector3: return p[spec[0]].lerp(p[spec[1]], spec[2])
 	for m in MUSCLES:
@@ -82,8 +90,11 @@ func show_points(points: Array, palm_sign: float = 1.0) -> void:
 		var b: Vector3 = at.call(m[1]) + palm * m[4] - center
 		seg_a.append(Vector4(a.x, a.y, a.z, m[2]))
 		seg_b.append(Vector4(b.x, b.y, b.z, m[3]))
+		groups.append(5)
+		waists.append(0.0)
 	_material.set_shader_parameter("seg_a", seg_a)
 	_material.set_shader_parameter("seg_b", seg_b)
 	_material.set_shader_parameter("segment_count", SEGMENTS.size() + MUSCLES.size())
-	_material.set_shader_parameter("finger_count", FINGER_SEGMENTS)
+	_material.set_shader_parameter("seg_group", groups)
+	_material.set_shader_parameter("seg_waist", waists)
 	_material.set_shader_parameter("half_size", half)
