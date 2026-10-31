@@ -182,7 +182,7 @@ func _on_expression_pressed() -> void:
 			item.tree_exiting.connect(WindowManager.close_popup.bind(key))
 			return window
 	)
-	popup.grab_focus()
+	_present(key, popup)
 
 func _on_pin_target_pressed() -> void:
 	var key = "{name}_{uid}_pin".format({"name": item.name, "uid": item.uid })
@@ -210,7 +210,15 @@ func _on_model_settings_pressed() -> void:
 			item.tree_exiting.connect(WindowManager.close_popup.bind(key))
 			return popup
 	)
-	popup.grab_focus()
+	_present(key, popup)
+
+## inside the settings overlay the window becomes a sub page of it, elsewhere it floats as before
+func _present(key: StringName, window: Window) -> void:
+	var overlay = get_tree().root.find_child("SettingsOverlay", true, false)
+	if overlay and overlay.is_visible_in_tree():
+		await get_tree().process_frame  # the window sets its title in _ready
+		overlay.open_sub_page(key, window)
+	window.grab_focus()
 
 func _on_rotate_reset_pressed() -> void:
 	%Rotation.editable = false

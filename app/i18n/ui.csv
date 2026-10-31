@@ -323,3 +323,17 @@ Camera,Camera,攝影機
 Tracker,Tracker,追蹤模型
 Compute,Compute,運算
 %s (non-commercial),%s (non-commercial),%s（非商用）
+Go back,Go back,返回
+Expression Settings,Expression Settings,表情設定
+Parts Settings,Parts Settings,部件設定
+Meshes Settings,Meshes Settings,網格設定
+Filter Mode,Filter Mode,縮放濾鏡
+Bilinear,Bilinear,平滑
+Nearest,Nearest,像素
+Idle Animation,Idle Animation,待機動畫
+Opacity,Opacity,不透明度
+Visible,Visible,顯示
+Color Override,Color Override,覆蓋顏色
+Multiply Color,Multiply Color,色彩相乘
+Screen Color,Screen Color,色彩濾色
+Pinnable,Pinnable,可釘選道具
