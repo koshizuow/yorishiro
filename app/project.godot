@@ -73,7 +73,7 @@ system:alert=""
 
 [gui]
 
-theme/custom="uid://bwesfr5en0lxv"
+theme/custom="res://ui/themes/sakura.tres"
 
 [importer_defaults]
 

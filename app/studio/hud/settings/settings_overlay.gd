@@ -69,7 +69,7 @@ func add_page(id: StringName, title: String, page: Control) -> void:
 	tab.text = title
 	tab.toggle_mode = true
 	tab.button_group = _group
-	tab.flat = true
+	tab.theme_type_variation = &"OverlayTab"
 	tab.pressed.connect(open_page.bind(id))
 	tab.name = "%sTab" % String(id).capitalize()
 	_tabs.add_child(tab)

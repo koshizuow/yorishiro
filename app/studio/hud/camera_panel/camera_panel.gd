@@ -5,6 +5,7 @@ const TrackingSystem = preload("res://lib/tracking/tracking_system.gd")
 const Collections = preload("res://lib/utils/collections.gd")
 
 const UI_THEMES: Array[Theme] = [
+	preload("res://ui/themes/sakura.tres"),
 	preload("res://ui/themes/automata.tres"),
 	preload("res://ui/themes/dark.res"),
 ]

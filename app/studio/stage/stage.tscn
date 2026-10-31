@@ -54,6 +54,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+self_modulate = Color(0.909804, 0.560784, 0.670588, 0.18)
 texture = ExtResource("2_yiyxu")
 stretch_mode = 1
 

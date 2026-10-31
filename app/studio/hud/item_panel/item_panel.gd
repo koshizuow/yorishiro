@@ -27,7 +27,7 @@ func teardown():
 		i.queue_free()
 	
 func _on_stage_item_added(item: VtObject) -> void:
-	if not visible:
+	if not is_visible_in_tree():
 		return
 	
 	var row = preload("./item_row.tscn").instantiate()
@@ -37,7 +37,7 @@ func _on_stage_item_added(item: VtObject) -> void:
 	%StageItems.add_child(row)
 
 func _on_stage_item_removed(item: VtItem) -> void:
-	if not visible:
+	if not is_visible_in_tree():
 		return
 	
 	for i in %StageItems.get_children():
@@ -45,7 +45,7 @@ func _on_stage_item_removed(item: VtItem) -> void:
 			i.queue_free()
 
 func _on_stage_model_changed(model: VtModel) -> void:
-	if not visible:
+	if not is_visible_in_tree():
 		return
 	
 	for i in %StageItems.get_children():
@@ -55,7 +55,7 @@ func _on_stage_model_changed(model: VtModel) -> void:
 	_on_stage_item_added(model)
 
 func _on_stage_update_order(objects: Array[Node]) -> void:
-	if not visible:
+	if not is_visible_in_tree():
 		return
 	
 	for i in range(len(objects)):

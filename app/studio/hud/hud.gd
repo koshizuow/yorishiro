@@ -122,6 +122,7 @@ func _build_overlay() -> void:
 
 	var load_model := Button.new()
 	load_model.text = "Load Model..."
+	load_model.theme_type_variation = &"AccentButton"
 	load_model.pressed.connect(_on_model_btn_pressed)
 	overlay.add_page(&"model", "Models & Items", PanelPage.new(preload("res://studio/hud/item_panel/item_panel.tscn"), "ItemPanel", [load_model]))
 	overlay.add_page(&"hotkeys", "Hotkeys", HotkeysPage.new())
@@ -134,6 +135,7 @@ func _build_overlay() -> void:
 	gear.name = "SettingsBtn"
 	gear.icon = preload("res://ui/icons/gear.svg")
 	gear.tooltip_text = "Settings"
+	gear.theme_type_variation = %CameraBtn.theme_type_variation
 	gear.custom_minimum_size = %CameraBtn.custom_minimum_size
 	gear.expand_icon = %CameraBtn.expand_icon
 	gear.pressed.connect(overlay.toggle)
