@@ -47,6 +47,8 @@ func _ready():
 		_runtime.add_item(r)
 	_select_text(_runtime, tracker.runtime)
 
+	_lost_options()
+
 	for b in [["Restart tracker", _on_restart], ["Recalibrate (look straight, relax)", tracker.calibrate]]:
 		var button = Button.new()
 		button.text = b[0]
@@ -83,6 +85,40 @@ func _picker(title: String) -> OptionButton:
 	row.add_child(option)
 	add_child(row)
 	return option
+
+## VTS's tracking-lost choice: freeze, or ease back to the resting pose after a delay
+func _lost_options():
+	var row = HBoxContainer.new()
+	var label = Label.new()
+	label.text = "When the face is lost"
+	row.add_child(label)
+	var mode = OptionButton.new()
+	mode.name = "WhenLost"
+	mode.add_item("Return to the resting pose")
+	mode.add_item("Freeze in the last pose")
+	# items in display order, the enum is FREEZE, REST
+	mode.select(0 if tracker.when_lost == tracker.WhenLost.REST else 1)
+	row.add_child(mode)
+	var after = Label.new()
+	after.text = "after"
+	row.add_child(after)
+	var delay = SpinBox.new()
+	delay.name = "LostDelay"
+	delay.min_value = 0.0
+	delay.max_value = 10.0
+	delay.step = 0.5
+	delay.suffix = "s"
+	delay.value = tracker.lost_delay
+	delay.editable = tracker.when_lost == tracker.WhenLost.REST
+	row.add_child(delay)
+	mode.item_selected.connect(func (i):
+		tracker.when_lost = tracker.WhenLost.REST if i == 0 else tracker.WhenLost.FREEZE
+		delay.editable = i == 0
+		tracker.save_settings())
+	delay.value_changed.connect(func (v):
+		tracker.lost_delay = v
+		tracker.save_settings())
+	add_child(row)
 
 func _on_restart():
 	tracker.camera = _camera.get_selected_id()

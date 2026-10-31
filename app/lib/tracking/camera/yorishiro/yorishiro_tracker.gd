@@ -15,7 +15,21 @@ signal status_changed(status: Dictionary)
 signal preview_changed(texture: Texture2D)
 signal log_changed(lines: PackedStringArray)
 
+## what the model does when the tracker loses the face (VTS has the same choice)
+enum WhenLost { FREEZE, REST }
+## the values the tracker sends for a relaxed face looking straight ahead (vts_params.py at the neutral)
+const REST = {"FaceAngleX": 0.0, "FaceAngleY": 0.0, "FaceAngleZ": 0.0, "FacePositionX": 0.0, "FacePositionY": 0.0,
+	"FacePositionZ": 0.0, "EyeOpenLeft": 1.0, "EyeOpenRight": 1.0, "EyeLeftX": 0.0, "EyeLeftY": 0.0,
+	"EyeRightX": 0.0, "EyeRightY": 0.0, "MouthOpen": 0.0, "MouthSmile": 0.5, "MouthX": 0.0, "Brows": 0.5,
+	"BrowLeftY": 0.0, "BrowRightY": 0.0, "CheekPuff": 0.0, "TongueOut": 0.0}
+## time the model eases back to the resting pose
+const REST_EASE_SEC = 0.8
+
 var camera := 0
+## FREEZE keeps the last pose, REST eases back to the resting pose after lost_delay seconds
+var when_lost := WhenLost.REST
+var lost_delay := 1.0
+var _lost_msec := 0
 var tracker_name := "facemesh"
 var runtime := "vulkan"
 
@@ -99,8 +113,9 @@ func send_command(cmd: Dictionary):
 func is_managed() -> bool:
 	return _pid != 0
 
-func _process(_delta):
+func _process(delta):
 	_receive()
+	_ease_to_rest(delta)
 	_drain_pipes()
 	if _pid == 0 and not _adopted and _started_msec and status.get("state") != "error":
 		if Time.get_ticks_msec() - _started_msec > ADOPT_WAIT_SEC * 1000:
@@ -132,9 +147,25 @@ func _receive():
 				latest_frame = msg
 	if latest_frame != null:
 		found = latest_frame.get("found", false)
+		if not found and _lost_msec == 0:
+			_lost_msec = Time.get_ticks_msec()
 		if found:
+			_lost_msec = 0
 			arkit = latest_frame.get("arkit", {})
 			update(latest_frame.get("vts", {}))
+
+## while the face is lost (and the setting says so), move every tracked value toward its resting value
+func _ease_to_rest(delta: float):
+	if when_lost != WhenLost.REST or _lost_msec == 0:
+		return
+	if Time.get_ticks_msec() - _lost_msec < lost_delay * 1000:
+		return
+	var k := clampf(delta * 3.0 / REST_EASE_SEC, 0.0, 1.0)  # about 95% of the way in REST_EASE_SEC
+	var eased := {}
+	for p in REST:
+		if p in _parameters:
+			eased[p] = lerpf(float(_parameters[p]), REST[p], k)
+	update(eased)
 
 func _show_preview(b64: String):
 	var image = Image.new()
@@ -187,8 +218,11 @@ func load_settings():
 		camera = int(data.get("camera", camera))
 		tracker_name = data.get("tracker", tracker_name)
 		runtime = data.get("runtime", runtime)
+		when_lost = int(data.get("when_lost", when_lost))
+		lost_delay = float(data.get("lost_delay", lost_delay))
 
 func save_settings():
 	var f = FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify({"camera": camera, "tracker": tracker_name, "runtime": runtime}))
+		f.store_string(JSON.stringify({"camera": camera, "tracker": tracker_name, "runtime": runtime,
+			"when_lost": when_lost, "lost_delay": lost_delay}))

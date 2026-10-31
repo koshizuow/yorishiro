@@ -17,6 +17,7 @@
 ##   --pipe-frames=<file>   keep writing the rendered stage to a shared file (for example in /dev/shm), for
 ##                          the PipeWire test tool (/media/koshizu/Work/dev/external/funnel-sender, outside the repo)
 ##   --press=<a,b>          after --open-panel, press these buttons (node names) in order, for screenshots of what they open
+##   --show=<name>          after --open-panel and --press, scroll the page so this node (name) is in view
 ##   --import-models=<dir>  add every model under dir to the model library, as the import card would
 ##   --cycle-models=<prefix> after the screenshot, open each library model in turn like a click on its card, save
 ##                          <prefix>_<nn>_<name>.png (window) after --pose-frames frames and print load time
@@ -111,6 +112,17 @@ func _ready() -> void:
 				button.pressed.emit()
 			else:
 				push_error("[automation] no button %s" % button_name)
+		if args.has("show"):
+			for i in 30:
+				await get_tree().process_frame
+			var target = get_tree().root.find_child(args["show"], true, false)
+			var scroll = target.get_parent() if target else null
+			while scroll and not (scroll is ScrollContainer):
+				scroll = scroll.get_parent()
+			if scroll:
+				scroll.ensure_control_visible(target)
+			else:
+				push_error("[automation] cannot show %s" % args["show"])
 		# after the model's saved settings (transform, expressions) have been applied
 		var placed = stage.active_model if stage else null
 		if args.has("follow-face") and placed:

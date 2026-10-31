@@ -164,3 +164,6 @@ Left and right,Left and right,左右
 Up and down,Up and down,上下
 Closer and farther,Closer and farther,遠近
 Head %+.1f / %+.1f / %+.1f cm,Head %+.1f / %+.1f / %+.1f cm,頭部 %+.1f / %+.1f / %+.1f 公分
+Return to the resting pose,Return to the resting pose,回到正面姿勢
+Freeze in the last pose,Freeze in the last pose,停在最後的姿勢
+after,after,延遲
