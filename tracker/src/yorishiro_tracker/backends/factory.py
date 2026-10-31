@@ -4,7 +4,7 @@ from pathlib import Path
 
 from .base import Backend
 
-RUNTIMES = ("vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu", "cuda", "tensorrt", "npu")
+RUNTIMES = ("vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu", "cuda", "tensorrt")
 
 
 def open_model(stem: Path, runtime: str) -> Backend:
@@ -21,7 +21,4 @@ def open_model(stem: Path, runtime: str) -> Backend:
     if runtime == "tensorrt":
         from .nvidia import TensorRtBackend
         return TensorRtBackend(stem)
-    if runtime == "npu":
-        from .npu import NpuBackend
-        return NpuBackend(stem)
     raise SystemExit(f"unknown runtime {runtime!r}, choose from {', '.join(RUNTIMES)}")

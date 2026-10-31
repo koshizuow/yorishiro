@@ -28,7 +28,7 @@ class FaceMesh:
         need = [MP_DIR / f"{n}.{e}" for n in ("face_detector", "face_landmarks") for e in ("onnx", "ncnn.bin")]
         if not all(p.exists() for p in need):
             raise SystemExit("MediaPipe models missing. Run: uv run python tools/export_mediapipe.py")
-        # The detector runs rarely and is cheaper on CPU than a GPU or NPU dispatch.
+        # The detector runs rarely and is cheaper on CPU than a GPU dispatch.
         self.detector = open_model(MP_DIR / "face_detector", "ncnn-cpu")
         self.landmarker = open_model(MP_DIR / "face_landmarks", runtime)
         self.roi = None

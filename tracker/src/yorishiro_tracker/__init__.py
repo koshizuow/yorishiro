@@ -43,7 +43,7 @@ def main() -> None:
         p.add_argument("--tracker", default="mediapipe", help="tracker plugin, see `yorishiro-tracker trackers`")
         p.add_argument("--runtime", default=None,
                        help="inference runtime for trackers that support it: vulkan (default), "
-                            "vulkan-fp32, ncnn-cpu, ort-cpu, cuda, tensorrt (NVIDIA), npu")
+                            "vulkan-fp32, ncnn-cpu, ort-cpu, cuda, tensorrt (NVIDIA)")
     sub.choices["record"].add_argument("--seconds", type=float, default=10.0)
     sub.choices["record"].add_argument("--out", type=Path, default=None)
     sub.choices["record"].add_argument(
