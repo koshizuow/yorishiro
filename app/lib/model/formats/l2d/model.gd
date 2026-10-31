@@ -2,6 +2,8 @@
 # and spawning them into the scene to be managed
 extends "../../vt_model.gd"
 
+const Pose3 = preload("res://lib/model/formats/l2d/pose3.gd")
+
 var model: AyagamiModel
 var container: Node
 ## parent of the model (or its pixel viewport), offset by the follow-the-face movement so the user's own
@@ -131,6 +133,11 @@ func _build_model():
 	one_shot.add_animation_library("", os_lib)
 	one_shot.name = "OneshotMotionController"
 	model.add_child(one_shot)
+
+	# pose groups last, after the motions that pick their parts
+	var pose = Pose3.from_model_file(modelmeta.model)
+	if pose:
+		model.add_child(pose)
 	
 	#var physics = GDCubismEffectPhysics.new()
 	#loaded_model.add_child(physics)
