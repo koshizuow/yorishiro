@@ -8,6 +8,8 @@
 ##   --poses=<json>         instead of a camera, hold each named pose ({"name": {"FaceAngleX": 30}}) and
 ##                          save <name>_<pose>.png after --pose-frames (default 90) frames
 ##   --hotkeys              after the screenshot, toggle each expression hotkey and save <name>_hotkey_<expression>.png
+##   --expressions-all      after the screenshot, turn each of the model's expressions on alone (with or without a
+##                          hotkey) and save <name>_expr_<expression>.png
 ##   --dump-meshes=<a,b>    after each pose or hotkey shot, print these art meshes as Godot draws them
 ##   --dump-above=<a,b>     ... and the visible meshes drawn on top of them
 ##   --unmask=<a,b>, --raise=<a,b>  before each hotkey shot, draw these meshes without their mask, or on top
@@ -187,6 +189,8 @@ func _ready() -> void:
 				await _shoot_poses(args, viewport, path)
 			if args.has("hotkeys"):
 				await _shoot_hotkeys(args, viewport, path)
+			if args.has("expressions-all"):
+				await _shoot_expressions(args, viewport, path)
 			for b in int(args.get("burst", "0")):
 				for i in int(args.get("burst-every", "60")):
 					await RenderingServer.frame_post_draw
@@ -642,6 +646,23 @@ func _shoot_hotkeys(args: Dictionary, viewport: Viewport, path: String):
 			node.invoke_trigger(1)
 			for i in int(args.get("pose-frames", "90")):
 				await RenderingServer.frame_post_draw
+
+## every expression of the model, one at a time, whether a hotkey uses it or not
+func _shoot_expressions(args: Dictionary, viewport: Viewport, path: String):
+	var model = get_tree().get_first_node_in_group("system:stage").active_model
+	var controller = model.get_expression_controller()
+	var frames := int(args.get("pose-frames", "90"))
+	for e in controller.expressions:
+		var expr_name: String = e.get_name()
+		controller.set("weight/%s" % expr_name, 1.0)
+		for i in frames:
+			await RenderingServer.frame_post_draw
+		var shot = "%s_expr_%s.png" % [path.get_basename(), expr_name.validate_filename()]
+		var err = viewport.get_texture().get_image().save_png(shot)
+		print("[automation] expression %s -> %s" % [shot, error_string(err)])
+		controller.set("weight/%s" % expr_name, 0.0)
+		for i in frames:
+			await RenderingServer.frame_post_draw
 
 ## debugging aids for one mesh: --unmask and --raise change it before the shot, --dump-above and
 ## --dump-meshes print what Godot draws (vertex bbox from the GPU copy, mask state, meshes on top)

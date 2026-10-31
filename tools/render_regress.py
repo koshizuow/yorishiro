@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Render regression over every test model: 13 poses plus each expression hotkey, compared to a baseline.
+"""Render regression over every test model: 13 poses, each expression hotkey and each expression on its own,
+compared to a baseline.
 
     python3 tools/render_regress.py              run all models, compare, write a report
     python3 tools/render_regress.py --accept     same, then make this run the new baseline
     python3 tools/render_regress.py hiyori_free hiyori_pro    only these models (name substring)
+    python3 tools/render_regress.py --compare testdata/render-runs/<time>   compare a finished run again
 
 Models are every folder with a .model3.json under testdata/models, plus the Hiyori samples in
 userdata/yorishiro/Live2DModels. Runs use --fixed-clock and --fixed-fps 60, so an unchanged app gives
@@ -44,7 +46,7 @@ def render(model: Path, out: Path):
     out.mkdir(parents=True, exist_ok=True)
     cmd = [str(ROOT / "run.sh"), "--disable-vsync", "--fixed-fps", "60", "--",
            f"--model={model}", f"--screenshot={out / 'main.png'}", "--wait-frames=60",
-           f"--poses={ROOT / 'tools/poses.json'}", "--pose-frames=40", "--hotkeys", "--fixed-clock", "--quit"]
+           f"--poses={ROOT / 'tools/poses.json'}", "--pose-frames=40", "--hotkeys", "--expressions-all", "--fixed-clock", "--quit"]
     with open(out / "run.log", "w") as log:
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, timeout=600).returncode
     errors = [l for l in (out / "run.log").read_text(errors="replace").splitlines()
@@ -54,9 +56,17 @@ def render(model: Path, out: Path):
     return rc, errors
 
 
+def _premultiplied(path: Path) -> np.ndarray:
+    """color times alpha: what any consumer sees, the color of fully transparent pixels does not matter
+    (the stage cleared to gray with alpha 0 before app 8c670e8, to black after)"""
+    x = np.asarray(Image.open(path).convert("RGBA"), dtype=np.int32)
+    x[..., :3] = x[..., :3] * x[..., 3:] // 255
+    return x.astype(np.int16)
+
+
 def diff(a: Path, b: Path):
-    x = np.asarray(Image.open(a).convert("RGBA"), dtype=np.int16)
-    y = np.asarray(Image.open(b).convert("RGBA"), dtype=np.int16)
+    x = _premultiplied(a)
+    y = _premultiplied(b)
     if x.shape != y.shape:
         return 100.0, 255
     d = np.abs(x - y).max(axis=2)
@@ -67,13 +77,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("only", nargs="*")
     ap.add_argument("--accept", action="store_true")
+    ap.add_argument("--compare", type=Path, help="compare an earlier run (testdata/render-runs/<time>) again, no rendering")
     a = ap.parse_args()
     models = {n: p for n, p in find_models().items() if not a.only or any(o in n for o in a.only)}
-    run = RUNS / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    run = a.compare or RUNS / datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     lines, failed = [], 0
     for name, m3 in models.items():
         out = run / name
-        rc, errors = render(m3, out)
+        if a.compare:
+            if not out.exists():
+                continue
+            rc, errors = 0, []
+        else:
+            rc, errors = render(m3, out)
         shots = sorted(p.name for p in out.glob("*.png"))
         base = BASELINE / name
         changed, missing = [], []

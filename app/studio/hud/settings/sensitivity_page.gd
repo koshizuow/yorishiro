@@ -119,6 +119,7 @@ func _movement_options() -> Control:
 	use.tooltip_text = "Lean left or right and the model slides along, come closer and it grows."
 	use.button_pressed = model.movement_enabled
 	top.add_child(use)
+	_position_label = Label.new()  # refresh() frees the old page, the label goes with it
 	_position_label.theme_type_variation = &"SubscriptLabel"
 	_position_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_position_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -262,7 +263,8 @@ func _process(_delta: float) -> void:
 	if tracking == null:
 		return
 	var p: Dictionary = tracking.parameters
-	_position_label.text = tr("Head %+.1f / %+.1f / %+.1f cm") % [p.get("FacePositionX", 0.0), p.get("FacePositionY", 0.0), p.get("FacePositionZ", 0.0)]
+	if is_instance_valid(_position_label):
+		_position_label.text = tr("Head %+.1f / %+.1f / %+.1f cm") % [p.get("FacePositionX", 0.0), p.get("FacePositionY", 0.0), p.get("FacePositionZ", 0.0)]
 	for r in _rows:
 		r.meter.value = float(tracking.parameters.get(r.chain.tracker_param, 0.0))
 
