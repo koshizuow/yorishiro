@@ -14,6 +14,8 @@
 ##   --print-params=<a,b>   model parameters printed after each pose (default: angles, eyes, mouth open)
 ##   --fixed-clock          blink, breathing and smoothing count frames instead of wall time, random seed 1.
 ##                          With Godot's --fixed-fps 60 the same run gives the same screenshots
+##   --pipe-frames=<file>   keep writing the rendered stage to a shared file (for example in /dev/shm), for
+##                          the PipeWire test tool (/media/koshizu/Work/dev/external/funnel-sender, outside the repo)
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -61,6 +63,9 @@ func _ready() -> void:
 		tracking.activate_tracker(load(TRACKERS[args["tracker"]]).new())
 		print("[automation] tracker %s" % args["tracker"])
 
+	if args.has("pipe-frames"):
+		_pipe_frames(args["pipe-frames"], stage.capture_viewport if stage else get_viewport())
+
 	if args.has("screenshot") or args.has("screenshot-window"):
 		if args.has("open-panel"):
 			# the HUD restores its own state over the first frames, open the panel after that
@@ -107,6 +112,37 @@ func _ready() -> void:
 
 	if args.has("quit"):
 		get_tree().quit()
+
+## streams the stage until the app quits through a shared file (Godot opens only regular files, no FIFO):
+## uint32 sequence, width, height, 0, then RGBA8 rows top first. The sequence is odd while a frame is
+## being written, the reader keeps a frame only if it read the same even number before and after.
+func _pipe_frames(path: String, viewport: Viewport):
+	var f := FileAccess.open(path, FileAccess.WRITE_READ)
+	if f == null:
+		push_error("[automation] cannot open %s: %s" % [path, error_string(FileAccess.get_open_error())])
+		return
+	var size := Vector2i.ZERO
+	var seq := 0
+	while is_inside_tree():
+		await RenderingServer.frame_post_draw
+		var image := viewport.get_texture().get_image()
+		image.convert(Image.FORMAT_RGBA8)
+		if size == Vector2i.ZERO:
+			size = image.get_size()
+			print("[automation] piping %dx%d frames to %s" % [size.x, size.y, path])
+		elif image.get_size() != size:
+			image.resize(size.x, size.y)
+		f.seek(0)
+		f.store_32(seq + 1)
+		f.flush()
+		f.store_32(size.x)
+		f.store_32(size.y)
+		f.store_32(0)
+		f.store_buffer(image.get_data())
+		seq += 2
+		f.seek(0)
+		f.store_32(seq)
+		f.flush()
 
 func _open_panel(which: String):
 	var button = get_tree().root.find_child("%sBtn" % which.capitalize(), true, false)

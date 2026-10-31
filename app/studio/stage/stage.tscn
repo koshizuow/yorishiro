@@ -5,9 +5,12 @@
 [ext_resource type="Texture2D" uid="uid://b401bri37hvvq" path="res://studio/stage/grid.png" id="2_yiyxu"]
 [ext_resource type="Script" uid="uid://g2yhj8ln6yl3" path="res://studio/stage/viewport_wrapper.gd" id="4_01dvw"]
 
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_premult"]
+blend_mode = 4
+
 [sub_resource type="Environment" id="Environment_18ah1"]
 background_mode = 1
-background_color = Color(0.48553514, 0.48553514, 0.48553514, 0)
+background_color = Color(0, 0, 0, 0)
 ambient_light_source = 1
 reflected_light_source = 1
 
@@ -65,6 +68,7 @@ grow_vertical = 2
 script = ExtResource("4_01dvw")
 
 [node name="SubViewportContainer" type="SubViewportContainer" parent="CanvasLayer/ViewportWrapper" unique_id=1741800294]
+material = SubResource("CanvasItemMaterial_premult")
 texture_filter = 2
 layout_mode = 2
 stretch = true
