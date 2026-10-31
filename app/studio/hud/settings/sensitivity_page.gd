@@ -24,6 +24,8 @@ var _list := VBoxContainer.new()
 var _rows: Array = []  # [{chain, meter}]
 ## Live2D parameter id -> the name the model's author gave it (<name>.cdi3.json)
 var _names := {}
+## live FacePositionX/Y/Z next to the follow-the-face switch
+var _position_label := Label.new()
 
 func _init() -> void:
 	name = "SensitivityPage"
@@ -61,6 +63,11 @@ func refresh() -> void:
 	if model == null:
 		return
 	_names = _display_names()
+	var follow := Label.new()
+	follow.text = "Move with your face"
+	follow.theme_type_variation = &"BoldLabel"
+	_list.add_child(follow)
+	_list.add_child(_movement_options())
 	var by_part := {}
 	for chain in chains():
 		var part := _part(chain.tracker_param)
@@ -100,6 +107,57 @@ func _eye_options(tracker) -> Control:
 	auto.item_selected.connect(func (i): tracker.auto_blink = i)
 	row.add_child(auto)
 	return row
+
+## VTS's "move model with face": a switch, how far per axis and smoothing, kept in the model's settings
+func _movement_options() -> Control:
+	var box := VBoxContainer.new()
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 24)
+	var use := CheckButton.new()
+	use.name = "FollowFace"
+	use.text = "Move the model with your face"
+	use.tooltip_text = "Lean left or right and the model slides along, come closer and it grows."
+	use.button_pressed = model.movement_enabled
+	top.add_child(use)
+	_position_label.theme_type_variation = &"SubscriptLabel"
+	_position_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_position_label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	top.add_child(_position_label)
+	box.add_child(top)
+	var grid := GridContainer.new()
+	grid.name = "FollowFaceAmounts"
+	grid.columns = 6  # two label, slider, value groups per row
+	grid.add_theme_constant_override("h_separation", 14)
+	# [label, axis or "smoothing", min, max]
+	for a in [["Left and right", 0, 0.0, 20.0], ["Up and down", 1, 0.0, 20.0], ["Closer and farther", 2, -20.0, 20.0], ["Smoothing", -1, 0.0, 30.0]]:
+		var label := Label.new()
+		label.text = a[0]
+		grid.add_child(label)
+		var slider := HSlider.new()
+		slider.min_value = a[2]
+		slider.max_value = a[3]
+		slider.step = 1
+		slider.custom_minimum_size.x = 160
+		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slider.value = model.movement_smoothing if a[1] < 0 else model.movement_amount[a[1]]
+		var value := Label.new()
+		value.text = str(int(slider.value))
+		value.custom_minimum_size.x = 28
+		var axis: int = a[1]
+		slider.value_changed.connect(func (v):
+			value.text = str(int(v))
+			if axis < 0:
+				model.movement_smoothing = v
+			else:
+				model.movement_amount[axis] = v)
+		grid.add_child(slider)
+		grid.add_child(value)
+	box.add_child(grid)
+	grid.visible = use.button_pressed
+	use.toggled.connect(func (on):
+		model.movement_enabled = on
+		grid.visible = on)
+	return box
 
 func _part(tracker_param: String) -> String:
 	for p in PARTS:
@@ -198,11 +256,13 @@ func _row(chain: Dictionary) -> Control:
 	return row
 
 func _process(_delta: float) -> void:
-	if not is_visible_in_tree() or _rows.is_empty():
+	if not is_visible_in_tree():
 		return
 	var tracking = get_tree().get_first_node_in_group("system:tracking")
 	if tracking == null:
 		return
+	var p: Dictionary = tracking.parameters
+	_position_label.text = tr("Head %+.1f / %+.1f / %+.1f cm") % [p.get("FacePositionX", 0.0), p.get("FacePositionY", 0.0), p.get("FacePositionZ", 0.0)]
 	for r in _rows:
 		r.meter.value = float(tracking.parameters.get(r.chain.tracker_param, 0.0))
 

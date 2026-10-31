@@ -34,6 +34,7 @@
 ##                          that follows each instruction like a user would, and check the bands it sets
 ##   --model-transform=<x,y,scale> place the loaded model (stage pixels, scale factor), for fixed framing
 ##   --expressions=<a,b>    turn these expressions of the loaded model on (e.g. outfit toggles)
+##   --follow-face=<x,y,z>  move the loaded model with the face, these amounts (VTS units), or "off"
 ##   --record=<dir>         after the screenshot, save the window as <dir>/00001.jpg ... at 30 fps for
 ##                          --record-seconds (default 10), and the tracked values per frame in <dir>/params.csv
 ##   --quit                 exit after the screenshot
@@ -112,6 +113,12 @@ func _ready() -> void:
 				push_error("[automation] no button %s" % button_name)
 		# after the model's saved settings (transform, expressions) have been applied
 		var placed = stage.active_model if stage else null
+		if args.has("follow-face") and placed:
+			placed.movement_enabled = args["follow-face"] != "off"
+			var amounts: PackedStringArray = args["follow-face"].split(",")
+			if amounts.size() == 3:
+				placed.movement_amount = Vector3(float(amounts[0]), float(amounts[1]), float(amounts[2]))
+			print("[automation] follow face %s %s" % [placed.movement_enabled, placed.movement_amount])
 		if args.has("model-transform") and placed:
 			# the model slides in over 0.5 s after it loads, place it after that tween
 			for i in 45:
@@ -539,13 +546,15 @@ func _calibration_test(args: Dictionary):
 	check.call("mouth row rangemap %s" % (mouth[0].rangemap.a if mouth and mouth[0].rangemap else null), mouth and mouth[0].rangemap and mouth[0].rangemap.a.distance_to(expect.MouthOpen) < 0.03)
 	check.call("parts %s" % [page.last_calibration.get("applied")], page.last_calibration.get("applied", []).size() >= 3)
 
-const RECORD_PARAMS = ["FaceAngleX", "FaceAngleY", "FaceAngleZ", "EyeOpenLeft", "EyeOpenRight", "MouthOpen", "MouthSmile", "Brows"]
+const RECORD_PARAMS = ["FaceAngleX", "FaceAngleY", "FaceAngleZ", "EyeOpenLeft", "EyeOpenRight", "MouthOpen", "MouthSmile", "Brows", "FacePositionX", "FacePositionY", "FacePositionZ"]
 
 func _record(args: Dictionary):
 	var dir: String = args["record"]
 	DirAccess.make_dir_recursive_absolute(dir)
 	var csv := FileAccess.open(dir.path_join("params.csv"), FileAccess.WRITE)
-	csv.store_line("frame,ms,face," + ",".join(RECORD_PARAMS))
+	# move_x, move_y, move_scale: the follow-the-face offset of the active Live2D model
+	csv.store_line("frame,ms,face," + ",".join(RECORD_PARAMS) + ",move_x,move_y,move_scale")
+	var stage = get_tree().get_first_node_in_group("system:stage")
 	var tracking = get_tree().get_first_node_in_group("system:tracking")
 	var seconds := float(args.get("record-seconds", "10"))
 	var start := Time.get_ticks_msec()
@@ -561,6 +570,8 @@ func _record(args: Dictionary):
 		var row := ["%d" % n, "%d" % ms, "1" if tracking.face_present else "0"]
 		for p in RECORD_PARAMS:
 			row.append("%.4f" % float(tracking.parameters.get(p, 0.0)))
+		var mover = stage.active_model.get("mover") if stage and stage.active_model else null
+		row.append_array(["%.2f" % mover.position.x, "%.2f" % mover.position.y, "%.4f" % mover.scale.x] if mover else ["0", "0", "1"])
 		csv.store_line(",".join(row))
 	print("[automation] recorded %d frames in %.1f s to %s" % [n, (Time.get_ticks_msec() - start) / 1000.0, dir])
 

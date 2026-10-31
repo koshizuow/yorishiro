@@ -3,6 +3,8 @@
 Shared by any tracker that produces MediaPipe-topology landmarks (TFLite or ncnn).
 """
 
+import math
+
 import numpy as np
 
 from ..avatar.ict import ICT_SHAPES, IctHead, ict_to_arkit
@@ -90,6 +92,32 @@ def landmarks_to_points(landmarks: np.ndarray, width: int, height: int) -> np.nd
     """Normalized image landmarks to a y-up, z-toward-camera point set (pixel units)."""
     x, y, z = landmarks[:, 0], landmarks[:, 1], landmarks[:, 2]
     return np.stack([x * width, -y * height, -z * width], axis=1).astype(np.float64)
+
+
+# Head position from the image alone: the camera's field of view is unknown, so assume MediaPipe's own
+# (63 degrees vertical) and a face of average size. RMS radius of the rigid points in meters, fitted on
+# MediaPipe's face transform over the 2026-10-29 recording (spread 0.9 mm). Absolute values are rough,
+# the app uses the change from the neutral.
+CAMERA_FOV_Y_DEG = 63.0
+RIGID_RADIUS_M = 0.0617
+# The position is taken this far behind the face, near the neck's pivot, so turning the head does not move
+# it. Over the head turns of the same recording: 3.5 cm sideways spread on the face, 0.6 cm here.
+PIVOT_BEHIND_FACE_M = 0.09
+
+
+def head_position(landmarks: np.ndarray, width: int, height: int, rotation: np.ndarray | None = None) -> np.ndarray:
+    """Camera-space head position in meters (x right, y up, -z forward) from normalized image landmarks.
+    rotation: head rotation (face -> camera, y up, z toward the camera), moves the point behind the face."""
+    pts = np.stack([landmarks[MP_RIGID, 0] * width, landmarks[MP_RIGID, 1] * height,
+                    landmarks[MP_RIGID, 2] * width], axis=1).astype(np.float64)
+    center = pts.mean(axis=0)
+    radius = np.sqrt(((pts - center) ** 2).sum(axis=1).mean())
+    focal = (height / 2) / math.tan(math.radians(CAMERA_FOV_Y_DEG / 2))
+    dist = focal * RIGID_RADIUS_M / max(radius, 1e-6)
+    pos = np.array([(center[0] - width / 2) * dist / focal, -(center[1] - height / 2) * dist / focal, -dist])
+    if rotation is not None:
+        pos -= PIVOT_BEHIND_FACE_M * rotation[:, 2]
+    return pos.astype(np.float32)
 
 
 class MediaPipePointFitter:

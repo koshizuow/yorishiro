@@ -4,6 +4,9 @@ extends "../../vt_model.gd"
 
 var model: AyagamiModel
 var container: Node
+## parent of the model (or its pixel viewport), offset by the follow-the-face movement so the user's own
+## placement on the VtModel stays untouched
+var mover := Node2D.new()
 
 const ParameterModifier = preload("./modifiers/parameter_modifier.gd")
 const PartModifier = preload("./modifiers/part_modifier.gd")
@@ -24,8 +27,10 @@ func get_modifier_map():
 
 func _ready() -> void:
 	model_settings = preload("./modifiers/base_modifier.gd").new(self)
+	mover.name = "FaceMovement"
+	add_child(mover)
 	container = preload("./pixel_subviewport.tscn").instantiate()
-	add_child(container)
+	mover.add_child(container)
 
 func is_initialized() -> bool:
 	return model != null
@@ -96,7 +101,7 @@ func _build_model():
 		push_error("could not load model %s" % modelmeta.model)
 		return false
 	# adjust anchor to be top-left to match godot's control coordinate system
-	add_child(model)
+	mover.add_child(model)
 	await get_tree().process_frame # wait for the model to initialize
 	
 	var anim_lib = AyagamiLoader.load_motion_library(model)
@@ -159,26 +164,11 @@ func apply_parameters(values: Dictionary):
 	for p_name in values:
 		model.set(p_name, values.get(p_name, 0.0))
 	
-func tracking_updated(tracking_data: Dictionary, _delta: float):
-	if not movement_enabled:
-		return
-	
-	var moved = Vector3(
-		Registry.signed_ilerp_input(
-			tracking_data.get("FacePositionX", 0),
-			"FacePositionX",
-		),
-		Registry.signed_ilerp_input(
-			tracking_data.get("FacePositionY", 0),
-			"FacePositionY",
-		),
-		Registry.signed_ilerp_input(
-			tracking_data.get("FacePositionZ", 0),
-			"FacePositionZ",
-		)
-	)
-	var movement = moved * movement_scale
-	model.scale = Vector2.ONE + (Vector2.ONE * movement.z)
+func tracking_updated(tracking_data: Dictionary, delta: float):
+	var move := follow_face(tracking_data, delta)
+	# screen pixels to this model's local space (it may be scaled and rotated)
+	mover.position = global_transform.affine_inverse().basis_xform(Vector2(move.x, move.y))
+	mover.scale = Vector2.ONE * (1.0 + move.z)
 
 func get_texture() -> Texture2D:
 	if container is SubViewportContainer:
@@ -247,14 +237,12 @@ func _load_from_vts():
 	if idle_animation:
 		get_idle_animation_player().play(idle_animation)
 		
+	# the model's own .yori.json settings override these when it has them
 	var movement_settings = vtube_data.get("ModelPositionMovement", {})
-	movement_enabled = movement_settings.get("Use", false)
-	# vts movement based on 10 = +100% scale
-	#movement_scale = Vector3(
-	#	inverse_lerp(0.0, 10.0, movement_settings.get("X", 0.0)),
-	#	inverse_lerp(0.0, 10.0, movement_settings.get("Y", 0.0)),
-	#	inverse_lerp(0.0, 10.0, movement_settings.get("Z", 0.0))
-	#)
+	if not movement_settings.is_empty():
+		movement_enabled = movement_settings.get("Use", false)
+		movement_amount = Vector3(movement_settings.get("X", 6), movement_settings.get("Y", 8), movement_settings.get("Z", 11))
+		movement_smoothing = movement_settings.get("SmoothingX", 10)
 
 	var mesh_details = vtube_data.get("ArtMeshDetails", {})
 	var pin_settings = mesh_details.get("ArtMeshesExcludedFromPinning", [])

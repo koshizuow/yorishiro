@@ -26,7 +26,7 @@ func _adjust_filter():
 	if filter_mode == "Nearest" and smoothing:
 		container.model = _model.model
 	else:
-		_model.model.reparent(_model, false)
+		_model.model.reparent(_model.mover, false)
 		container.model = null
 
 func _get_property_list() -> Array[Dictionary]:

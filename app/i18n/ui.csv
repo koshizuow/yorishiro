@@ -157,3 +157,10 @@ Raise your eyebrows,Raise your eyebrows,抬起眉毛
 Step %d of %d,Step %d of %d,第 %d 步，共 %d 步
 Calibrated: %s,Calibrated: %s,已校正：%s
 "No clear movement measured, nothing changed.","No clear movement measured, nothing changed.",沒有量到明顯的動作，設定沒有改變。
+Move with your face,Move with your face,跟著臉移動
+Move the model with your face,Move the model with your face,模型跟著臉移動
+"Lean left or right and the model slides along, come closer and it grows.","Lean left or right and the model slides along, come closer and it grows.",往左右移動時模型跟著滑動，靠近鏡頭時模型變大。
+Left and right,Left and right,左右
+Up and down,Up and down,上下
+Closer and farther,Closer and farther,遠近
+Head %+.1f / %+.1f / %+.1f cm,Head %+.1f / %+.1f / %+.1f cm,頭部 %+.1f / %+.1f / %+.1f 公分

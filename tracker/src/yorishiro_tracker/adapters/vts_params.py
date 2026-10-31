@@ -48,7 +48,7 @@ def vts_params(frame: FaceFrame, mirror: bool = True) -> dict[str, float]:
         "FaceAngleZ": SIGN["FaceAngleZ"] * s * roll,
         "FacePositionX": s * float(frame.head_translation[0]) * 100.0,
         "FacePositionY": float(frame.head_translation[1]) * 100.0,
-        "FacePositionZ": 0.0,
+        "FacePositionZ": float(frame.head_translation[2]) * 100.0,  # + = closer than the neutral
     }
     for side, avatar in (("Left", user_l), ("Right", user_r)):
         p[f"EyeOpen{avatar}"] = 1.0 - _bs(frame, f"eyeBlink{side}")
@@ -76,4 +76,7 @@ def vts_params(frame: FaceFrame, mirror: bool = True) -> dict[str, float]:
         p[k] = float(np.clip(p[k], -1.0, 1.0))
     for k in ("FaceAngleX", "FaceAngleY", "FaceAngleZ"):
         p[k] = float(np.clip(p[k], -30.0, 30.0))
+    # centimeters from the neutral, the app's input ranges
+    for k, r in (("FacePositionX", 15.0), ("FacePositionY", 15.0), ("FacePositionZ", 10.0)):
+        p[k] = float(np.clip(p[k], -r, r))
     return p

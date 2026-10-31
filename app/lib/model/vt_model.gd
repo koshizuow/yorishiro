@@ -45,9 +45,19 @@ var texture : Texture2D
 # item pinning
 var rest_anchors: Dictionary = {}
 
-# movement transforms
+# follow the face (VTube Studio's "move model with face"): the model slides with FacePositionX/Y and grows
+# with FacePositionZ. Amounts and smoothing use VTS's numbers so its settings carry over.
 var movement_enabled: bool = false
-var movement_scale: Vector3 = Vector3.ZERO
+## how far the model moves per axis, VTS units (its defaults are 6, 8, 11)
+var movement_amount: Vector3 = Vector3(6, 8, 11)
+## VTS smoothing value, 10 = about 0.15 s
+var movement_smoothing: float = 10.0
+## screen height fraction per centimeter of head motion and per amount unit (X, Y), scale per cm and unit (Z).
+## VTS does not document its own factors, these were set so its defaults look alike: moving the head 10 cm
+## sideways moves the model about a tenth of the screen, 10 cm closer makes it about a fifth bigger.
+const MOVE_PER_CM = 0.0015
+const GROW_PER_CM = 0.002
+var _face_offset := Vector3.ZERO
 
 signal initialized
 signal loaded
@@ -97,7 +107,27 @@ func _adjust_filter():
 func hydrate(_settings: Dictionary):
 	await _load_model()
 
+## smoothed movement for this frame: x, y in screen pixels, z as a scale factor minus one
+func follow_face(tracking_data: Dictionary, delta: float) -> Vector3:
+	var target := Vector3.ZERO
+	if movement_enabled:
+		target = Vector3(
+			float(tracking_data.get("FacePositionX", 0.0)) * movement_amount.x * MOVE_PER_CM,
+			-float(tracking_data.get("FacePositionY", 0.0)) * movement_amount.y * MOVE_PER_CM,
+			float(tracking_data.get("FacePositionZ", 0.0)) * movement_amount.z * GROW_PER_CM
+		)
+	var tau := maxf(movement_smoothing, 0.0) * 0.015
+	_face_offset = target if tau <= 0.0 else _face_offset.lerp(target, 1.0 - exp(-delta / tau))
+	var h := get_viewport_rect().size.y
+	return Vector3(_face_offset.x * h, _face_offset.y * h, maxf(_face_offset.z, -0.5))
+
 func load_model_settings(settings: Dictionary):
+	var movement: Dictionary = settings.get("movement", {})
+	if not movement.is_empty():
+		movement_enabled = movement.get("use", movement_enabled)
+		movement_amount = Vector3(movement.get("x", movement_amount.x), movement.get("y", movement_amount.y), movement.get("z", movement_amount.z))
+		movement_smoothing = movement.get("smoothing", movement_smoothing)
+
 	self.scale = Vector2.ONE * settings.get("transform", {}).get(
 		"scale", 
 		clampf(get_viewport_rect().size.y / size.y, 0.001, 2.0)
@@ -115,6 +145,13 @@ func save_model_settings(settings: Dictionary):
 	settings.merge({
 		"quality": {
 			"filter": "nearest" if self.texture_filter != TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC else "linear",
+		},
+		"movement": {
+			"use": movement_enabled,
+			"x": movement_amount.x,
+			"y": movement_amount.y,
+			"z": movement_amount.z,
+			"smoothing": movement_smoothing,
 		},
 		"transform": {
 			"position": Serializers.Vec2Serializer.to_json(self.position),
