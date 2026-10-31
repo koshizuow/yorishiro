@@ -280,7 +280,7 @@ func labels() -> void:
 	t.set_color("font_color", "LinkButton", ACCENT)
 	t.set_color("font_hover_color", "LinkButton", ACCENT_HOVER)
 
-## type variations the OpenVT scenes use, restyled
+## type variations the inherited scenes use, restyled
 func variations() -> void:
 	var v := func (name: String, base: String): t.set_type_variation(name, base)
 	v.call("BoldLabel", "Label")

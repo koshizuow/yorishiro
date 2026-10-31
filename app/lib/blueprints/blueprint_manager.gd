@@ -7,7 +7,7 @@ var formats: Array[BlueprintLoader]
 
 func _ready() -> void:
 	formats = [
-		preload("./loaders/ovt.gd").new(),
+		preload("./loaders/yori.gd").new(),
 		preload("./loaders/vts.gd").new(),
 		preload("./loaders/l2d_defaults.gd").new(),
 		preload("./loaders/vrm_defaults.gd").new(),

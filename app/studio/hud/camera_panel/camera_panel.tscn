@@ -110,13 +110,9 @@ custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 alignment = 2
 selected = 0
-item_count = 3
+item_count = 1
 popup/item_0/text = "Night Sakura (Default)"
 popup/item_0/id = 0
-popup/item_1/text = "Automata (OpenVT)"
-popup/item_1/id = 1
-popup/item_2/text = "Dark"
-popup/item_2/id = 2
 
 [node name="HBoxContainer6" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=1557044063]
 visible = false

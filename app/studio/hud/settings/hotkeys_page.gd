@@ -1,4 +1,4 @@
-## Hotkeys page of the settings overlay. The simple hotkey list comes here, the node editor (bindings) is
+## Hotkeys page of the settings overlay. The simple hotkey list comes here, the Musubi node editor is
 ## the advanced tool and only gets a small button at the bottom.
 extends VBoxContainer
 
@@ -6,7 +6,7 @@ func _init() -> void:
 	name = "HotkeysPage"
 	var list := Label.new()
 	list.name = "Placeholder"
-	list.text = "The hotkey list is being built. Hotkeys can be set in the node editor for now."
+	list.text = "The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now."
 	list.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(list)
@@ -15,7 +15,7 @@ func _init() -> void:
 	advanced.alignment = BoxContainer.ALIGNMENT_END
 	var editor := Button.new()
 	editor.name = "NodeEditorBtn"
-	editor.text = "Advanced: node editor"
+	editor.text = "Advanced: Musubi node editor"
 	editor.flat = true
 	editor.pressed.connect(_open_node_editor)
 	advanced.add_child(editor)

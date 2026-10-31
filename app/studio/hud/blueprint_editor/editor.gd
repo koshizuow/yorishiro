@@ -41,7 +41,7 @@ func _ready() -> void:
 		
 	%Profiles.get_tab_bar().tab_rmb_clicked.connect(_on_profiles_tab_menu)
 	
-	self.title = "Model Bindings [%s]" % active_model.display_name
+	self.title = "%s [%s]" % [tr("Musubi"), active_model.display_name]
 	
 	%AddBlueprint.get_popup().id_pressed.connect(
 		func (id):
@@ -142,7 +142,7 @@ func _on_rename_dialog_confirmed() -> void:
 #endregion
 
 func _on_import_graph_dialog_file_selected(path: String) -> void:
-	var imported = BlueprintManager["loader/ovt"].load_graph(active_model, path)
+	var imported = BlueprintManager["loader/yori"].load_graph(active_model, path)
 	for graph in imported:
 		%Profiles.add_child(graph, true)
 	

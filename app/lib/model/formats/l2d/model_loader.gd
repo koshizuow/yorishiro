@@ -31,7 +31,8 @@ func load_data(path: String) -> ModelMeta:
 	if not path.ends_with(".model3.json"):
 		filepath = base_dir.path_join("%s.model3.json" % base_name)
 	var vt_file = base_dir.path_join("%s.vtube.json" % base_name)
-	var ovt_file = base_dir.path_join("%s.ovt.json" % base_name)
+	# settings OpenVT wrote next to the model, imported once (settings_location.gd)
+	var legacy_settings = base_dir.path_join("%s.ovt.json" % base_name)
 
 	meta.name = base_name
 	meta.id = base_name
@@ -47,6 +48,6 @@ func load_data(path: String) -> ModelMeta:
 	meta.path = path.get_base_dir()
 	meta.format = model_format()
 	meta.studio_parameters = vt_file
-	meta.openvt_parameters = SettingsLocation.resolve(filepath, ovt_file)
+	meta.settings_file = SettingsLocation.resolve(filepath, legacy_settings)
 	
 	return meta

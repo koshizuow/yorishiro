@@ -3,9 +3,9 @@ extends "./blueprint_loader.gd"
 const Serializers = preload("res://lib/utils/serializers.gd")
 
 func id() -> StringName:
-	return "ovt"
+	return "yori"
 	
-func load_graph(model: VtModel, path: String = model.modelmeta.openvt_parameters) -> Array:
+func load_graph(model: VtModel, path: String = model.modelmeta.settings_file) -> Array:
 	var data: Dictionary = Files.read_json(path)
 	if data.is_empty():
 		return []
@@ -23,7 +23,7 @@ func load_graph(model: VtModel, path: String = model.modelmeta.openvt_parameters
 			remove_child(graph)
 	else: # assume the file itself is a single blueprint
 		var graph: Blueprint = BlueprintTemplate.instantiate()
-		graph.name = data.get("name", "Blueprint")
+		graph.name = data.get("name", "Musubi")
 		add_child(graph)
 		_deserialize(graph, model, data)
 		if _has_actions(graph):
@@ -64,6 +64,9 @@ func _deserialize(graph: Blueprint, model: VtModel, data: Dictionary):
 	# this is necessary for some nodes that require dynamically building slots
 	# as well as for nodes that rely on cross-blueprint state
 	await get_tree().process_frame
+	# the model (and its graphs) may have been dropped during that frame for another model
+	if not is_instance_valid(graph):
+		return
 	for node in graph.get_children():
 		if node is VtAction:
 			node.build_slots()

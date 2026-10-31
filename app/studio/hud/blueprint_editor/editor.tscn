@@ -41,9 +41,9 @@ icon = ExtResource("2_ira4j")
 flat = false
 icon_alignment = 1
 item_count = 5
-popup/item_0/text = "New Blueprint"
+popup/item_0/text = "New Musubi"
 popup/item_0/id = 0
-popup/item_1/text = "Import Blueprint"
+popup/item_1/text = "Import Musubi"
 popup/item_1/id = 3
 popup/item_2/id = 0
 popup/item_2/separator = true
@@ -87,13 +87,13 @@ unique_name_in_owner = true
 title = "Open a File"
 file_mode = 0
 access = 2
-filters = PackedStringArray("*.blueprint;OVT Blueprint;")
+filters = PackedStringArray("*.musubi;Musubi", "*.blueprint;OpenVT blueprint (older files)")
 use_native_dialog = true
 
 [node name="ExportGraphDialog" type="FileDialog" parent="." unique_id=1967139278]
 unique_name_in_owner = true
 access = 2
-filters = PackedStringArray("*.blueprint;OVT Blueprint;")
+filters = PackedStringArray("*.musubi;Musubi")
 use_native_dialog = true
 
 [node name="EditMenu" type="PopupMenu" parent="." unique_id=513899575]

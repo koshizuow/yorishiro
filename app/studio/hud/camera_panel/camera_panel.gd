@@ -6,8 +6,6 @@ const Collections = preload("res://lib/utils/collections.gd")
 
 const UI_THEMES: Array[Theme] = [
 	preload("res://ui/themes/sakura.tres"),
-	preload("res://ui/themes/automata.tres"),
-	preload("res://ui/themes/dark.res"),
 ]
 
 signal update_bg_color(color: Color)
@@ -209,6 +207,9 @@ func _on_v4l2_toggled(toggled_on: bool) -> void:
 	v4l2_stream.loopback_device = ""
 
 func _on_ui_theme_item_selected(index: int) -> void:
+	# profiles saved before the OpenVT themes were removed may hold index 1 or 2
+	if index < 0 or index >= UI_THEMES.size():
+		index = 0
 	get_tree().root.propagate_call("set_theme", [UI_THEMES[index]], true)
 
 func _on_background_mode_selected(index: int) -> void:

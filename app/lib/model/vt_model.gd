@@ -129,9 +129,9 @@ func save_model_settings(settings: Dictionary):
 		)
 	})
 
-## load open-vt specific settings
+## load the model's own settings (.yori.json)
 func _load_settings():
-	var model_preferences = Files.read_json(modelmeta.openvt_parameters)
+	var model_preferences = Files.read_json(modelmeta.settings_file)
 	load_model_settings(model_preferences)
 
 func save_settings(_settings: Dictionary = {}):
@@ -154,7 +154,7 @@ func save_settings(_settings: Dictionary = {}):
 	
 	self.save_model_settings(model_data)
 	
-	Files.write_json(modelmeta.openvt_parameters, model_data)
+	Files.write_json(modelmeta.settings_file, model_data)
 
 func _get(property: StringName) -> Variant:
 	if property.begins_with("modifiers/"):  #ex. modifiers/parts/PART_NAME/color

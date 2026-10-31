@@ -4,9 +4,7 @@ Hotkeys,Hotkeys,熱鍵
 Settings,Settings,設定
 Close (Esc),Close (Esc),關閉 (Esc)
 Load Model...,Load Model...,載入模型…
-Advanced: node editor,Advanced: node editor,進階：節點編輯器
 Load a model first.,Load a model first.,請先載入模型。
-The hotkey list is being built. Hotkeys can be set in the node editor for now.,The hotkey list is being built. Hotkeys can be set in the node editor for now.,熱鍵清單製作中。目前可以先在節點編輯器設定熱鍵。
 Application Settings,Application Settings,應用程式設定
 Tracking,Tracking,追蹤
 Profile,Profile,設定檔
@@ -35,7 +33,6 @@ Position,Position,位置
 Scale,Scale,縮放
 Rotation,Rotation,旋轉
 Expression,Expression,表情
-Bindings,Bindings,綁定
 Model Settings,Model Settings,模型設定
 Add Item,Add Item,新增道具
 Clear All Items,Clear All Items,清除所有道具
@@ -47,7 +44,6 @@ Reset Scale,Reset Scale,重設縮放
 Reset Rotation,Reset Rotation,重設旋轉
 Rotate Left 90 Degrees,Rotate Left 90 Degrees,向左轉 90 度
 Rotate Right 90 Degrees,Rotate Right 90 Degrees,向右轉 90 度
-Edit Bindings,Edit Bindings,編輯綁定
 Set Expression,Set Expression,設定表情
 Fade (sec),Fade (sec),淡入淡出（秒）
 Pin to Model,Pin to Model,釘在模型上
@@ -83,10 +79,16 @@ On,On,開
 Off,Off,關
 "If the Scene has Pinned Items, they will be excluded if the active model does not match","If the Scene has Pinned Items, they will be excluded if the active model does not match",場景裡釘在模型上的道具，如果目前的模型不同就不會載入
 Night Sakura (Default),Night Sakura (Default),夜櫻（預設）
-Automata (OpenVT),Automata (OpenVT),Automata（OpenVT）
 Language,Language,語言
 Load,Load,載入
 Models,Models,模型
 Import...,Import...,匯入…
 Load a model from a folder on this computer,Load a model from a folder on this computer,從這台電腦的資料夾載入模型
 Unable to load model,Unable to load model,無法載入模型
+Musubi,Musubi,結繩
+New Musubi,New Musubi,新增結繩
+Import Musubi,Import Musubi,匯入結繩
+Edit Musubi,Edit Musubi,編輯結繩
+Advanced: Musubi node editor,Advanced: Musubi node editor,進階：結繩（節點編輯器）
+Reimport VTS Bindings,Reimport VTS Bindings,重新匯入 VTS 綁定
+The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now.,The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now.,熱鍵清單製作中。目前可以先在結繩（節點編輯器）設定熱鍵。

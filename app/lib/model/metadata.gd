@@ -11,5 +11,5 @@ var path: String
 var id: String
 ## path to vtube.json file
 var studio_parameters: String
-## path to ovt.json file
-var openvt_parameters: String
+## path to the model's settings file (.yori.json, see settings_location.gd)
+var settings_file: String

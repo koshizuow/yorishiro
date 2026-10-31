@@ -78,7 +78,7 @@ func _on_file_dialog_file_selected(path: String) -> void:
 		i.queue_free()
 	
 	for i in cfg.get("Items", []):
-		# OVT supported absolute path
+		# older scene files may hold an absolute path
 		var item_file = i.get("ItemPath", "")
 		if not item_file:
 			# matching VTS for compatibility

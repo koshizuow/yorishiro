@@ -26,6 +26,6 @@ func load_data(path: String) -> ModelMeta:
 	meta.model = path
 	meta.path = path.get_base_dir()
 	meta.format = model_format()
-	meta.openvt_parameters = SettingsLocation.resolve(path, "%s/%s.ovt.json" % [meta.path, meta.name])
+	meta.settings_file = SettingsLocation.resolve(path, "%s/%s.ovt.json" % [meta.path, meta.name])
 	
 	return meta
