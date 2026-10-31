@@ -61,8 +61,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--per-gesture", type=int, default=40)
     ap.add_argument("--hagrid", type=Path, default=HAGRID)
+    ap.add_argument("--runtime", default="ort-cpu", help="vulkan, vulkan-fp32, ncnn-cpu, ort-cpu, cuda, tensorrt")
     args = ap.parse_args()
-    ours = HandTracker(max_hands=2)
+    ours = HandTracker(max_hands=2, runtime=args.runtime)
+    print(f"runtime {ours.runtime}")
     judge = reference()
     rng = random.Random(0)
     total = {"found": 0, "both": 0, "judge": 0, "err": [], "hand_ok": 0, "finger_ok": 0, "finger_n": 0}

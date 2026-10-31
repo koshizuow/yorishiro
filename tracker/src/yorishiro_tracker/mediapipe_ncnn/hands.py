@@ -1,4 +1,5 @@
-"""MediaPipe hand tracking (palm_detection_full + hand_landmark_full, Apache-2.0) on ONNX Runtime CPU.
+"""MediaPipe hand tracking (palm_detection_full + hand_landmark_full, Apache-2.0) on any of the tracker's
+runtimes (ncnn Vulkan, ONNX Runtime CPU, CUDA, TensorRT).
 
 Like MediaPipe's hand landmarker: the palm detector runs only while fewer hands are tracked than wanted,
 each tracked hand's next crop comes from its own landmarks. Models converted by tools/export_hands.py.
@@ -104,16 +105,13 @@ def _roi(points, scale, shift_y, rotation_from=(WRIST, MIDDLE_MCP)):
 
 
 class HandTracker:
-    def __init__(self, max_hands: int = 2, model_dir=None):
-        import onnxruntime as ort
+    def __init__(self, max_hands: int = 2, runtime: str = "ort-cpu", model_dir=None):
+        from ..backends.factory import open_model
 
         d = model_dir or MODEL_DIR / "mediapipe" / "hands"
-        opts = ort.SessionOptions()
-        opts.intra_op_num_threads = 2
-        self.palm = ort.InferenceSession(str(d / "palm_detection_full.onnx"), opts, providers=["CPUExecutionProvider"])
-        self.landmark = ort.InferenceSession(str(d / "hand_landmark_full.onnx"), opts, providers=["CPUExecutionProvider"])
-        self.palm_input = self.palm.get_inputs()[0].name
-        self.landmark_input = self.landmark.get_inputs()[0].name
+        self.palm = open_model(d / "palm_detection_full", runtime)
+        self.landmark = open_model(d / "hand_landmark_full", runtime)
+        self.runtime = getattr(self.landmark, "name", runtime)
         self.max_hands = max_hands
         self.tracked: list[Hand] = []
 
@@ -128,8 +126,9 @@ class HandTracker:
         px, py = (PALM_INPUT - nw) // 2, (PALM_INPUT - nh) // 2
         canvas = np.zeros((PALM_INPUT, PALM_INPUT, 3), np.uint8)
         canvas[py:py + nh, px:px + nw] = cv2.resize(bgr, (nw, nh), interpolation=cv2.INTER_AREA)
-        x = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB).astype(np.float32)[None] / 255.0
-        boxes, scores = self.palm.run(None, {self.palm_input: x})
+        x = np.ascontiguousarray(cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB).astype(np.float32).transpose(2, 0, 1)[None] / 255.0)
+        out = self.palm.run({"in0": x})
+        boxes, scores = out["out0"], out["out1"]
         scores = _sigmoid(scores.reshape(-1))
         keep = np.nonzero(scores >= PALM_SCORE)[0]
         found = []
@@ -154,7 +153,8 @@ class HandTracker:
         center, size, angle = roi
         img, back = _crop(bgr, np.asarray(center, np.float64), size, angle, LANDMARK_INPUT)
         x = np.ascontiguousarray(img.transpose(2, 0, 1)[None])
-        pts, presence, handedness, world = self.landmark.run(None, {self.landmark_input: x})
+        out = self.landmark.run({"in0": x})
+        pts, presence, handedness, world = out["out0"], out["out1"], out["out2"], out["out3"]
         score = float(presence.reshape(-1)[0])
         if score > 1.0 or score < 0.0:
             score = float(_sigmoid(score))
@@ -260,10 +260,10 @@ class HandWorker:
 
     SMOOTHING = 0.5  # share of the previous value kept per result
 
-    def __init__(self, max_hands: int = 2):
+    def __init__(self, max_hands: int = 2, runtime: str = "ort-cpu"):
         import threading
 
-        self.tracker = HandTracker(max_hands)
+        self.tracker = HandTracker(max_hands, runtime)
         self._lock = threading.Lock()
         self._wake = threading.Event()
         self._frame = None

@@ -62,8 +62,8 @@ def run_serve(tracker_name: str, runtime: str | None, sink: LinkSink, camera: in
     if hands:
         try:
             from .mediapipe_ncnn.hands import HandWorker
-            hand_worker = HandWorker()
-            info["hands"] = True
+            hand_worker = HandWorker(runtime=runtime or "vulkan")
+            info["hands"] = hand_worker.tracker.runtime
         except Exception as e:  # the face keeps working without hands
             print(f"hand tracking unavailable: {e}")
             sink.status("starting", f"hand tracking unavailable: {e}", source=source)

@@ -416,3 +416,4 @@ Noise gate,Noise gate,噪音門檻
 Track hands,Track hands,追蹤手部
 "Hand position, angle and fingers for models with hand parameters. Uses more CPU.","Hand position, angle and fingers for models with hand parameters. Uses more CPU.",給有手部參數的模型用：手的位置、角度和手指。會多用一些 CPU。
 Hands,Hands,手部
+"Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.","Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.",給有手部參數的模型用：手的位置、角度和手指。和臉部用同一個運算方式並行。

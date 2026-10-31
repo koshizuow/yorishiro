@@ -166,7 +166,7 @@ func _output_options():
 	var hands = CheckButton.new()
 	hands.name = "TrackHands"
 	hands.text = "Track hands"
-	hands.tooltip_text = "Hand position, angle and fingers for models with hand parameters. Uses more CPU."
+	hands.tooltip_text = "Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime."
 	hands.button_pressed = tracker.track_hands
 	hands.toggled.connect(func (on):
 		tracker.track_hands = on
