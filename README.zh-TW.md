@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-wordmark-dark.svg">
-    <img alt="yorishiro" src="docs/images/logo-wordmark-light.svg" width="360">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-wordmark-dark.png">
+    <img alt="yorishiro" src="docs/images/logo-wordmark-light.png" width="360">
   </picture>
 </p>
 
@@ -15,8 +15,7 @@
 
 ## 功能
 
-- **Live2D 模型，VTube Studio 風格。** 模型會連同 VTube Studio 的設定一起載入（`.vtube.json` 的參數綁定、熱鍵、
-  物理、待機動畫）。渲染使用獨立的 Live2D 渲染器 [Ayagami](https://github.com/AyagamiDev/ayagami)，不包含
+- **Live2D 模型。** 模型會連同它通常附帶的設定一起載入（參數綁定、熱鍵、物理、待機動畫）。渲染使用獨立的 Live2D 渲染器 [Ayagami](https://github.com/AyagamiDev/ayagami)，不包含
   Live2D Cubism SDK。
 - **內建臉部追蹤。** App 會自己啟動追蹤器：MediaPipe FaceMesh 特徵點對應到 ARKit 的 52 種表情；用合成眼睛訓練的
   眼睛模型，戴著會反射螢幕的眼鏡也抓得到眨眼；還有視線和頭部位置。任何顯示卡都能透過 Vulkan 執行，NVIDIA 可用
@@ -28,8 +27,8 @@
 - **熱鍵、表情和道具。** 熱鍵清單與畫面按鈕、表情切換、Live2D 姿勢群組、圖片和動畫的道具庫、道具場景。
 - **透明背景送進 OBS。** 舞台以帶透明度的 PipeWire 影像串流送到 OBS，不含 app 的按鈕和選單。也支援 v4l2loopback
   虛擬攝影機和透明視窗。
-- **把追蹤資料給其他軟體。** Yorishiro 可以假裝成執行 VTube Studio 的 iPhone，或送 iFacialMocap 資料給
-  VSeeFace、Warudo、VNyan。
+- **把追蹤資料給其他軟體。** 追蹤器也能用常見的臉部追蹤協定送出資料（iFacialMocap，以及其他 VTuber 軟體
+  讀取的 iPhone 追蹤協定）。
 - **英文與繁體中文介面。**
 
 | | |
@@ -80,7 +79,7 @@ App 使用 Ayagami 專案發布、加上混合模式修補的 Godot 4.7.1。
 ```
 
 - 第一次開啟時，舞台中央會有一張卡片帶你完成：選擇模型、確認臉部追蹤、擺好模型。
-- Live2D 模型是一個有 `.model3.json` 檔的資料夾。VTube Studio 的模型會沿用原本的設定。放在
+- Live2D 模型是一個有 `.model3.json` 檔的資料夾。模型附帶的設定只會讀取，不會被改寫。放在
   `userdata/yorishiro/Live2DModels/` 的模型會自動出現。
 - 追蹤器會跟著 app 啟動。開始時請放鬆、看著鏡頭一下，讓它記下你的自然表情，或在「靈敏度」頁使用「自動校正」。
 - 拖曳模型可以移動，滾輪調整大小，Shift + 滾輪旋轉。角落的齒輪打開所有設定。
@@ -107,4 +106,4 @@ Yorishiro 是獨立的專案，不是上游的 OpenVT、Ayagami 或 libfunnel，
 ずんだもん：東北ずん子・ずんだもんプロジェクト。模型檔案不在這個 repo 裡，請到
 [Live2D 的範例頁面](https://www.live2d.com/learn/sample/zundamon/)下載。
 
-「Live2D」和「Cubism」是 Live2D Inc. 的商標，「VTube Studio」是其所有者的商標。Yorishiro 與他們沒有關係。
+「Live2D」和「Cubism」是 Live2D Inc. 的商標。Yorishiro 與 Live2D Inc. 沒有關係。

@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-wordmark-dark.svg">
-    <img alt="yorishiro" src="docs/images/logo-wordmark-light.svg" width="360">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-wordmark-dark.png">
+    <img alt="yorishiro" src="docs/images/logo-wordmark-light.png" width="360">
   </picture>
 </p>
 
@@ -15,9 +15,9 @@
 
 ## Features
 
-- **Live2D models, VTube Studio style.** Models load with their VTube Studio settings (`.vtube.json`
-  parameter bindings, hotkeys, physics, idle animation). Rendering by [Ayagami](https://github.com/AyagamiDev/ayagami),
-  an independent Live2D renderer: no Live2D Cubism SDK inside.
+- **Live2D models.** Models come in with the settings that usually ship with them (parameter bindings,
+  hotkeys, physics, idle animation). Rendering by [Ayagami](https://github.com/AyagamiDev/ayagami), an
+  independent Live2D renderer: no Live2D Cubism SDK inside.
 - **Face tracking built in.** The app starts its own tracker: MediaPipe FaceMesh landmarks fitted to the 52
   ARKit expressions, an eye model trained on synthetic eyes (holds up behind glasses that reflect the
   screen), gaze, head position. Runs on any GPU through Vulkan, on NVIDIA through CUDA or TensorRT, or on the CPU.
@@ -30,8 +30,8 @@
   groups, an item library for pictures and animations, item scenes.
 - **Into OBS with a transparent background.** The stage goes to OBS as a PipeWire video stream with alpha,
   without the app's buttons and menus. A v4l2loopback virtual camera and a transparent window work too.
-- **Tracking for other apps.** Yorishiro can stand in for an iPhone running VTube Studio, or send
-  iFacialMocap data to VSeeFace, Warudo and VNyan.
+- **Tracking for other apps.** The tracker can also send its data in common face tracking protocols
+  (iFacialMocap and the iPhone tracking protocol other VTuber apps read).
 - **English and Traditional Chinese** interface.
 
 | | |
@@ -83,7 +83,8 @@ The app runs on a Godot 4.7.1 build with Ayagami's blend mode patch, published b
 
 - On the first start a card in the middle of the stage walks you through it: choose a model, check face
   tracking, place the model.
-- A Live2D model is a folder with a `.model3.json` file. VTube Studio models keep their settings. Models in
+- A Live2D model is a folder with a `.model3.json` file; settings that come with it are read, never
+  changed. Models in
   `userdata/yorishiro/Live2DModels/` show up by themselves.
 - The tracker starts with the app. Look straight at the camera with a relaxed face for a moment so it
   can take your neutral face, or use **Auto calibrate** on the Sensitivity page.
@@ -114,5 +115,4 @@ The model in the screenshots is the Live2D sample model ずんだもん (illustr
 ずんだもん: 東北ずん子・ずんだもんプロジェクト. The model files are not part of this repository, get them from
 [Live2D's sample page](https://www.live2d.com/learn/sample/zundamon/).
 
-"Live2D" and "Cubism" are trademarks of Live2D Inc. "VTube Studio" is a trademark of its respective owner.
-Yorishiro is not affiliated with them.
+"Live2D" and "Cubism" are trademarks of Live2D Inc. Yorishiro is not affiliated with Live2D Inc.
