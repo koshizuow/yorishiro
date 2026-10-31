@@ -30,6 +30,8 @@ func popout(persistent: bool = false) -> void:
 	var parent = self.get_parent()
 	var index = self.get_index()
 	window = Window.new()
+	# the only real OS window: everything else is embedded in the main window
+	window.force_native = true
 	window.size = self.size
 	window.unresizable = true
 	window.transient = true

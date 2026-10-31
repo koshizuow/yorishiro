@@ -16,6 +16,7 @@
 ##                          With Godot's --fixed-fps 60 the same run gives the same screenshots
 ##   --pipe-frames=<file>   keep writing the rendered stage to a shared file (for example in /dev/shm), for
 ##                          the PipeWire test tool (/media/koshizu/Work/dev/external/funnel-sender, outside the repo)
+##   --press=<a,b>          after --open-panel, press these buttons (node names) in order, for screenshots of what they open
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -72,6 +73,14 @@ func _ready() -> void:
 			for i in 15:
 				await get_tree().process_frame
 			_open_panel(args["open-panel"])
+			for button_name in args.get("press", "").split(",", false):
+				for i in 30:
+					await get_tree().process_frame
+				var button = get_tree().root.find_child(button_name, true, false)
+				if button is BaseButton:
+					button.pressed.emit()
+				else:
+					push_error("[automation] no button %s" % button_name)
 		for i in int(args.get("wait-frames", "90")):
 			await RenderingServer.frame_post_draw
 		if args.has("screenshot-window"):

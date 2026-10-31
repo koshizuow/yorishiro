@@ -49,7 +49,7 @@ Automation="*res://lib/automation.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/size/transparent=true
-window/subwindows/embed_subwindows=false
+window/subwindows/embed_subwindows=true
 window/stretch/aspect="expand"
 window/per_pixel_transparency/allowed=true
 
