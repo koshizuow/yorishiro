@@ -5,7 +5,7 @@ Used on 2026-10-31 to find why a test model showed heart, sparkle and swirl eyes
 parser, no Cubism SDK (D26).
 
 Setup, once: copy the Ayagami core crate (the `ayagami` git dependency in `~/.cargo/git/checkouts/ayagami-*/`) to
-`/media/koshizu/Work/dev/scratch/ayagami-core`, put `probe.rs` in `ayagami/src/bin/`, then
+a scratch folder outside the repo (for example `../scratch/ayagami-core`), put `probe.rs` in `ayagami/src/bin/`, then
 `cargo build --release -p ayagami --bin load-model --bin probe`.
 
 | Tool | What it does |

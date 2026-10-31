@@ -17,7 +17,7 @@
 ##   --fixed-clock          blink, breathing and smoothing count frames instead of wall time, random seed 1.
 ##                          With Godot's --fixed-fps 60 the same run gives the same screenshots
 ##   --pipe-frames=<file>   keep writing the rendered stage to a shared file (for example in /dev/shm), for
-##                          the PipeWire test tool (/media/koshizu/Work/dev/external/funnel-sender, outside the repo)
+##                          the PipeWire test tool (libfunnel's funnel-sender example, built outside the repo)
 ##   --press=<a,b>          after --open-panel, press these buttons (node names) in order, for screenshots of what they open
 ##   --face-preview         show the 3D tracking preview head in the window corner, next to the stage (with
 ##                          --poses and only --screenshot-window: one shot per pose with both)
