@@ -61,6 +61,7 @@ func _ready() -> void:
 	if OS.has_feature("linux"):
 		_virtual_camera_hint()
 		_refresh_virtual_cameras()
+		_pipewire_row.call_deferred()
 	else:
 		%VirtualWebcam.queue_free()
 		
@@ -241,6 +242,35 @@ func _virtual_camera_hint() -> void:
 	var row_parent: Node = %VirtualWebcam.get_parent()
 	row_parent.add_child(_vcam_hint)
 	row_parent.move_child(_vcam_hint, %VirtualWebcam.get_index() + 1)
+
+## the stage to OBS as a PipeWire stream with alpha (lib/output/pipewire_output.gd)
+func _pipewire_row() -> void:
+	var output = get_tree().get_first_node_in_group("output:pipewire")
+	if output == null:
+		return
+	var box := VBoxContainer.new()
+	box.name = "PipeWireOutputRow"
+	var toggle := CheckButton.new()
+	toggle.name = "PipeWireToggle"
+	toggle.text = "Send the stage to OBS (PipeWire, transparent)"
+	toggle.tooltip_text = "In OBS add a \"PipeWire video\" source (obs-pwvideo plugin) and pick Yorishiro. Only the stage is sent, without buttons or settings."
+	toggle.button_pressed = output.enabled
+	toggle.toggled.connect(func (on): output.enabled = on)
+	box.add_child(toggle)
+	var state := Label.new()
+	state.name = "PipeWireStatus"
+	state.theme_type_variation = &"SubscriptLabel"
+	state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(state)
+	var show_status := func (text: String, ok: bool):
+		state.text = text
+		state.visible = text != ""
+		state.modulate = Color.WHITE if ok else Color(1, 0.45, 0.45)
+	output.status_changed.connect(show_status)
+	show_status.call(output.status, output.status_ok)
+	var parent: Node = _vcam_hint.get_parent()
+	parent.add_child(box)
+	parent.move_child(box, _vcam_hint.get_index() + 1)
 
 func _on_loopback_item_selected(index: int) -> void:
 	_on_v4l2_toggled(%V4L2Toggle.button_pressed)

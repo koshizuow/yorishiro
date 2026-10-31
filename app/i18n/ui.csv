@@ -347,3 +347,14 @@ Pictures in the Items folder show up here. Add one from anywhere on this compute
 "No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:","No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:",還沒有虛擬攝影機裝置。請在終端機執行一次下面的指令（需要輸入密碼），再按「重新檢查」：
 Copy,Copy,複製
 Check again,Check again,重新檢查
+"Send the stage to OBS (PipeWire, transparent)","Send the stage to OBS (PipeWire, transparent)",把舞台傳到 OBS（PipeWire，透明背景）
+"In OBS add a ""PipeWire video"" source (obs-pwvideo plugin) and pick Yorishiro. Only the stage is sent, without buttons or settings.","In OBS add a ""PipeWire video"" source (obs-pwvideo plugin) and pick Yorishiro. Only the stage is sent, without buttons or settings.",在 OBS 新增「PipeWire video」來源（obs-pwvideo 外掛），選 Yorishiro。只會傳送舞台，不含按鈕和設定畫面。
+The PipeWire helper is not built (%s).,The PipeWire helper is not built (%s).,PipeWire 小幫手還沒建置（%s）。
+Cannot write %s.,Cannot write %s.,無法寫入 %s。
+Could not start the PipeWire helper.,Could not start the PipeWire helper.,無法啟動 PipeWire 小幫手。
+Starting...,Starting...,啟動中…
+The PipeWire helper stopped (exit code %d).,The PipeWire helper stopped (exit code %d).,PipeWire 小幫手停止了（結束代碼 %d）。
+"Sending %sx%s, waiting for OBS","Sending %sx%s, waiting for OBS",正在傳送 %sx%s，等待 OBS 接收
+Sending to OBS,Sending to OBS,正在傳送到 OBS
+PipeWire is not running or not reachable.,PipeWire is not running or not reachable.,PipeWire 沒有在執行，或連不上。
+PipeWire refused the stream. NVIDIA drivers need PipeWire 1.2 or newer and OBS 31 or newer.,PipeWire refused the stream. NVIDIA drivers need PipeWire 1.2 or newer and OBS 31 or newer.,PipeWire 拒絕了這個串流。NVIDIA 顯示卡需要 PipeWire 1.2 以上和 OBS 31 以上。

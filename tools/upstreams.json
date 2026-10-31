@@ -13,6 +13,17 @@
       "note": "Our fork (D25). Check every commit's source: nothing written from the Cubism SDK or Framework (D26)."
     },
     {
+      "name": "libfunnel",
+      "url": "https://github.com/hoshinolina/libfunnel.git",
+      "branch": "main",
+      "pin": {
+        "kind": "subtree",
+        "prefix": "app/thirdparty/libfunnel"
+      },
+      "policy": "cherry-pick",
+      "note": "PipeWire video out (D34). Maintained best-effort by its author, who asks to fork for new features: our copy is a fork, we fix what we need."
+    },
+    {
       "name": "ayagami",
       "url": "https://github.com/AyagamiDev/ayagami.git",
       "branch": "main",

@@ -6,6 +6,7 @@ const Collections = preload("res://lib/utils/collections.gd")
 const VtObject = preload("res://lib/vtobject.gd")
 const VtModel = preload("res://lib/model/vt_model.gd")
 const VtItem = preload("res://lib/items/vt_item.gd")
+const PipeWireOutput = preload("res://lib/output/pipewire_output.gd")
 
 const INDEX_RANGE = 30
 
@@ -65,6 +66,8 @@ var objects: Array :
 		return canvas.get_children()
 
 func _ready() -> void:
+	if OS.has_feature("linux"):
+		add_child(PipeWireOutput.new())
 	# allow items to be dropped onto the window to spawn instantly
 	get_window().files_dropped.connect(
 		func (paths):
