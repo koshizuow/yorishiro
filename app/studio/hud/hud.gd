@@ -2,6 +2,7 @@ extends "res://ui/popout_panel.gd"
 
 const SettingsOverlay = preload("res://studio/hud/settings/settings_overlay.gd")
 const HotkeysPage = preload("res://studio/hud/settings/hotkeys_page.gd")
+const AboutPage = preload("res://studio/hud/settings/about_page.gd")
 const ModelStrip = preload("res://studio/hud/model_strip/model_strip.gd")
 ## seconds without mouse movement before the stage buttons fade out (clean window capture)
 const IDLE_FADE_SECONDS = 3.0
@@ -129,6 +130,7 @@ func _build_overlay() -> void:
 	overlay.add_page(&"model", "Models & Items", PanelPage.new(preload("res://studio/hud/item_panel/item_panel.tscn"), "ItemPanel", [page_models]))
 	overlay.add_page(&"hotkeys", "Hotkeys", HotkeysPage.new())
 	overlay.add_page(&"settings", "Settings", PanelPage.new(preload("res://studio/hud/camera_panel/camera_panel.tscn"), "CameraPanel"))
+	overlay.add_page(&"about", "About", AboutPage.new())
 
 	# the button column spans the window's height, its empty middle must not swallow clicks meant for a
 	# model dragged to the left edge

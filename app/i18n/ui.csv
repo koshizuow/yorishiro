@@ -92,3 +92,19 @@ Edit Musubi,Edit Musubi,編輯結繩
 Advanced: Musubi node editor,Advanced: Musubi node editor,進階：結繩（節點編輯器）
 Reimport VTS Bindings,Reimport VTS Bindings,重新匯入 VTS 綁定
 The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now.,The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now.,熱鍵清單製作中。目前可以先在結繩（節點編輯器）設定熱鍵。
+About,About,關於
+Version %s,Version %s,版本 %s
+Open source components,Open source components,開源元件
+Show full license texts,Show full license texts,顯示授權全文
+"Yorishiro is a VTubing app with its own face tracker. Its app started as a fork of OpenVT by erodozer, released under the MIT license. Yorishiro is not the OpenVT project, please send problems with Yorishiro to Yorishiro.","Yorishiro is a VTubing app with its own face tracker. Its app started as a fork of OpenVT by erodozer, released under the MIT license. Yorishiro is not the OpenVT project, please send problems with Yorishiro to Yorishiro.",Yorishiro 是一套附自製臉部追蹤的 VTuber 軟體。它的 app 一開始 fork 自 erodozer 的 OpenVT（MIT 授權）。Yorishiro 不是 OpenVT 專案，Yorishiro 的問題請回報給 Yorishiro。
+"""Live2D"" and ""Cubism"" are trademarks of Live2D Inc. ""VTube Studio"" is a trademark of its respective owner. Yorishiro is not affiliated with them and does not include the Live2D Cubism SDK.","""Live2D"" and ""Cubism"" are trademarks of Live2D Inc. ""VTube Studio"" is a trademark of its respective owner. Yorishiro is not affiliated with them and does not include the Live2D Cubism SDK.",「Live2D」和「Cubism」是 Live2D Inc. 的商標，「VTube Studio」是其所有者的商標。Yorishiro 與他們沒有關係，也不包含 Live2D Cubism SDK。
+The app this one was forked from,The app this one was forked from,本 app 的 fork 來源
+Game engine the app runs on,Game engine the app runs on,app 使用的遊戲引擎
+Live2D renderer,Live2D renderer,Live2D 繪製
+VRM model loading,VRM model loading,VRM 模型載入
+Virtual webcam output,Virtual webcam output,虛擬攝影機輸出
+Global hotkeys,Global hotkeys,全域熱鍵
+Native addons,Native addons,原生擴充
+Interface font,Interface font,介面字型
+Face tracking models (yorishiro-tracker),Face tracking models (yorishiro-tracker),臉部追蹤模型（yorishiro-tracker）
+Expression shapes (yorishiro-tracker),Expression shapes (yorishiro-tracker),表情形狀（yorishiro-tracker）

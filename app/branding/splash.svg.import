@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c2pee84fp66u8"
-path="res://.godot/imported/monochrome.svg-aa9264555a2bcc48d6ec5ac019719c1b.ctex"
+uid="uid://soaywyp7hkhs"
+path="res://.godot/imported/splash.svg-09eeacd7e641b9a83bff5a2af35cb0cf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://branding/monochrome.svg"
-dest_files=["res://.godot/imported/monochrome.svg-aa9264555a2bcc48d6ec5ac019719c1b.ctex"]
+source_file="res://branding/splash.svg"
+dest_files=["res://.godot/imported/splash.svg-09eeacd7e641b9a83bff5a2af35cb0cf.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=4
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
