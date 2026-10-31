@@ -27,6 +27,10 @@ func register_graph(model: VtModel):
 		return
 		
 	for f in formats:
-		if not model.blueprints.is_empty():
+		if not is_instance_valid(model) or not model.blueprints.is_empty():
 			return
-		model.blueprints = await f.load_graph(model)
+		var graphs = await f.load_graph(model)
+		# a model dropped while its graph loaded (another model picked meanwhile) is already freed
+		if not is_instance_valid(model):
+			return
+		model.blueprints = graphs

@@ -1,5 +1,7 @@
 extends "../model_loader.gd"
 
+const SettingsLocation = preload("res://lib/model/settings_location.gd")
+
 func model_format() -> StringName:
 	return "VRM"
 	
@@ -24,6 +26,6 @@ func load_data(path: String) -> ModelMeta:
 	meta.model = path
 	meta.path = path.get_base_dir()
 	meta.format = model_format()
-	meta.openvt_parameters = "%s/%s.ovt.json" % [meta.path, meta.name]
+	meta.openvt_parameters = SettingsLocation.resolve(path, "%s/%s.ovt.json" % [meta.path, meta.name])
 	
 	return meta

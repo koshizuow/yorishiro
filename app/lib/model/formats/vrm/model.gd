@@ -1,5 +1,7 @@
 extends "../../vt_model.gd"
 
+const SettingsLocation = preload("res://lib/model/settings_location.gd")
+
 const VRM_BLENDSHAPES : PackedStringArray = [
 	# emotions
 	"happy",
@@ -63,7 +65,7 @@ func load_data(path: String) -> ModelMeta:
 	meta.model = model_file
 	meta.path = path
 	meta.format = "vrm"
-	meta.openvt_parameters = "%s/%s.ovt.json" % [meta.model.get_base_dir(), base_name]
+	meta.openvt_parameters = SettingsLocation.resolve(model_file, "%s/%s.ovt.json" % [meta.model.get_base_dir(), base_name])
 	
 	return meta
 

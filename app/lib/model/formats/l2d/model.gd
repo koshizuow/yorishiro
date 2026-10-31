@@ -195,8 +195,13 @@ func get_expression_controller() -> AyagamiExpressionMutator:
 	return model.get_node("ExpressionController")
 
 ## save bidirectional vts compatible settings
+## Disabled: it rewrote the user's <name>.vtube.json (key order, and every mesh listed as excluded from
+## pinning since the check is inverted), which breaks the model in VTube Studio. Yorishiro only reads VTS
+## files, its own settings go to SettingsLocation.
+const WRITE_VTS_FILES = false
+
 func _save_to_vts():
-	if modelmeta.studio_parameters.is_empty():
+	if not WRITE_VTS_FILES or modelmeta.studio_parameters.is_empty():
 		return
 	
 	var vtube_data = Files.read_json(modelmeta.studio_parameters)

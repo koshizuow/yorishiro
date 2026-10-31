@@ -1,5 +1,7 @@
 extends "../model_loader.gd"
 
+const SettingsLocation = preload("res://lib/model/settings_location.gd")
+
 func model_directory() -> String:
 	return "user://Live2DModels"
 
@@ -45,6 +47,6 @@ func load_data(path: String) -> ModelMeta:
 	meta.path = path.get_base_dir()
 	meta.format = model_format()
 	meta.studio_parameters = vt_file
-	meta.openvt_parameters = ovt_file
+	meta.openvt_parameters = SettingsLocation.resolve(filepath, ovt_file)
 	
 	return meta

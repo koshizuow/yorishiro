@@ -17,6 +17,9 @@
 ##   --pipe-frames=<file>   keep writing the rendered stage to a shared file (for example in /dev/shm), for
 ##                          the PipeWire test tool (/media/koshizu/Work/dev/external/funnel-sender, outside the repo)
 ##   --press=<a,b>          after --open-panel, press these buttons (node names) in order, for screenshots of what they open
+##   --import-models=<dir>  add every model under dir to the model library, as the import card would
+##   --cycle-models=<prefix> after the screenshot, open each library model in turn like a click on its card, save
+##                          <prefix>_<nn>_<name>.png (window) after --pose-frames frames and print load time
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -51,6 +54,11 @@ func _ready() -> void:
 			# loading takes a varying number of frames, so count waits and the fixed clock from the end of it
 			await stage.spawn_model(model)
 			Clock.origin_frame = Engine.get_process_frames()
+
+	if args.has("import-models"):
+		for p in ModelLibrary._find_models(args["import-models"], [".model3.json", ".vrm"]):
+			ModelLibrary.add_imported(p)
+		print("[automation] library has %d models" % ModelLibrary.list().size())
 
 	if args.has("poses"):
 		# hold the model still from the start, the saved tracker could still be feeding it otherwise
@@ -107,6 +115,8 @@ func _ready() -> void:
 				print("[automation] burst %s -> %s, %.0f fps, FaceAngleX %.1f FaceAngleY %.1f FaceAngleZ %.1f EyeOpenLeft %.2f MouthOpen %.2f MouthSmile %.2f" % [
 					shot, error_string(err), Engine.get_frames_per_second(), tp.get("FaceAngleX", 0.0), tp.get("FaceAngleY", 0.0),
 					tp.get("FaceAngleZ", 0.0), tp.get("EyeOpenLeft", 0.0), tp.get("MouthOpen", 0.0), tp.get("MouthSmile", 0.0)])
+		if args.has("cycle-models"):
+			await _cycle_models(args)
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
@@ -155,6 +165,32 @@ func _pipe_frames(path: String, viewport: Viewport):
 		f.seek(0)
 		f.store_32(seq)
 		f.flush()
+
+## opens every library model in turn, the way the picker does, and reports how each one went
+func _cycle_models(args: Dictionary):
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var entries := ModelLibrary.list()
+	var n := 0
+	for entry in entries:
+		n += 1
+		var start := Time.get_ticks_msec()
+		ModelLibrary.open(entry.path)
+		var loaded := false
+		for i in 600:
+			await get_tree().process_frame
+			if stage.active_model and stage.active_model.modelmeta and stage.active_model.modelmeta.model == entry.path:
+				loaded = true
+				break
+		var ms := Time.get_ticks_msec() - start
+		for i in int(args.get("pose-frames", "90")):
+			await RenderingServer.frame_post_draw
+		var shot = "%s_%02d_%s.png" % [args["cycle-models"], n, entry.name.validate_filename()]
+		get_viewport().get_texture().get_image().save_png(shot)
+		var m = stage.active_model
+		print("[automation] cycle %d/%d %s: %s in %d ms, %d meshes, %.0f fps, %d nodes on stage -> %s" % [
+			n, entries.size(), entry.name, "loaded" if loaded else "NOT LOADED", ms,
+			m.get_meshes().size() if loaded and m.has_method("get_meshes") else -1,
+			Engine.get_frames_per_second(), stage.canvas.get_child_count(), shot])
 
 func _open_panel(which: String):
 	# --open-panel names: model and item open the models page, camera the settings page, others by page id

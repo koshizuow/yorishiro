@@ -90,7 +90,10 @@ func _on_model_changed(model, stage) -> void:
 		_capture(model, stage.capture_viewport, path)
 	changed.emit()
 
-## head and upper body from the stage: the opaque part of the model's rect, a 3:4 box at its top
+## from the stage: a tall figure (a person) gives its head and upper body, a 3:4 box at the top of its opaque
+## part, anything else (an animal, a mascot) is shown whole, centered on a transparent 3:4 canvas
+const TALL_FIGURE = 1.6
+
 func _capture(model, viewport: Viewport, path: String) -> void:
 	var img := viewport.get_texture().get_image()
 	var screen: Rect2 = model.get_global_transform_with_canvas() * model.rect
@@ -101,13 +104,18 @@ func _capture(model, viewport: Viewport, path: String) -> void:
 	var used := part.get_used_rect()
 	if used.size.x < 8 or used.size.y < 8:
 		return
-	var w := used.size.x
-	var h := mini(used.size.y, w * THUMB_SIZE.y / THUMB_SIZE.x)
-	if h < w * THUMB_SIZE.y / THUMB_SIZE.x:
-		# a wide, short model: keep the height, narrow the box around the middle
-		w = h * THUMB_SIZE.x / THUMB_SIZE.y
-	var box := Rect2i(used.position.x + (used.size.x - w) / 2, used.position.y, w, h)
-	var thumb := part.get_region(box)
+	var aspect := float(THUMB_SIZE.y) / THUMB_SIZE.x
+	var thumb: Image
+	if float(used.size.y) / used.size.x >= TALL_FIGURE:
+		var w := used.size.x
+		var h := mini(used.size.y, int(w * aspect))
+		thumb = part.get_region(Rect2i(used.position.x, used.position.y, w, h))
+	else:
+		var figure := part.get_region(used)
+		var side := maxi(int(used.size.x * aspect), used.size.y)
+		var canvas_size := Vector2i(int(side / aspect * 1.08), int(side * 1.08))
+		thumb = Image.create_empty(canvas_size.x, canvas_size.y, false, figure.get_format())
+		thumb.blit_rect(figure, Rect2i(Vector2i.ZERO, figure.get_size()), (canvas_size - figure.get_size()) / 2)
 	thumb.resize(THUMB_SIZE.x, THUMB_SIZE.y, Image.INTERPOLATE_LANCZOS)
 	thumb.save_png(_thumb_path(path))
 
