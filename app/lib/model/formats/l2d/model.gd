@@ -19,6 +19,39 @@ var param_settings: Dictionary[StringName, ModelModifier] = {}
 var part_settings: Dictionary[StringName, ModelModifier] = {}
 var mesh_settings: Dictionary[StringName, ModelModifier] = {}
 
+## physics on/off, overall strength (1 as simulated) and strength per physics setting id, kept in the
+## model's .yori.json as "physics"; VTube Studio's PhysicsSettings seed them (PhysicsStrength 50 = 1)
+var physics_enabled := true:
+	set(v):
+		physics_enabled = v
+		_apply_physics()
+var physics_strength := 1.0:
+	set(v):
+		physics_strength = v
+		_apply_physics()
+var physics_groups := {}
+
+func get_physics() -> Node:
+	return model.get_node_or_null("PhysicsController") if model else null
+
+## the model's physics settings as [{id, name}], empty without a physics3.json
+func physics_group_list() -> Array:
+	var physics = get_physics()
+	return physics.get_groups() if physics and physics.definition else []
+
+func set_physics_group(id: String, value: float) -> void:
+	physics_groups[id] = value
+	_apply_physics()
+
+func _apply_physics() -> void:
+	var physics = get_physics()
+	if physics == null:
+		return
+	physics.enabled = physics_enabled
+	physics.strength = physics_strength
+	for id in physics_groups:
+		physics.set_group_strength(id, float(physics_groups[id]))
+
 func get_modifier_map():
 	return {
 		"model": model_settings,
@@ -245,6 +278,10 @@ func _load_from_vts():
 		get_idle_animation_player().play(idle_animation)
 		
 	# the model's own .yori.json settings override these when it has them
+	var physics_settings = vtube_data.get("PhysicsSettings", {})
+	if not physics_settings.is_empty():
+		physics_enabled = physics_settings.get("Use", true)
+		physics_strength = float(physics_settings.get("PhysicsStrength", 50)) / 50.0
 	var movement_settings = vtube_data.get("ModelPositionMovement", {})
 	if not movement_settings.is_empty():
 		movement_enabled = movement_settings.get("Use", false)
@@ -290,12 +327,19 @@ func save_model_settings(settings: Dictionary):
 			"groups": groups
 		}
 	settings["expressions"] = expression_groups
+	settings["physics"] = {"use": physics_enabled, "strength": physics_strength, "groups": physics_groups}
 	
 	_save_to_vts()
 	
 func load_model_settings(settings: Dictionary):
 	_load_from_vts()
 	super.load_model_settings(settings)
+	var physics: Dictionary = settings.get("physics", {})
+	if not physics.is_empty():
+		physics_groups = physics.get("groups", {}).duplicate()
+		physics_enabled = physics.get("use", true)
+		physics_strength = float(physics.get("strength", 1.0))
+	_apply_physics()
 
 	for p in self.get_parameters():
 		var modifier = param_settings[StringName(p)]

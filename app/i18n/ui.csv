@@ -359,3 +359,9 @@ Sending to OBS,Sending to OBS,正在傳送到 OBS
 PipeWire is not running or not reachable.,PipeWire is not running or not reachable.,PipeWire 沒有在執行，或連不上。
 PipeWire refused the stream. NVIDIA drivers need PipeWire 1.2 or newer and OBS 31 or newer.,PipeWire refused the stream. NVIDIA drivers need PipeWire 1.2 or newer and OBS 31 or newer.,PipeWire 拒絕了這個串流。NVIDIA 顯示卡需要 PipeWire 1.2 以上和 OBS 31 以上。
 Sending the stage to OBS over PipeWire,Sending the stage to OBS over PipeWire,透過 PipeWire 把舞台傳到 OBS
+Physics,Physics,物理
+Use physics,Use physics,使用物理
+"Hair, clothes and accessories swing with the movement, as the model's maker set them up.","Hair, clothes and accessories swing with the movement, as the model's maker set them up.",頭髮、衣服和配件會隨動作擺動，依模型作者的設定。
+This model has no physics.,This model has no physics.,這個模型沒有物理設定。
+Overall strength,Overall strength,整體強度
+Each part (%d),Each part (%d),各部位（%d）

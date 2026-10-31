@@ -40,6 +40,7 @@
 ##   --model-transform=<x,y,scale> place the loaded model (stage pixels, scale factor), for fixed framing
 ##   --expressions=<a,b>    turn these expressions of the loaded model on (e.g. outfit toggles)
 ##   --play-motion=<name>   play this motion of the loaded model (looping) before the screenshot
+##   --physics=<strength>   physics strength of the loaded model (1 as simulated), or "off"
 ##   --follow-face=<x,y,z>  move the loaded model with the face, these amounts (VTS units), or "off"
 ##   --record=<dir>         after the screenshot, save the window as <dir>/00001.jpg ... at 30 fps for
 ##                          --record-seconds (default 10), and the tracked values per frame in <dir>/params.csv
@@ -167,6 +168,12 @@ func _ready() -> void:
 			var controller = placed.get_expression_controller()
 			for e in args["expressions"].split(",", false):
 				controller.set("weight/%s" % e, 1.0)
+		if args.has("physics") and placed and "physics_strength" in placed:
+			if args["physics"] == "off":
+				placed.physics_enabled = false
+			else:
+				placed.physics_strength = float(args["physics"])
+			print("[automation] physics %s" % args["physics"])
 		if args.has("play-motion") and placed:
 			var player: AnimationPlayer = placed.model.get_node("MotionController")
 			player.play(args["play-motion"])
@@ -230,6 +237,9 @@ func _ready() -> void:
 				model.get("parameters/ParamAngleX")])
 
 	if args.has("quit"):
+		# like closing the window: the settings and the model's .yori.json are saved first
+		get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST)
+		await get_tree().process_frame
 		get_tree().quit()
 
 ## streams the stage until the app quits through a shared file (Godot opens only regular files, no FIFO):

@@ -68,6 +68,12 @@ func refresh() -> void:
 	follow.theme_type_variation = &"BoldLabel"
 	_list.add_child(follow)
 	_list.add_child(_movement_options())
+	if model.has_method("physics_group_list"):
+		var physics_title := Label.new()
+		physics_title.text = "Physics"
+		physics_title.theme_type_variation = &"BoldLabel"
+		_list.add_child(physics_title)
+		_list.add_child(_physics_options())
 	var by_part := {}
 	for chain in chains():
 		var part := _part(chain.tracker_param)
@@ -159,6 +165,86 @@ func _movement_options() -> Control:
 		model.movement_enabled = on
 		grid.visible = on)
 	return box
+
+## physics on/off, overall strength and one slider per physics group (hair, skirt, accessories...)
+func _physics_options() -> Control:
+	var box := VBoxContainer.new()
+	box.name = "PhysicsOptions"
+	var use := CheckButton.new()
+	use.name = "PhysicsToggle"
+	use.text = "Use physics"
+	use.tooltip_text = "Hair, clothes and accessories swing with the movement, as the model's maker set them up."
+	use.button_pressed = model.physics_enabled
+	box.add_child(use)
+	var grid := GridContainer.new()
+	grid.name = "PhysicsStrengths"
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 14)
+	var groups: Array = model.physics_group_list()
+	if groups.is_empty():
+		var none := Label.new()
+		none.text = "This model has no physics."
+		none.theme_type_variation = &"SubscriptLabel"
+		box.add_child(none)
+		use.disabled = true
+		return box
+	_physics_slider(grid, tr("Overall strength"), model.physics_strength, "PhysicsStrength",
+		func (v): model.physics_strength = v)
+	# models have up to dozens of groups (hair strands, skirt, ribbons), folded away until wanted
+	var fold := Button.new()
+	fold.name = "PhysicsGroupsFold"
+	fold.toggle_mode = true
+	fold.flat = true
+	fold.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	fold.text = tr("Each part (%d)") % groups.size()
+	fold.icon = preload("res://ui/icons/fold_right_arrow.svg")
+	var group_grid := GridContainer.new()
+	group_grid.name = "PhysicsGroups"
+	group_grid.columns = 3
+	group_grid.add_theme_constant_override("h_separation", 14)
+	group_grid.visible = false
+	fold.toggled.connect(func (on):
+		group_grid.visible = on
+		fold.icon = preload("res://ui/icons/fold_down_arrow.svg") if on else preload("res://ui/icons/fold_right_arrow.svg"))
+	for g in groups:
+		var id: String = g.id
+		_physics_slider(group_grid, g.name, float(model.physics_groups.get(id, 1.0)), "PhysicsGroup_%s" % id.validate_node_name(),
+			func (v): model.set_physics_group(id, v))
+	var settings := VBoxContainer.new()
+	settings.add_child(grid)
+	settings.add_child(fold)
+	settings.add_child(group_grid)
+	box.add_child(settings)
+	settings.visible = use.button_pressed
+	use.toggled.connect(func (on):
+		model.physics_enabled = on
+		settings.visible = on)
+	return box
+
+## a 0 to 200 % strength slider (100 % = as the model's maker simulated it)
+func _physics_slider(grid: GridContainer, text: String, value: float, slider_name: String, changed: Callable) -> void:
+	var label := Label.new()
+	label.text = text
+	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED  # group names come from the model
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.custom_minimum_size.x = 180
+	grid.add_child(label)
+	var slider := HSlider.new()
+	slider.name = slider_name
+	slider.min_value = 0
+	slider.max_value = 200
+	slider.step = 5
+	slider.custom_minimum_size.x = 220
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.value = value * 100.0
+	var shown := Label.new()
+	shown.text = "%d%%" % int(slider.value)
+	shown.custom_minimum_size.x = 48
+	slider.value_changed.connect(func (v):
+		shown.text = "%d%%" % int(v)
+		changed.call(v / 100.0))
+	grid.add_child(slider)
+	grid.add_child(shown)
 
 func _part(tracker_param: String) -> String:
 	for p in PARTS:
