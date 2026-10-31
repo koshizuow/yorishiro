@@ -130,6 +130,11 @@ func _build_overlay() -> void:
 	overlay.add_page(&"hotkeys", "Hotkeys", HotkeysPage.new())
 	overlay.add_page(&"settings", "Settings", PanelPage.new(preload("res://studio/hud/camera_panel/camera_panel.tscn"), "CameraPanel"))
 
+	# the button column spans the window's height, its empty middle must not swallow clicks meant for a
+	# model dragged to the left edge
+	for c in [%Menu] + %Menu.find_children("*", "Container", true, false):
+		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	# the stage keeps a gear (settings), screenshot and nothing else
 	for b in [%ModelBtn, %ItemBtn, %CameraBtn, %PopoutBtn]:
 		b.hide()

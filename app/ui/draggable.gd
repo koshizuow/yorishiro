@@ -62,36 +62,33 @@ func _update_rect():
 	)
 	queue_redraw()
 
+## one wheel step scales by this factor, the same feel at any size
+const ZOOM_STEP = 1.06
+## degrees per wheel step with Shift
+const ROTATE_STEP = 2.5
 func _handle_mouse_button_down(event: InputEventMouseButton):
 	var dirty = false
-	
-	# check for simultaneous inputs to perform different actions
-	if dragging:
+	var wheel := event.button_index in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]
+	var up := 1.0 if event.button_index == MOUSE_BUTTON_WHEEL_UP else -1.0
+
+	# the wheel works over the object, holding the button is not needed (it still works while dragging)
+	if wheel:
 		if Input.is_key_pressed(KEY_SHIFT):
-			var s: float = 0.0
-			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				s = 5.0
-				dirty = true
-			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				s = -5.0
-				dirty = true
-			
-			rotation = wrapf(rotation + (PI / 360.0 * s), 0, 2 * PI)
+			rotation = wrapf(rotation + deg_to_rad(ROTATE_STEP * up), 0, 2 * PI)
 		else:
-			var s: float = 0.0
-			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-				s = 0.01
-				dirty = true
-			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-				s = -0.01
-				dirty = true
-			scale += Vector2(s, s)
-			scale = clamp(scale, Vector2(0.01, 0.01), Vector2(5.0, 5.0))
-		
+			# zoom toward the cursor: the point under it stays where it is
+			var factor := ZOOM_STEP if up > 0 else 1.0 / ZOOM_STEP
+			var new_scale: Vector2 = (scale * factor).clamp(Vector2(0.01, 0.01), Vector2(5.0, 5.0))
+			factor = new_scale.x / scale.x
+			var cursor := get_canvas_transform().affine_inverse() * event.position
+			global_position = cursor + (global_position - cursor) * factor
+			scale = new_scale
+		dirty = true
+
 	if event.button_index == MOUSE_BUTTON_LEFT:
 		dragging = true
 		drag_pressed.emit()
-	
+
 	return dirty
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> bool:
@@ -113,8 +110,19 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> bool:
 			free_offset += movement
 		else:
 			global_position += movement
+			_keep_on_screen()
 		return true
 	return false
+
+## pulls the object back so the center of its box stays in the viewport. The box is often much larger than
+## the drawn figure (a Live2D canvas has wide transparent margins), so keeping a few pixels of the box
+## visible could still leave nothing to grab.
+func _keep_on_screen() -> void:
+	var view := get_viewport_rect()
+	var center: Vector2 = get_global_transform_with_canvas() * rect.get_center()
+	var inside := center.clamp(view.position, view.end)
+	if inside != center:
+		global_position += get_canvas_transform().affine_inverse().basis_xform(inside - center)
 
 # can't use gui_input because if the mouse input is within the bounds of the element,
 # it won't pass through to other controls, inhibiting clicking objects
@@ -128,8 +136,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	var dirty = false
 	if event is InputEventMouseButton:
 		if event.pressed:
-			# mouse event must be within the bounds of the control
-			var p_xy = self.get_local_mouse_position()
+			# mouse event must be within the bounds of the control. Use the event's own position (already in this
+			# viewport's coordinates): the viewport's last mouse position lags when other UI took the motion
+			var p_xy = get_global_transform_with_canvas().affine_inverse() * event.position
 			if not rect.has_point(p_xy):
 				return
 			# sample for alpha if control has texture

@@ -20,6 +20,9 @@
 ##   --import-models=<dir>  add every model under dir to the model library, as the import card would
 ##   --cycle-models=<prefix> after the screenshot, open each library model in turn like a click on its card, save
 ##                          <prefix>_<nn>_<name>.png (window) after --pose-frames frames and print load time
+##   --gestures=<prefix>    after the screenshot, operate the model with synthetic mouse and key events (drag,
+##                          wheel, wheel while dragging, shift+wheel, right drag), save <prefix>_<step>.png and print
+##                          the model transform after each step
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -117,6 +120,8 @@ func _ready() -> void:
 					tp.get("FaceAngleZ", 0.0), tp.get("EyeOpenLeft", 0.0), tp.get("MouthOpen", 0.0), tp.get("MouthSmile", 0.0)])
 		if args.has("cycle-models"):
 			await _cycle_models(args)
+		if args.has("gestures"):
+			await _gestures(args["gestures"])
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
@@ -191,6 +196,83 @@ func _cycle_models(args: Dictionary):
 			n, entries.size(), entry.name, "loaded" if loaded else "NOT LOADED", ms,
 			m.get_meshes().size() if loaded and m.has_method("get_meshes") else -1,
 			Engine.get_frames_per_second(), stage.canvas.get_child_count(), shot])
+
+## each step is what a user would do with the mouse over the model, in window coordinates
+func _gestures(prefix: String):
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var model = stage.active_model
+	# [name, operations, aim point as a fraction of the model's rect (default its center)]
+	var steps := [
+		["start", []],
+		["drag_right_200", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(200, 0)], ["release", MOUSE_BUTTON_LEFT]]],
+		["wheel_up_x10_at_head", [["wheel", MOUSE_BUTTON_WHEEL_UP, 10]], Vector2(0.5, 0.12)],
+		["wheel_down_x10_at_head", [["wheel", MOUSE_BUTTON_WHEEL_DOWN, 10]], Vector2(0.5, 0.12)],
+		["wheel_down_x10_while_dragging", [["press", MOUSE_BUTTON_LEFT], ["wheel", MOUSE_BUTTON_WHEEL_DOWN, 10], ["release", MOUSE_BUTTON_LEFT]]],
+		["shift_wheel_x10", [["key", KEY_SHIFT, true], ["wheel", MOUSE_BUTTON_WHEEL_UP, 10], ["key", KEY_SHIFT, false]]],
+		["shift_wheel_back_x10", [["key", KEY_SHIFT, true], ["wheel", MOUSE_BUTTON_WHEEL_DOWN, 10], ["key", KEY_SHIFT, false]]],
+		["drag_left_1500_offscreen", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(-1500, 0)], ["release", MOUSE_BUTTON_LEFT]]],
+		["drag_back_right_300", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(300, 0)], ["release", MOUSE_BUTTON_LEFT]], Vector2(0.6, 0.5)],
+		["drag_down_1000_offscreen", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(0, 1000)], ["release", MOUSE_BUTTON_LEFT]]],
+	]
+	for step in steps:
+		# aim at the model's current center, converted from the stage viewport to the window
+		var aim: Vector2 = step[2] if step.size() > 2 else Vector2(0.5, 0.5)
+		var center: Vector2 = model.get_global_transform_with_canvas() * (model.rect.position + model.rect.size * aim)
+		var at := _stage_to_window(stage, center)
+		_mouse_motion(at, Vector2.ZERO)
+		await get_tree().process_frame
+		for op in step[1]:
+			match op[0]:
+				"press", "release":
+					var e := InputEventMouseButton.new()
+					e.button_index = op[1]
+					e.pressed = op[0] == "press"
+					e.position = at
+					e.global_position = at
+					e.button_mask = MOUSE_BUTTON_MASK_LEFT if op[1] == MOUSE_BUTTON_LEFT and e.pressed else 0
+					Input.parse_input_event(e)
+				"move":
+					for i in 10:
+						var d: Vector2 = op[1] / 10.0
+						at += d
+						_mouse_motion(at, d)
+						await get_tree().process_frame
+				"wheel":
+					for i in op[2]:
+						for pressed in [true, false]:
+							var e := InputEventMouseButton.new()
+							e.button_index = op[1]
+							e.pressed = pressed
+							e.position = at
+							e.global_position = at
+							e.factor = 1.0
+							Input.parse_input_event(e)
+						await get_tree().process_frame
+				"key":
+					var k := InputEventKey.new()
+					k.keycode = op[1]
+					k.physical_keycode = op[1]
+					k.pressed = op[2]
+					Input.parse_input_event(k)
+			await get_tree().process_frame
+		for i in 20:
+			await RenderingServer.frame_post_draw
+		var shot = "%s_%s.png" % [prefix, step[0]]
+		get_viewport().get_texture().get_image().save_png(shot)
+		print("[automation] gesture %s: position %s scale %.3f rotation %.1f deg -> %s" % [
+			step[0], model.position.round(), model.scale.x, model.rotation_degrees, shot])
+
+func _stage_to_window(stage, p: Vector2) -> Vector2:
+	var container: Control = stage.capture_viewport.get_parent()
+	return container.get_global_transform_with_canvas() * (p * Vector2(container.size) / Vector2(stage.capture_viewport.size))
+
+func _mouse_motion(at: Vector2, rel: Vector2) -> void:
+	var m := InputEventMouseMotion.new()
+	m.position = at
+	m.global_position = at
+	m.relative = rel
+	m.button_mask = MOUSE_BUTTON_MASK_LEFT if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) else 0
+	Input.parse_input_event(m)
 
 func _open_panel(which: String):
 	# --open-panel names: model and item open the models page, camera the settings page, others by page id
