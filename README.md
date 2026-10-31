@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-wordmark-dark.png">
-    <img alt="yorishiro" src="docs/images/logo-wordmark-light.png" width="360">
-  </picture>
+  <img alt="yorishiro" src="docs/images/logo-wordmark.png" width="360">
 </p>
 
 <p align="center">Live2D VTubing for Linux, with its own GPU face tracker.</p>

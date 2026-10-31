@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-wordmark-dark.png">
-    <img alt="yorishiro" src="docs/images/logo-wordmark-light.png" width="360">
-  </picture>
+  <img alt="yorishiro" src="docs/images/logo-wordmark.png" width="360">
 </p>
 
 <p align="center">給 Linux 的 Live2D VTuber 軟體，內建自己的 GPU 臉部追蹤。</p>
