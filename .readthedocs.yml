@@ -1,0 +1,23 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+submodules:
+  include: all
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.13"
+
+  jobs:
+    create_environment:
+      - curl -LO https://www.doxygen.nl/files/doxygen-1.16.1.linux.bin.tar.gz
+      - tar xzf doxygen-1.16.1.linux.bin.tar.gz
+    pre_build:
+      - doxygen-1.16.1/bin/doxygen
+    build:
+      html:
+        - "mkdir -p $READTHEDOCS_OUTPUT"
+        - "cp -r docs_out/html $READTHEDOCS_OUTPUT/html"

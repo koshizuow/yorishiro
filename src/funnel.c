@@ -1,0 +1,2266 @@
+#include "funnel.h"
+#include "funnel-gbm.h"
+#include "funnel_internal.h"
+#include "pipewire/stream.h"
+
+#include <asm-generic/errno-base.h>
+#include <asm-generic/errno.h>
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <libdrm/drm_fourcc.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+#include <spa/debug/format.h>
+#include <spa/node/io.h>
+#include <spa/node/utils.h>
+#include <spa/param/props.h>
+#include <spa/param/video/raw-utils.h>
+#include <spa/pod/dynamic.h>
+#include <spa/pod/filter.h>
+#include <spa/utils/result.h>
+
+#include <gbm.h>
+#include <linux/dma-buf.h>
+#include <pipewire/log.h>
+#include <pipewire/pipewire.h>
+#include <pipewire/stream.h>
+#include <xf86drm.h>
+
+PW_LOG_TOPIC_STATIC(log_funnel, "funnel.core");
+#define PW_LOG_TOPIC_DEFAULT log_funnel
+
+static struct {
+    uint32_t drm_format;
+    enum spa_video_format spa_format;
+} supported_formats[] = {
+    {
+        .drm_format = GBM_FORMAT_ARGB8888,
+        .spa_format = SPA_VIDEO_FORMAT_BGRA,
+    },
+    {
+        .drm_format = GBM_FORMAT_RGBA8888,
+        .spa_format = SPA_VIDEO_FORMAT_ABGR,
+    },
+    {
+        .drm_format = GBM_FORMAT_ABGR8888,
+        .spa_format = SPA_VIDEO_FORMAT_RGBA,
+    },
+    {
+        .drm_format = GBM_FORMAT_BGRA8888,
+        .spa_format = SPA_VIDEO_FORMAT_ARGB,
+    },
+    {
+        .drm_format = GBM_FORMAT_XRGB8888,
+        .spa_format = SPA_VIDEO_FORMAT_BGRx,
+    },
+    {
+        .drm_format = GBM_FORMAT_RGBX8888,
+        .spa_format = SPA_VIDEO_FORMAT_xBGR,
+    },
+    {
+        .drm_format = GBM_FORMAT_XBGR8888,
+        .spa_format = SPA_VIDEO_FORMAT_RGBx,
+    },
+    {
+        .drm_format = GBM_FORMAT_BGRX8888,
+        .spa_format = SPA_VIDEO_FORMAT_xRGB,
+    },
+};
+
+///////////////////////////////////////////////
+
+const char *sync_cycle_s(enum funnel_sync_cycle state) {
+    switch (state) {
+    case SYNC_CYCLE_INACTIVE:
+        return "INACTIVE";
+    case SYNC_CYCLE_WAITING:
+        return "WAITING";
+    case SYNC_CYCLE_ACTIVE:
+        return "ACTIVE";
+    case SYNC_CYCLE_FINISH:
+        return "FINISH";
+    default:
+        return "UNKNOWN";
+    }
+}
+
+void set_state_(const char *f, struct funnel_stream *stream,
+                enum funnel_sync_cycle state) {
+    pw_log_trace("%s: State %s -> %s", f, sync_cycle_s(stream->cycle_state),
+                 sync_cycle_s(state));
+    stream->cycle_state = state;
+}
+
+#define set_state(stream, state) set_state_(__func__, stream, state)
+
+static int funnel_stream_import_sync_file(struct funnel_stream *stream,
+                                          uint32_t handle, int fd,
+                                          uint64_t point);
+static int funnel_stream_export_sync_file(struct funnel_stream *stream,
+                                          uint32_t handle, uint64_t point,
+                                          int *fd);
+
+static void free_params(const struct spa_pod **params, size_t count) {
+    for (size_t i = 0; i < count; i++)
+        free((void *)params[i]);
+}
+
+static int build_formats(struct funnel_stream *stream, bool fixate,
+                         const struct spa_pod **params);
+
+static void on_core_error(void *data, uint32_t id, int seq, int res,
+                          const char *message) {
+    struct funnel_ctx *ctx = data;
+
+    pw_log_error("error id:%u seq:%d res:%d (%s): %s", id, seq, res,
+                 spa_strerror(res), message);
+
+    if (id == PW_ID_CORE) {
+        ctx->dead = true;
+        pw_thread_loop_signal(ctx->loop, false);
+    }
+}
+
+static bool check_version(struct funnel_ctx *ctx, uint32_t major,
+                          uint32_t minor, uint32_t micro) {
+    return (major < ctx->ver.major) ||
+           (major == ctx->ver.major && minor < ctx->ver.minor) ||
+           (major == ctx->ver.major && minor == ctx->ver.minor &&
+            micro <= ctx->ver.micro);
+}
+
+static void on_core_info(void *data, const struct pw_core_info *info) {
+    struct funnel_ctx *ctx = data;
+
+    int major = 0, minor = 0, micro = 0;
+    sscanf(info->version, "%d.%d.%d", &major, &minor, &micro);
+
+    pw_log_info("PipeWire core version: %s (%d.%d.%d)", info->version, major,
+                minor, micro);
+
+    ctx->ver.major = major;
+    ctx->ver.minor = minor;
+    ctx->ver.micro = micro;
+
+    if (check_version(ctx, 1, 2, 0))
+        ctx->feat.explicit_sync = true;
+
+    if (check_version(ctx, 1, 2, 7))
+        ctx->feat.lazy = true;
+
+    ctx->have_info = true;
+    pw_thread_loop_signal(ctx->loop, false);
+}
+
+static const struct pw_core_events core_events = {
+    PW_VERSION_CORE_EVENTS,
+    .info = on_core_info,
+    .error = on_core_error,
+};
+
+static void on_add_buffer(void *data, struct pw_buffer *pwbuffer) {
+    struct funnel_stream *stream = data;
+    const struct spa_buffer *spa_buffer = pwbuffer->buffer;
+
+    // Refuse to allocate any buffers if stream is in error state
+    if (pw_stream_get_state(stream->stream, NULL) == PW_STREAM_STATE_ERROR)
+        return;
+
+    struct spa_meta_sync_timeline *stl;
+    stl = spa_buffer_find_meta_data(spa_buffer, SPA_META_SyncTimeline,
+                                    sizeof(*stl));
+
+    struct spa_data *spa_data = pwbuffer->buffer->datas;
+    assert(spa_data[0].type & (1 << SPA_DATA_DmaBuf));
+
+    struct gbm_bo *bo = NULL;
+
+    bo = gbm_bo_create_with_modifiers2(stream->gbm, stream->cur.aligned_width,
+                                       stream->cur.height, stream->cur.format,
+                                       &stream->cur.modifier, 1,
+                                       stream->cur.config.bo_flags);
+    if (!bo) {
+        pw_log_error(
+            "on_add_buffer: Failed to allocate BO (out of GPU memory?)");
+        pw_stream_set_error(stream->stream, -ENOMEM,
+                            "Failed to allocate GPU memory");
+        return;
+    }
+
+    struct funnel_buffer *buffer = calloc(1, sizeof(struct funnel_buffer));
+    buffer->pw_buffer = pwbuffer;
+    buffer->stream = stream;
+    buffer->bo = bo;
+    buffer->width = stream->cur.width;
+    buffer->height = stream->cur.height;
+
+    buffer->backend_sync = !!stl;
+    buffer->frontend_sync =
+        buffer->backend_sync ||
+        stream->cur.config.frontend_sync == FUNNEL_SYNC_EXPLICIT;
+
+    // TODO: Implement
+    // https://gitlab.freedesktop.org/pipewire/pipewire/-/issues/4885
+    buffer->backend_sync_reliable = false;
+
+    assert(buffer->frontend_sync || !buffer->backend_sync);
+
+    if (buffer->frontend_sync) {
+        int fd = gbm_device_get_fd(stream->gbm);
+
+        int ret = drmSyncobjCreate(fd, 0, &buffer->acquire.handle);
+        assert(ret >= 0);
+
+        ret = drmSyncobjCreate(fd, 0, &buffer->release.handle);
+        assert(ret >= 0);
+
+        buffer->acquire.point = 1;
+        buffer->release.point = 1;
+    }
+
+    pw_log_debug("on_add_buffer: %p -> %p", pwbuffer, buffer);
+
+    for (int i = 0; i < ARRAY_SIZE(buffer->fds); i++) {
+        buffer->fds[i] = -1;
+    }
+
+    pwbuffer->user_data = buffer;
+
+    for (int i = 0; i < stream->cur.plane_count; ++i) {
+        spa_data[i].type = SPA_DATA_DmaBuf;
+        spa_data[i].flags = SPA_DATA_FLAG_READWRITE;
+        spa_data[i].mapoffset = 0;
+        spa_data[i].maxsize =
+            i == 0 ? stream->cur.strides[i] * stream->cur.height : 0;
+        spa_data[i].fd = buffer->fds[i] = gbm_bo_get_fd(bo);
+        spa_data[i].data = NULL;
+        spa_data[i].chunk->offset = stream->cur.offsets[i];
+        spa_data[i].chunk->size = spa_data[i].maxsize;
+        spa_data[i].chunk->stride = stream->cur.strides[i];
+        spa_data[i].chunk->flags = SPA_CHUNK_FLAG_NONE;
+    };
+
+    if (stream->funcs)
+        stream->funcs->alloc_buffer(buffer);
+
+    if (stream->alloc_cb)
+        stream->alloc_cb(stream->cb_opaque, stream, buffer);
+
+    if (buffer->backend_sync) {
+        int fd = gbm_device_get_fd(stream->gbm);
+        int acquire_fd, release_fd;
+
+        int ret = drmSyncobjHandleToFD(fd, buffer->acquire.handle, &acquire_fd);
+        assert(ret >= 0);
+        ret = drmSyncobjHandleToFD(fd, buffer->release.handle, &release_fd);
+        assert(ret >= 0);
+
+        buffer->fds[stream->cur.plane_count] = acquire_fd;
+        buffer->fds[stream->cur.plane_count + 1] = release_fd;
+
+        struct spa_data *acquire_data = &spa_data[stream->cur.plane_count];
+        struct spa_data *release_data = &spa_data[stream->cur.plane_count + 1];
+
+        // The timelines are from the point of view of the *consumer*,
+        // so they are flipped here since we are the producer.
+        acquire_data->type = SPA_DATA_SyncObj;
+        acquire_data->flags = SPA_DATA_FLAG_READABLE;
+        acquire_data->fd = release_fd;
+
+        release_data->type = SPA_DATA_SyncObj;
+        release_data->flags = SPA_DATA_FLAG_READABLE;
+        release_data->fd = acquire_fd;
+
+        // Signal the first acquire sync point, so we can render
+        ret = drmSyncobjTimelineSignal(fd, &buffer->acquire.handle,
+                                       &buffer->acquire.point, 1);
+        assert(ret >= 0);
+    }
+
+    buffer->stl = stl;
+
+    stream->num_buffers++;
+}
+
+static void funnel_buffer_free(struct funnel_buffer *buffer) {
+    struct funnel_stream *stream = buffer->stream;
+    if (stream->free_cb)
+        stream->free_cb(stream->cb_opaque, stream, buffer);
+    if (stream->funcs)
+        stream->funcs->free_buffer(buffer);
+
+    gbm_bo_destroy(buffer->bo);
+    for (int i = 0; i < ARRAY_SIZE(buffer->fds); i++) {
+        if (buffer->fds[i] >= 0)
+            close(buffer->fds[i]);
+    }
+
+    if (buffer->frontend_sync) {
+        int fd = gbm_device_get_fd(stream->gbm);
+
+        int ret = drmSyncobjDestroy(fd, buffer->acquire.handle);
+        assert(ret >= 0);
+        ret = drmSyncobjDestroy(fd, buffer->release.handle);
+        assert(ret >= 0);
+    }
+
+    free(buffer);
+}
+
+static inline bool is_buffer_pending(struct funnel_stream *stream) {
+    assert(!(stream->pending_buffer && stream->skip_buffer));
+    return stream->pending_buffer || stream->skip_buffer;
+}
+
+static void on_remove_buffer(void *data, struct pw_buffer *pwbuffer) {
+    pw_log_debug("on_remove_buffer: %p -> %p", pwbuffer, pwbuffer->user_data);
+
+    if (pwbuffer->user_data) {
+        struct funnel_buffer *buffer = pwbuffer->user_data;
+        struct funnel_stream *stream = buffer->stream;
+
+        if (!buffer->dequeued) {
+            funnel_buffer_free(buffer);
+            if (buffer == stream->pending_buffer)
+                stream->pending_buffer = NULL;
+        } else {
+            if (buffer->backend_sync) {
+                int fd = gbm_device_get_fd(stream->gbm);
+                // Signal the acquire point, to unblock the dequeued buffer
+                int ret = drmSyncobjTimelineSignal(fd, &buffer->acquire.handle,
+                                                   &buffer->acquire.point, 1);
+                assert(ret >= 0);
+            }
+            buffer->pw_buffer = NULL;
+            buffer->stl = NULL;
+            pw_log_debug("defer buffer free: %p", buffer);
+        }
+
+        pwbuffer->user_data = NULL;
+        stream->num_buffers--;
+    }
+}
+
+static void update_timeouts(struct funnel_stream *stream) {
+    struct timespec timeout, interval, *to, *iv;
+    enum pw_stream_state state = pw_stream_get_state(stream->stream, NULL);
+
+    bool timeouts_active = false;
+
+    if (state == PW_STREAM_STATE_STREAMING &&
+        pw_stream_is_driving(stream->stream) &&
+        !pw_stream_is_lazy(stream->stream) &&
+        stream->cur.config.mode != FUNNEL_ASYNC)
+        timeouts_active = true;
+
+    if (!timeouts_active) {
+        to = iv = NULL;
+    } else {
+        struct spa_fraction rate = stream->cur.video_format.framerate;
+
+        if (rate.num == 0 || rate.denom == 0) {
+            // Pick a default rate of 60 FPS
+            rate.num = 60;
+            rate.denom = 1;
+            pw_log_debug("default rate: 60 FPS");
+        } else {
+            pw_log_debug("negotiated rate: %d/%d FPS", rate.num, rate.denom);
+        }
+        uint64_t nsec = rate.denom * 1000000000L / rate.num;
+
+        timeout.tv_sec = 0;
+        timeout.tv_nsec = 1;
+        interval.tv_sec = nsec / 1000000000L;
+        interval.tv_nsec = nsec % 1000000000L;
+        to = &timeout;
+        iv = &interval;
+    }
+    pw_loop_update_timer(pw_thread_loop_get_loop(stream->ctx->loop),
+                         stream->timer, to, iv, false);
+}
+
+static void return_buffer(struct funnel_stream *stream,
+                          struct funnel_buffer *buf) {
+    if (!buf->pw_buffer) {
+        funnel_buffer_free(buf);
+    }
+
+    int ret = pw_stream_return_buffer(stream->stream, buf->pw_buffer);
+    if (ret < 0)
+        pw_log_error("Failed to return PW buffer: %d", ret);
+    assert(ret >= 0);
+}
+
+static void reset_buffers(struct funnel_stream *stream) {
+    if (stream->pending_buffer) {
+        return_buffer(stream, stream->pending_buffer);
+        stream->pending_buffer = NULL;
+    }
+    stream->skip_buffer = false;
+}
+
+static void on_state_changed(void *data, enum pw_stream_state old,
+                             enum pw_stream_state state,
+                             const char *error_message) {
+    struct funnel_stream *stream = data;
+
+    pw_log_info("on_state_changed: %s -> %s %s", pw_stream_state_as_string(old),
+                pw_stream_state_as_string(state), error_message);
+    switch (state) {
+    case PW_STREAM_STATE_ERROR:
+        reset_buffers(stream);
+        break;
+    case PW_STREAM_STATE_PAUSED:
+        reset_buffers(stream);
+        update_timeouts(stream);
+        break;
+    case PW_STREAM_STATE_STREAMING:
+        pw_log_info("driving:%d lazy:%d", pw_stream_is_driving(stream->stream),
+                    pw_stream_is_lazy(stream->stream));
+        update_timeouts(stream);
+        break;
+    case PW_STREAM_STATE_CONNECTING:
+        update_timeouts(stream);
+        reset_buffers(stream);
+        break;
+    case PW_STREAM_STATE_UNCONNECTED:
+        update_timeouts(stream);
+        reset_buffers(stream);
+        break;
+    }
+}
+
+static bool test_create_dmabuf(struct funnel_stream *stream, uint32_t format,
+                               uint64_t *modifiers, size_t num_modifiers) {
+    struct gbm_bo *bo;
+
+    bo = gbm_bo_create_with_modifiers2(
+        stream->gbm, stream->cur.video_format.size.width,
+        stream->cur.video_format.size.height, format, modifiers, num_modifiers,
+        stream->cur.config.bo_flags);
+    if (!bo)
+        return false;
+
+    stream->cur.width = gbm_bo_get_width(bo);
+    stream->cur.height = gbm_bo_get_height(bo);
+    assert(stream->cur.width == stream->cur.video_format.size.width);
+    assert(stream->cur.height == stream->cur.video_format.size.height);
+
+    if (gbm_bo_get_modifier(bo) == DRM_FORMAT_MOD_LINEAR) {
+        gbm_bo_destroy(bo);
+
+        // Align linear buffers to 64 pixel width (256 bytes for 32-bit format)
+        // for cross-GPU compatibility
+        stream->cur.aligned_width = (stream->cur.width + 63) & ~63;
+
+        const uint64_t mod = DRM_FORMAT_MOD_LINEAR;
+
+        bo = gbm_bo_create_with_modifiers2(
+            stream->gbm, stream->cur.aligned_width, stream->cur.height, format,
+            &mod, 1, stream->cur.config.bo_flags);
+
+        if (!bo) {
+            pw_log_error("Failed to re-create LINEAR buffer");
+            return false;
+        }
+
+        assert(gbm_bo_get_width(bo) == stream->cur.aligned_width);
+        assert(gbm_bo_get_height(bo) == stream->cur.height);
+    } else {
+        stream->cur.aligned_width = stream->cur.width;
+    }
+
+    stream->cur.plane_count = gbm_bo_get_plane_count(bo);
+    for (int i = 0; i < stream->cur.plane_count; i++) {
+        stream->cur.strides[i] = gbm_bo_get_stride_for_plane(bo, i);
+        stream->cur.offsets[i] = gbm_bo_get_offset(bo, i);
+    }
+    stream->cur.format = gbm_bo_get_format(bo);
+    stream->cur.modifier = gbm_bo_get_modifier(bo);
+
+    gbm_bo_destroy(bo);
+
+    return true;
+}
+
+static void on_param_changed(void *data, uint32_t id,
+                             const struct spa_pod *format) {
+    pw_log_debug("on_param_changed: %d %p", id, format);
+
+    struct funnel_stream *stream = data;
+
+    if (!format || id != SPA_PARAM_Format) {
+        pw_log_debug(" ->ignored");
+        return;
+    }
+
+    int i;
+    uint32_t dmabuf_format;
+
+    spa_format_video_raw_parse(format, &stream->cur.video_format);
+
+    for (i = 0; i < ARRAY_SIZE(supported_formats); i++) {
+        if (supported_formats[i].spa_format ==
+            stream->cur.video_format.format) {
+            dmabuf_format = supported_formats[i].drm_format;
+            break;
+        }
+    }
+    if (i >= ARRAY_SIZE(supported_formats)) {
+        pw_log_error("unsupported format %d", stream->cur.video_format.format);
+        return;
+    }
+
+    const struct spa_pod_prop *mod_prop =
+        spa_pod_find_prop(format, NULL, SPA_FORMAT_VIDEO_modifier);
+
+    assert(mod_prop);
+
+    const uint32_t value_count = SPA_POD_CHOICE_N_VALUES(&mod_prop->value);
+    const uint64_t *values = (uint64_t *)SPA_POD_CHOICE_VALUES(
+        &mod_prop->value); // values[0] is the preferred choice
+
+    int mod_count = 0;
+    uint64_t *modifiers = malloc(value_count * sizeof(uint64_t));
+
+    for (int i = 0; i < value_count; i++) {
+        bool found = false;
+        for (int j = 0; j < mod_count; j++) {
+            if (values[i] == modifiers[j]) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            modifiers[mod_count++] = values[i];
+        }
+    }
+
+    if (mod_count > 1) {
+        for (int j = 0; j < mod_count; j++) {
+            if (modifiers[j] == DRM_FORMAT_MOD_INVALID) {
+                mod_count--;
+                memmove(&modifiers[j], &modifiers[j + 1], mod_count - j);
+                break;
+            }
+        }
+    }
+
+    pw_log_info("Found prop with %d modifiers, flags=%d", mod_count,
+                mod_prop->flags);
+
+    if (mod_prop->flags & SPA_POD_PROP_FLAG_DONT_FIXATE) {
+        if (!test_create_dmabuf(stream, dmabuf_format, modifiers, mod_count)) {
+            pw_log_error("failed to create dmabuf for format 0x%x",
+                         dmabuf_format);
+            return;
+        }
+
+        pw_log_info("Created buffer with format 0x%x and modifier 0x%llx "
+                    "(%dx%d %dp s=%d o=%d)",
+                    stream->cur.format, (long long)stream->cur.modifier,
+                    stream->cur.width, stream->cur.height,
+                    stream->cur.plane_count, stream->cur.strides[0],
+                    stream->cur.offsets[1]);
+
+        size_t num_formats =
+            pw_array_get_len(&stream->cur.config.formats, struct funnel_format);
+
+        const struct spa_pod **params =
+            calloc(num_formats + 1, sizeof(struct spa_pod *));
+
+        int num_params = build_formats(stream, true, params);
+        assert(num_params <= (num_formats + 1));
+
+        stream->cur.ready = false;
+        pw_stream_update_params(stream->stream, params, num_params);
+        free_params(params, num_params);
+        return;
+    }
+
+    const int buffertypes = (1 << SPA_DATA_DmaBuf);
+
+    spa_auto(spa_pod_dynamic_builder) pod_builder = {0};
+    struct spa_pod_frame f;
+    spa_pod_dynamic_builder_init(&pod_builder, NULL, 0, 1024);
+
+    int num_params = 0;
+    const struct spa_pod *params[8];
+
+    // Buffer parameters for dma-buf with explicit sync
+    if (stream->cur.config.backend_sync != FUNNEL_SYNC_IMPLICIT) {
+        spa_pod_builder_push_object(&pod_builder.b, &f,
+                                    SPA_TYPE_OBJECT_ParamBuffers,
+                                    SPA_PARAM_Buffers);
+        spa_pod_builder_add(
+            &pod_builder.b, SPA_PARAM_BUFFERS_buffers,
+            SPA_POD_CHOICE_RANGE_Int(stream->cur.config.buffers.def,
+                                     stream->cur.config.buffers.min,
+                                     stream->cur.config.buffers.max),
+            SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int(buffertypes),
+            SPA_PARAM_BUFFERS_blocks, SPA_POD_Int(stream->cur.plane_count) + 2,
+            0);
+        spa_pod_builder_prop(&pod_builder.b, SPA_PARAM_BUFFERS_metaType,
+                             SPA_POD_PROP_FLAG_MANDATORY);
+        spa_pod_builder_int(&pod_builder.b, 1 << SPA_META_SyncTimeline);
+        params[num_params++] =
+            (struct spa_pod *)spa_pod_builder_pop(&pod_builder.b, &f);
+    }
+
+    // Buffer parameters for dma-buf with implicit sync
+    if (stream->cur.config.backend_sync != FUNNEL_SYNC_EXPLICIT) {
+        spa_pod_builder_push_object(&pod_builder.b, &f,
+                                    SPA_TYPE_OBJECT_ParamBuffers,
+                                    SPA_PARAM_Buffers);
+        spa_pod_builder_add(
+            &pod_builder.b, SPA_PARAM_BUFFERS_buffers,
+            SPA_POD_CHOICE_RANGE_Int(stream->cur.config.buffers.def,
+                                     stream->cur.config.buffers.min,
+                                     stream->cur.config.buffers.max),
+            SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int(buffertypes),
+            SPA_PARAM_BUFFERS_blocks, SPA_POD_Int(stream->cur.plane_count), 0);
+        params[num_params++] =
+            (struct spa_pod *)spa_pod_builder_pop(&pod_builder.b, &f);
+    }
+
+    params[num_params++] = (struct spa_pod *)spa_pod_builder_add_object(
+        &pod_builder.b, SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
+        SPA_PARAM_META_type, SPA_POD_Id(SPA_META_Header), SPA_PARAM_META_size,
+        SPA_POD_Int(sizeof(struct spa_meta_header)));
+
+    if (stream->cur.config.backend_sync != FUNNEL_SYNC_IMPLICIT) {
+        params[num_params++] = (struct spa_pod *)spa_pod_builder_add_object(
+            &pod_builder.b, SPA_TYPE_OBJECT_ParamMeta, SPA_PARAM_Meta,
+            SPA_PARAM_META_type, SPA_POD_Id(SPA_META_SyncTimeline),
+            SPA_PARAM_META_size,
+            SPA_POD_Int(sizeof(struct spa_meta_sync_timeline)));
+    }
+
+    pw_stream_update_params(stream->stream, params, num_params);
+    stream->cur.ready = true;
+}
+
+static void on_command(void *data, const struct spa_command *command) {
+    struct funnel_stream *stream = data;
+
+    switch (SPA_NODE_COMMAND_ID(command)) {
+    case SPA_NODE_COMMAND_RequestProcess:
+        if (!pw_stream_is_lazy(stream->stream))
+            return;
+        pw_log_trace("RequestProcess %p", stream);
+        pw_stream_trigger_process(stream->stream);
+        break;
+    default:
+        break;
+    }
+}
+
+static void unblock_process_thread(struct funnel_stream *stream) {
+    pw_log_trace("Unblock: Current state = %s",
+                 sync_cycle_s(stream->cycle_state));
+    if (stream->cycle_state == SYNC_CYCLE_ACTIVE) {
+        set_state(stream, SYNC_CYCLE_FINISH);
+        pw_thread_loop_accept(stream->ctx->loop);
+    } else if (stream->cycle_state == SYNC_CYCLE_WAITING) {
+        set_state(stream, SYNC_CYCLE_INACTIVE);
+    }
+}
+
+static void wait_for_process_idle(struct funnel_stream *stream) {
+    unblock_process_thread(stream);
+
+    while (stream->cycle_state == SYNC_CYCLE_FINISH) {
+        pw_log_trace("Wait for process idle (currently FINISH)");
+        pw_thread_loop_wait(stream->ctx->loop);
+    }
+    if (stream->cycle_state != SYNC_CYCLE_INACTIVE)
+        set_state(stream, SYNC_CYCLE_INACTIVE);
+}
+
+static void on_process(void *data) {
+    struct funnel_stream *stream = data;
+
+    pw_log_trace("BEGIN frame %d (state = %s)", ++stream->frame,
+                 sync_cycle_s(stream->cycle_state));
+
+    if (!stream->active)
+        return;
+
+    if (stream->cur.config.mode == FUNNEL_SYNCHRONOUS) {
+        // Sync mode handshake
+        if (stream->cycle_state == SYNC_CYCLE_WAITING) {
+            set_state(stream, SYNC_CYCLE_ACTIVE);
+            pw_thread_loop_signal(stream->ctx->loop, true);
+            pw_log_trace("Accepted, state = %s",
+                         sync_cycle_s(stream->cycle_state));
+        }
+        // We should have a buffer now, if the cycle succeeded
+    }
+
+    if (!stream->active) {
+        pw_log_trace("Stream stopped during process");
+    } else if (stream->pending_buffer) {
+        struct funnel_buffer *buf = stream->pending_buffer;
+        stream->pending_buffer = NULL;
+
+        assert(buf->pw_buffer);
+        pw_log_trace("Queued buffer");
+        if (buf->backend_sync) {
+            // We are sending off this buffer, so we need a new acquire point
+            buf->acquire.point++;
+            // The consumer acquire point is our most recently used
+            // release point, which is the previous one (the current
+            // one is the *next* point).
+            buf->stl->acquire_point = buf->release.point - 1;
+            // The consumer release point is our new acquire point
+            buf->stl->release_point = buf->acquire.point;
+            pw_log_trace(
+                "Buffer consumer acquire/release points: 0x%x:%lld, 0x%x:%lld",
+                buf->release.handle, (long long)buf->stl->acquire_point,
+                buf->acquire.handle, (long long)buf->stl->release_point);
+        }
+        pw_stream_queue_buffer(stream->stream, buf->pw_buffer);
+        buf->sent_count++;
+    } else if (stream->skip_buffer) {
+        stream->skip_buffer = false;
+    }
+
+    set_state(stream, SYNC_CYCLE_INACTIVE);
+    pw_thread_loop_signal(stream->ctx->loop, false);
+
+    pw_log_trace("END frame %d", stream->frame);
+}
+
+static const struct pw_stream_events stream_events = {
+    PW_VERSION_STREAM_EVENTS,
+    .add_buffer = on_add_buffer,
+    .remove_buffer = on_remove_buffer,
+    .state_changed = on_state_changed,
+    .param_changed = on_param_changed,
+    .command = on_command,
+    .process = on_process,
+};
+
+static void on_timeout(void *userdata, uint64_t expirations) {
+    struct funnel_stream *stream = userdata;
+
+    pw_log_trace("Timeout %p", stream);
+    pw_stream_trigger_process(stream->stream);
+}
+
+static struct spa_pod *
+build_format(enum spa_video_format format, struct spa_rectangle *resolution,
+             struct spa_fraction *def_rate, struct spa_fraction *min_rate,
+             struct spa_fraction *max_rate, const uint64_t *modifiers,
+             size_t num_modifiers, uint32_t modifiers_flags) {
+    struct spa_pod_frame f[2];
+
+    struct spa_pod_dynamic_builder pod_builder;
+    spa_pod_dynamic_builder_init(&pod_builder, NULL, 0, 1024);
+    struct spa_pod_builder *b = &pod_builder.b;
+
+    spa_pod_builder_push_object(b, &f[0], SPA_TYPE_OBJECT_Format,
+                                SPA_PARAM_EnumFormat);
+    spa_pod_builder_add(b, SPA_FORMAT_mediaType,
+                        SPA_POD_Id(SPA_MEDIA_TYPE_video), 0);
+    spa_pod_builder_add(b, SPA_FORMAT_mediaSubtype,
+                        SPA_POD_Id(SPA_MEDIA_SUBTYPE_raw), 0);
+    spa_pod_builder_add(b, SPA_FORMAT_VIDEO_size, SPA_POD_Rectangle(resolution),
+                        0);
+    // spa_pod_builder_add(b, SPA_FORMAT_VIDEO_framerate,
+    //                     SPA_POD_Fraction(def_rate), 0);
+    spa_pod_builder_add(
+        b, SPA_FORMAT_VIDEO_framerate,
+        SPA_POD_CHOICE_RANGE_Fraction(def_rate, min_rate, max_rate), 0);
+    spa_pod_builder_add(
+        b, SPA_FORMAT_VIDEO_maxFramerate,
+        SPA_POD_CHOICE_RANGE_Fraction(def_rate, min_rate, max_rate), 0);
+
+    spa_pod_builder_add(b, SPA_FORMAT_VIDEO_format, SPA_POD_Id(format), 0);
+
+    if (num_modifiers) {
+        spa_pod_builder_prop(b, SPA_FORMAT_VIDEO_modifier, modifiers_flags);
+        spa_pod_builder_push_choice(b, &f[1], SPA_CHOICE_Enum, 0);
+
+        for (size_t i = 0; i < num_modifiers; i++) {
+            spa_pod_builder_long(b, modifiers[i]);
+            if (i == 0) {
+                spa_pod_builder_long(b, modifiers[i]);
+            }
+        }
+        spa_pod_builder_pop(b, &f[1]);
+    }
+    return (struct spa_pod *)spa_pod_builder_pop(b, &f[0]);
+}
+
+static int build_formats(struct funnel_stream *stream, bool fixate,
+                         const struct spa_pod **params) {
+    struct funnel_stream_config *config = &stream->cur.config;
+
+    struct spa_fraction def_rate = to_spa_fraction(config->rate.def);
+    struct spa_fraction min_rate = to_spa_fraction(config->rate.min);
+    struct spa_fraction max_rate = to_spa_fraction(config->rate.max);
+
+    struct spa_rectangle resolution =
+        SPA_RECTANGLE(config->width, config->height);
+
+    int num_params = 0;
+    if (fixate) {
+        num_params++;
+        *params++ = build_format(
+            stream->cur.video_format.format, &resolution, &def_rate, &min_rate,
+            &max_rate, &stream->cur.modifier, 1, SPA_POD_PROP_FLAG_MANDATORY);
+    }
+
+    struct funnel_format *format;
+    pw_array_for_each (format, &config->formats) {
+        num_params++;
+        *params++ = build_format(
+            format->spa_format, &resolution, &def_rate, &min_rate, &max_rate,
+            format->modifiers, format->num_modifiers,
+            SPA_POD_PROP_FLAG_MANDATORY | SPA_POD_PROP_FLAG_DONT_FIXATE);
+    }
+
+    return num_params;
+}
+
+int funnel_init(struct funnel_ctx **pctx) {
+    int ret = funnel_new(pctx);
+    if (ret < 0)
+        return ret;
+
+    return funnel_connect(*pctx);
+}
+
+int funnel_new(struct funnel_ctx **pctx) {
+    struct funnel_ctx *ctx;
+
+    *pctx = NULL;
+    ctx = calloc(1, sizeof(*ctx));
+    assert(ctx);
+
+    pw_init(NULL, NULL);
+
+    ctx->loop = pw_thread_loop_new("funnel_loop", NULL);
+    assert(ctx->loop);
+
+    pw_thread_loop_lock(ctx->loop);
+
+    pw_thread_loop_start(ctx->loop);
+
+    ctx->context = pw_context_new(pw_thread_loop_get_loop(ctx->loop), NULL, 0);
+    assert(ctx->context);
+
+    *pctx = ctx;
+
+    UNLOCK_RETURN(0);
+}
+
+static int set_ctx_prop(struct funnel_ctx *ctx, const char *prop,
+                        const char *value) {
+    pw_thread_loop_lock(ctx->loop);
+
+    if (ctx->core)
+        UNLOCK_RETURN(-EINVAL);
+
+    struct pw_properties *props = pw_properties_new(prop, value, NULL);
+    pw_context_update_properties(ctx->context, &props->dict);
+    pw_properties_free(props);
+
+    UNLOCK_RETURN(0);
+}
+
+int funnel_set_app_name(struct funnel_ctx *ctx, const char *app_name) {
+    return set_ctx_prop(ctx, PW_KEY_APP_NAME, app_name);
+}
+
+int funnel_set_app_id(struct funnel_ctx *ctx, const char *app_id) {
+    return set_ctx_prop(ctx, PW_KEY_APP_ID, app_id);
+}
+
+int funnel_set_app_version(struct funnel_ctx *ctx, const char *app_version) {
+    return set_ctx_prop(ctx, PW_KEY_APP_VERSION, app_version);
+}
+
+int funnel_connect(struct funnel_ctx *ctx) {
+    pw_thread_loop_lock(ctx->loop);
+
+    if (ctx->core)
+        UNLOCK_RETURN(-EINVAL);
+
+    if ((ctx->core = pw_context_connect(ctx->context, NULL, 0)) == NULL) {
+        pw_log_error("failed to connect to PipeWire");
+        pw_thread_loop_unlock(ctx->loop);
+        funnel_shutdown(ctx);
+        return -ECONNREFUSED;
+    }
+
+    pw_core_add_listener(ctx->core, &ctx->core_listener, &core_events, ctx);
+
+    while (!ctx->have_info && !ctx->dead) {
+        if (pw_thread_loop_timed_wait(ctx->loop, 5) < 0) {
+            ctx->dead = true;
+            break;
+        }
+    }
+
+    if (ctx->dead) {
+        pw_thread_loop_unlock(ctx->loop);
+        funnel_shutdown(ctx);
+        return -EIO;
+    }
+
+    // Arbitrarily reject < 1.0.0, to avoid pain due to ancient versions.
+    if (!check_version(ctx, 1, 0, 0)) {
+        pw_log_error("PipeWire core version is too old");
+        pw_thread_loop_unlock(ctx->loop);
+        funnel_shutdown(ctx);
+        return -EOPNOTSUPP;
+    }
+
+    pw_log_info("PipeWire core features: explicit_sync=%d, lazy=%d",
+                ctx->feat.explicit_sync, ctx->feat.lazy);
+
+    UNLOCK_RETURN(0);
+}
+
+void funnel_shutdown(struct funnel_ctx *ctx) {
+    if (!ctx)
+        return;
+
+    assert(ctx->loop);
+
+    /* Thread loop should be unlocked here */
+    pw_thread_loop_stop(ctx->loop);
+
+    if (ctx->core)
+        pw_core_disconnect(ctx->core);
+
+    if (ctx->context)
+        pw_context_destroy(ctx->context);
+
+    pw_thread_loop_destroy(ctx->loop);
+
+    free(ctx);
+    pw_deinit();
+}
+
+int funnel_stream_create(struct funnel_ctx *ctx, const char *name,
+                         struct funnel_stream **pstream) {
+    struct funnel_stream *stream;
+    assert(ctx);
+
+    pw_thread_loop_lock(ctx->loop);
+
+    if (!ctx->core)
+        UNLOCK_RETURN(-EINVAL);
+
+    if (ctx->dead)
+        UNLOCK_RETURN(-EIO);
+
+    *pstream = NULL;
+    stream = calloc(1, sizeof(*stream));
+    assert(stream);
+
+    stream->ctx = ctx;
+    stream->name = strdup(name);
+
+    funnel_stream_set_mode(stream, FUNNEL_ASYNC);
+
+    stream->config.backend_sync = FUNNEL_SYNC_IMPLICIT;
+    stream->config.frontend_sync = FUNNEL_SYNC_IMPLICIT;
+
+    stream->config.rate.def = FUNNEL_RATE_VARIABLE;
+    stream->config.rate.min = FUNNEL_RATE_VARIABLE;
+    stream->config.rate.max = FUNNEL_RATE_VARIABLE;
+
+    stream->config_pending = true;
+
+    pw_array_init(&stream->config.formats, 32);
+    pw_array_init(&stream->cur.config.formats, 32);
+
+    stream->timer = pw_loop_add_timer(pw_thread_loop_get_loop(ctx->loop),
+                                      on_timeout, stream);
+    assert(stream->timer);
+
+    // Escape hatch for users who want to run multiple instances without
+    // an app-specific unique ID.
+    stream->id.instance = getenv("FUNNEL_INSTANCE");
+    if (stream->id.instance && !stream->id.instance[0])
+        stream->id.instance = NULL;
+
+    if (stream->id.instance)
+        stream->id.instance_user_friendly = true;
+
+    *pstream = stream;
+
+    UNLOCK_RETURN(0);
+}
+
+void funnel_stream_set_buffer_callbacks(struct funnel_stream *stream,
+                                        funnel_buffer_callback alloc,
+                                        funnel_buffer_callback free,
+                                        void *opaque) {
+    stream->alloc_cb = alloc;
+    stream->free_cb = free;
+    stream->cb_opaque = opaque;
+}
+
+static void shutdown_gbm(struct funnel_stream *stream) {
+    if (stream->dummy_syncobj) {
+        int fd = gbm_device_get_fd(stream->gbm);
+        int ret = drmSyncobjDestroy(fd, stream->dummy_syncobj);
+        assert(ret == 0);
+    }
+
+    if (stream->gbm) {
+        int fd = gbm_device_get_fd(stream->gbm);
+        gbm_device_destroy(stream->gbm);
+        close(fd);
+    }
+
+    memset(&stream->feat, 0, sizeof(stream->feat));
+}
+
+int funnel_stream_init_gbm(struct funnel_stream *stream, int gbm_fd) {
+    if (stream->gbm)
+        return -EEXIST;
+
+    if (stream->api != API_UNSET)
+        return -EEXIST;
+
+    int fd = fcntl(gbm_fd, F_DUPFD_CLOEXEC, 0);
+    assert(fd >= 0);
+
+    stream->gbm = gbm_create_device(fd);
+    if (!stream->gbm)
+        return -EINVAL;
+
+    const char *backend = gbm_device_get_backend_name(stream->gbm);
+    pw_log_info("GBM backend: %s", backend);
+
+    stream->feat.timeline_sync = false;
+
+    uint64_t cap;
+    int ret = drmGetCap(fd, DRM_CAP_SYNCOBJ, &cap);
+    stream->feat.explicit_sync = cap && !ret;
+
+    if (stream->feat.explicit_sync) {
+        int ret = drmGetCap(fd, DRM_CAP_SYNCOBJ_TIMELINE, &cap);
+        stream->feat.timeline_sync = cap && !ret;
+        stream->feat.timeline_sync_import_export = false;
+
+#ifdef DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_TIMELINE
+        if (stream->feat.timeline_sync) {
+
+            // Test for DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_TIMELINE support
+            struct drm_syncobj_handle args = {
+                .handle = 0, // invalid
+                .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE |
+                         DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_TIMELINE,
+            };
+
+            ret = drmIoctl(fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &args);
+
+            assert(ret == -1);
+            if (errno == ENOENT) {
+                // Syncobj does not exist, but flags are supported
+                stream->feat.timeline_sync_import_export = true;
+            } else {
+                // Create a dummy syncobj to use for transfers
+                int ret = drmSyncobjCreate(fd, 0, &stream->dummy_syncobj);
+                assert(ret >= 0);
+            }
+        }
+
+#endif
+    }
+
+    drmVersion *ver = drmGetVersion(fd);
+    assert(ver);
+
+    pw_log_info("DRM device driver: %s (%s, %s)", ver->name, ver->date,
+                ver->desc);
+
+    stream->feat.implicit_sync = true;
+
+    if (!strcmp(backend, "nvidia") || !strcmp(ver->name, "nvidia-drm")) {
+        pw_log_info("Detected Nvidia: Implicit sync unsupported");
+        stream->feat.implicit_sync = false;
+    }
+
+    if (!strcmp(ver->name, "nouveau")) {
+        pw_log_info("Detected Nouveau: Enabling dma-buf migration workaround");
+        stream->feat.migration_bug = false;
+    }
+
+    drmFreeVersion(ver);
+
+    stream->config.bo_flags = GBM_BO_USE_RENDERING;
+    stream->api_supports_explicit_sync = stream->feat.timeline_sync;
+    stream->api_requires_explicit_sync = false;
+
+    pw_log_info("GBM features: fd=%d implicit_sync=%d, explicit_sync=%d "
+                "timeline_sync=%d, import_export=%d, migration_bug=%d",
+                fd, stream->feat.implicit_sync, stream->feat.explicit_sync,
+                stream->feat.timeline_sync,
+                stream->feat.timeline_sync_import_export,
+                stream->feat.migration_bug);
+
+    if (!(stream->feat.implicit_sync || stream->feat.explicit_sync)) {
+        pw_log_error(
+            "Your GPU driver does not support any synchronization "
+            "mechanism with GBM, so it cannot be used. If you are "
+            "using the Nvidia proprietary drivers, update to 555 or newer.");
+        shutdown_gbm(stream);
+        return -EOPNOTSUPP;
+    }
+
+    if (stream->feat.explicit_sync && !stream->ctx->feat.explicit_sync) {
+        if (!stream->feat.implicit_sync) {
+            pw_log_error("PipeWire is too old for explicit sync and driver "
+                         "does not support implicit sync. Please update your "
+                         "PipeWire daemon version or use a different driver.");
+            shutdown_gbm(stream);
+            return -EPROTONOSUPPORT;
+        }
+        stream->feat.explicit_sync = false;
+        pw_log_warn("PipeWire is too old, explicit sync support unavailable");
+    }
+
+    stream->api = API_GBM;
+    return 0;
+}
+
+int funnel_stream_gbm_add_format(struct funnel_stream *stream, uint32_t format,
+                                 uint64_t *modifiers, size_t num_modifiers) {
+    int i;
+    enum spa_video_format spa_format;
+
+    if (!num_modifiers)
+        return -EINVAL;
+
+    for (i = 0; i < ARRAY_SIZE(supported_formats); i++) {
+        if (supported_formats[i].drm_format == format) {
+            spa_format = supported_formats[i].spa_format;
+            break;
+        }
+    }
+    if (i >= ARRAY_SIZE(supported_formats)) {
+        return -EOPNOTSUPP;
+    }
+
+    struct funnel_format *fmt =
+        pw_array_add(&stream->config.formats, sizeof(struct funnel_format));
+    assert(fmt);
+
+    bool nonlinear = false;
+    for (int i = 0; i < num_modifiers; i++)
+        if (modifiers[i] != DRM_FORMAT_MOD_LINEAR)
+            nonlinear = true;
+
+    fmt->format = format;
+    fmt->spa_format = spa_format;
+    fmt->modifiers = calloc(num_modifiers, sizeof(uint64_t));
+    fmt->num_modifiers = num_modifiers;
+    memcpy(fmt->modifiers, modifiers, num_modifiers * sizeof(uint64_t));
+    pw_log_info("Add format 0x%x: modifiers=%p fmt=%p base=%p nonlinear=%d",
+                format, fmt->modifiers, fmt, stream->config.formats.data,
+                nonlinear);
+
+    if (nonlinear)
+        stream->config.has_nonlinear_tiling = true;
+
+    stream->config_pending = true;
+    return 0;
+}
+
+static void funnel_reset_formats(struct pw_array *formats) {
+    struct funnel_format *format;
+
+    pw_array_for_each (format, formats) {
+        free(format->modifiers);
+    }
+    pw_array_reset(formats);
+}
+
+static void funnel_free_formats(struct pw_array *formats) {
+    funnel_reset_formats(formats);
+    pw_array_clear(formats);
+}
+
+void funnel_stream_clear_formats(struct funnel_stream *stream) {
+    funnel_reset_formats(&stream->config.formats);
+    stream->config.has_nonlinear_tiling = false;
+}
+
+static void funnel_copy_formats(struct pw_array *dst, struct pw_array *src) {
+    struct funnel_format *sfmt;
+
+    funnel_reset_formats(dst);
+
+    pw_array_for_each (sfmt, src) {
+        struct funnel_format *fmt =
+            pw_array_add(dst, sizeof(struct funnel_format));
+        assert(fmt);
+        fmt->format = sfmt->format;
+        fmt->spa_format = sfmt->spa_format;
+        fmt->modifiers = calloc(sfmt->num_modifiers, sizeof(uint64_t));
+        fmt->num_modifiers = sfmt->num_modifiers;
+        memcpy(fmt->modifiers, sfmt->modifiers,
+               sfmt->num_modifiers * sizeof(uint64_t));
+    }
+}
+
+int funnel_stream_gbm_set_flags(struct funnel_stream *stream, uint32_t flags) {
+    assert(stream);
+
+    stream->config.bo_flags = flags;
+    stream->config_pending = true;
+
+    return 0;
+}
+
+int funnel_stream_set_size(struct funnel_stream *stream, uint32_t width,
+                           uint32_t height) {
+    assert(stream);
+
+    if (!width || !height)
+        return -EINVAL;
+
+    stream->config.width = width;
+    stream->config.height = height;
+    stream->config_pending = true;
+
+    return 0;
+}
+
+int funnel_stream_set_mode(struct funnel_stream *stream,
+                           enum funnel_mode mode) {
+    assert(stream);
+
+    switch (mode) {
+    case FUNNEL_ASYNC:
+    case FUNNEL_DOUBLE_BUFFERED:
+        stream->config.buffers.def = 6;
+        stream->config.buffers.min = 4;
+        stream->config.buffers.max = 8;
+        break;
+    case FUNNEL_SINGLE_BUFFERED:
+    case FUNNEL_SYNCHRONOUS:
+        stream->config.buffers.def = 5;
+        stream->config.buffers.min = 3;
+        stream->config.buffers.max = 8;
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    stream->config.mode = mode;
+    stream->config_pending = true;
+
+    return 0;
+}
+
+int funnel_stream_validate_sync(struct funnel_stream *stream,
+                                enum funnel_sync *frontend,
+                                enum funnel_sync *backend) {
+    assert((stream->api_supports_explicit_sync && stream->feat.explicit_sync) ||
+           stream->feat.implicit_sync);
+
+    switch (*frontend) {
+    case FUNNEL_SYNC_BOTH:
+        // It is legal to request this if the API does not support
+        // explicit sync (EGL without the right extension). In that
+        // case, it is converted to IMPLICIT.
+        if (!stream->api_supports_explicit_sync ||
+            !stream->feat.explicit_sync) {
+            *frontend = FUNNEL_SYNC_IMPLICIT;
+            if (*backend == FUNNEL_SYNC_BOTH)
+                *backend = FUNNEL_SYNC_IMPLICIT;
+        } else if (!stream->feat.implicit_sync) {
+            pw_log_info(
+                "FUNNEL_SYNC_EXPLICIT forced for frontend due to missing "
+                "GPU implicit sync support.");
+            *frontend = FUNNEL_SYNC_EXPLICIT;
+            break;
+        }
+        // Fallthrough
+    case FUNNEL_SYNC_IMPLICIT:
+        if (stream->api_requires_explicit_sync)
+            return -EINVAL;
+        if (!stream->feat.implicit_sync) {
+            pw_log_error("Implicit sync requested, but the GPU driver does not "
+                         "support it.");
+            return -EOPNOTSUPP;
+        }
+        break;
+    case FUNNEL_SYNC_EXPLICIT:
+        if (!stream->feat.explicit_sync ||
+            !stream->api_supports_explicit_sync) {
+            pw_log_error("Explicit sync requested, but the GPU driver does not "
+                         "support it.");
+            return -EOPNOTSUPP;
+        }
+        break;
+    default:
+        return -EINVAL;
+    }
+
+    switch (*backend) {
+    case FUNNEL_SYNC_EXPLICIT:
+        if (*frontend == FUNNEL_SYNC_IMPLICIT) {
+            pw_log_error(
+                "Converting explicit sync to implicit is not supported");
+            return -EINVAL;
+        } else if (*frontend == FUNNEL_SYNC_BOTH)
+            *frontend = FUNNEL_SYNC_EXPLICIT;
+        if (!stream->feat.timeline_sync) {
+            pw_log_error("Explicit sync requested for PipeWire, but the GPU "
+                         "driver does not "
+                         "support it.");
+            return -EOPNOTSUPP;
+        }
+        break;
+    case FUNNEL_SYNC_BOTH:
+        if (*frontend == FUNNEL_SYNC_IMPLICIT) {
+            pw_log_error(
+                "Converting explicit sync to implicit is not supported");
+            return -EINVAL;
+        }
+        if (!stream->feat.implicit_sync) {
+            pw_log_info(
+                "FUNNEL_SYNC_EXPLICIT forced for backend due to missing "
+                "GPU implicit sync support.");
+            *backend = FUNNEL_SYNC_EXPLICIT;
+        }
+        break;
+    case FUNNEL_SYNC_IMPLICIT:
+        if (!stream->feat.implicit_sync) {
+            pw_log_error("Implicit sync requested, but the GPU driver does not "
+                         "support it.");
+            return -EOPNOTSUPP;
+        }
+        if (*frontend == FUNNEL_SYNC_BOTH)
+            *frontend = FUNNEL_SYNC_IMPLICIT;
+    default:
+        return -EINVAL;
+    }
+
+    return 0;
+}
+
+int funnel_stream_set_sync(struct funnel_stream *stream,
+                           enum funnel_sync frontend,
+                           enum funnel_sync backend) {
+
+    int ret = funnel_stream_validate_sync(stream, &frontend, &backend);
+    if (ret)
+        return ret;
+
+    stream->config.frontend_sync = frontend;
+    stream->config.backend_sync = backend;
+    stream->config_pending = true;
+    return 0;
+}
+
+int funnel_stream_set_rate(struct funnel_stream *stream,
+                           struct funnel_fraction def,
+                           struct funnel_fraction min,
+                           struct funnel_fraction max) {
+    if (!def.den || !min.den || !max.den)
+        return -EINVAL;
+
+    stream->config.rate.def = def;
+    stream->config.rate.min = min;
+    stream->config.rate.max = max;
+    stream->config_pending = true;
+
+    return 0;
+}
+
+int funnel_stream_get_rate(struct funnel_stream *stream,
+                           struct funnel_fraction *rate) {
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    if (!stream->cur.ready) {
+        *rate = FUNNEL_FRACTION(0, 0);
+        UNLOCK_RETURN(-EINPROGRESS);
+    }
+
+    rate->num = stream->cur.video_format.framerate.num;
+    rate->den = stream->cur.video_format.framerate.denom;
+
+    UNLOCK_RETURN(0);
+}
+
+static int stream_set_string(struct funnel_stream *stream, char **s,
+                             const char *v) {
+    if (stream->stream)
+        return -EINVAL;
+
+    assert(stream->config_pending);
+
+    if (*s) {
+        free(*s);
+        *s = NULL;
+    }
+
+    if (v)
+        *s = strdup(v);
+
+    return 0;
+}
+
+int funnel_stream_set_instance(struct funnel_stream *stream,
+                               const char *instance, bool user_friendly) {
+    int ret = stream_set_string(stream, &stream->id.instance, instance);
+    if (ret >= 0)
+        stream->id.instance_user_friendly = instance && user_friendly;
+
+    return ret;
+}
+
+int funnel_stream_set_unique_id(struct funnel_stream *stream,
+                                const char *unique_id) {
+    return stream_set_string(stream, &stream->id.unique, unique_id);
+}
+
+int funnel_stream_set_description(struct funnel_stream *stream,
+                                  const char *description) {
+    return stream_set_string(stream, &stream->id.description, description);
+}
+
+int funnel_stream_set_media_name(struct funnel_stream *stream,
+                                 const char *media_name) {
+    if (stream->id.media_name) {
+        free(stream->id.media_name);
+        stream->id.media_name = NULL;
+    }
+
+    stream->id.media_name = strdup(media_name);
+    stream->config_pending = true;
+    return 0;
+}
+
+void sanitize_name(char *s) {
+    assert(s);
+
+    for (char *p = s; *p; p++)
+        if (!(isalnum(*p) || strchr("-_.", *p)))
+            *p = '_';
+}
+
+int funnel_stream_configure(struct funnel_stream *stream) {
+    struct funnel_ctx *ctx = stream->ctx;
+
+    if (!stream->config_pending)
+        return 0;
+
+    if (stream->api == API_UNSET) {
+        pw_log_error("The API integration must be configured before "
+                     "funnel_stream_configure()");
+        return -EINVAL;
+    }
+
+    if (!stream->config.width || !stream->config.width) {
+        pw_log_error("funnel_stream_set_size() must be called before "
+                     "funnel_stream_configure()");
+        return -EINVAL;
+    }
+
+    if (funnel_stream_validate_sync(stream, &stream->config.frontend_sync,
+                                    &stream->config.backend_sync)) {
+        pw_log_error("The default sync mode is unsupported. Please set a "
+                     "supported sync mode with funnel_stream_set_sync().");
+        return -EINVAL;
+    }
+
+    size_t num_formats =
+        pw_array_get_len(&stream->config.formats, struct funnel_format);
+
+    if (!num_formats) {
+        pw_log_error("no formats configured");
+        return -EINVAL;
+    }
+
+    pw_thread_loop_lock(ctx->loop);
+
+    if (ctx->dead)
+        UNLOCK_RETURN(-EIO);
+
+    const char *driver_prio = NULL;
+    bool lazy = false, request = false;
+    switch (stream->config.mode) {
+    case FUNNEL_ASYNC:
+        driver_prio = "1";
+        request = true;
+        break;
+    case FUNNEL_DOUBLE_BUFFERED:
+    case FUNNEL_SINGLE_BUFFERED:
+    case FUNNEL_SYNCHRONOUS:
+        lazy = ctx->feat.lazy;
+        break;
+    }
+
+    bool new_stream = false;
+    if (!stream->stream) {
+        new_stream = true;
+
+        const struct pw_properties *cprops =
+            pw_context_get_properties(ctx->context);
+
+        const char *app_name = pw_properties_get(cprops, PW_KEY_APP_NAME);
+
+        const char *app_id = pw_properties_get(cprops, PW_KEY_APP_ID);
+        if (!app_id)
+            app_id = app_name;
+        if (!app_id)
+            app_id = pw_properties_get(cprops, PW_KEY_APP_PROCESS_BINARY);
+        if (!app_id)
+            app_id = "libfunnel";
+
+        const char *stream_id = stream->id.unique ?: stream->name;
+
+        char node_name[1024];
+
+        if (stream->id.instance)
+            snprintf(node_name, sizeof(node_name), "%s.%s.%s", app_id,
+                     stream->id.instance, stream_id);
+        else
+            snprintf(node_name, sizeof(node_name), "%s.%s", app_id, stream_id);
+
+        node_name[sizeof(node_name) - 1] = 0;
+        sanitize_name(node_name);
+
+        char node_desc[1024];
+        if (stream->id.instance && stream->id.instance_user_friendly)
+            snprintf(node_desc, sizeof(node_desc), "%s (%s): %s",
+                     app_name ?: app_id, stream->id.instance, stream->name);
+        else
+            snprintf(node_desc, sizeof(node_desc), "%s: %s", app_name ?: app_id,
+                     stream->name);
+
+        node_desc[sizeof(node_desc) - 1] = 0;
+
+        struct pw_properties *props;
+        // clang-format off
+        props = pw_properties_new(
+            PW_KEY_MEDIA_TYPE, "Video",
+            PW_KEY_MEDIA_CLASS, "Stream/Output/Video",
+            PW_KEY_MEDIA_ROLE, "Production",
+            PW_KEY_NODE_SUPPORTS_LAZY, lazy ? "1" : NULL,
+            PW_KEY_NODE_SUPPORTS_REQUEST, request ? "1" : NULL,
+            PW_KEY_PRIORITY_DRIVER, driver_prio,
+            PW_KEY_NODE_NAME, node_name,
+            PW_KEY_NODE_DESCRIPTION, node_desc,
+            PW_KEY_NODE_NICK, stream->name,
+            PW_KEY_MEDIA_NAME, stream->id.media_name ?: stream->name,
+            NULL
+        );
+        // clang-format on
+        assert(props);
+
+        stream->stream = pw_stream_new(ctx->core, stream->name, props);
+        if (!stream->stream) {
+            pw_log_error("failed to create PW stream");
+            UNLOCK_RETURN(-EIO);
+        }
+
+        pw_stream_add_listener(stream->stream, &stream->stream_listener,
+                               &stream_events, stream);
+    } else {
+        struct pw_properties *props;
+
+        // clang-format off
+        props = pw_properties_new(
+            PW_KEY_NODE_SUPPORTS_LAZY, lazy ? "1" : NULL,
+            PW_KEY_NODE_SUPPORTS_REQUEST, request ? "1" : NULL,
+            PW_KEY_PRIORITY_DRIVER, driver_prio,
+            PW_KEY_MEDIA_NAME, stream->id.media_name,
+            NULL
+        );
+        // clang-format on
+        assert(props);
+
+        pw_stream_update_properties(stream->stream, &props->dict);
+        pw_properties_free(props);
+    }
+
+    funnel_free_formats(&stream->cur.config.formats);
+    stream->cur.config = stream->config;
+    pw_array_init(&stream->cur.config.formats, 32);
+    funnel_copy_formats(&stream->cur.config.formats, &stream->config.formats);
+
+    enum pw_stream_flags flags =
+        PW_STREAM_FLAG_ALLOC_BUFFERS | PW_STREAM_FLAG_DRIVER;
+
+    const struct spa_pod **params =
+        calloc(num_formats, sizeof(struct spa_pod *));
+
+    int num_params = build_formats(stream, false, params);
+    assert(num_params <= num_formats);
+
+    if (!new_stream) {
+        stream->cur.ready = false;
+        pw_stream_update_params(stream->stream, params, num_params);
+    } else if (pw_stream_connect(stream->stream, PW_DIRECTION_OUTPUT,
+                                 SPA_ID_INVALID, flags, params,
+                                 num_params) != 0) {
+        free_params(params, num_params);
+        pw_log_error("failed to connect to stream");
+        pw_stream_destroy(stream->stream);
+        stream->stream = NULL;
+        UNLOCK_RETURN(-EIO);
+    }
+
+    free_params(params, num_params);
+
+    update_timeouts(stream);
+
+    stream->config_pending = false;
+
+    UNLOCK_RETURN(0);
+}
+
+int funnel_buffer_get_gbm_bo(struct funnel_buffer *buf, struct gbm_bo **bo) {
+    assert(buf->bo);
+    *bo = buf->bo;
+    return 0;
+}
+
+int funnel_stream_start(struct funnel_stream *stream) {
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    if (ctx->dead)
+        UNLOCK_RETURN(-EIO);
+
+    if (!stream->stream)
+        UNLOCK_RETURN(-EINVAL);
+
+    stream->active = true;
+    UNLOCK_RETURN(pw_stream_set_active(stream->stream, true));
+}
+
+int funnel_stream_stop(struct funnel_stream *stream) {
+    if (!stream->stream)
+        return -EINVAL;
+
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    if (ctx->dead)
+        UNLOCK_RETURN(-EIO);
+
+    // Unblock the process call if blocked
+    stream->active = false;
+    wait_for_process_idle(stream);
+
+    UNLOCK_RETURN(pw_stream_set_active(stream->stream, false));
+}
+
+int funnel_stream_get_state(struct funnel_stream *stream,
+                            enum funnel_stream_state *pstate) {
+
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    if (ctx->dead)
+        UNLOCK_RETURN(-EIO);
+
+    errno = 0;
+    const char *str = NULL;
+    enum pw_stream_state state = pw_stream_get_state(stream->stream, &str);
+    if (state == PW_STREAM_STATE_ERROR) {
+        int ret = errno ? -errno : -EIO;
+
+        pw_log_error("Stream is in error state (%d): %s", errno, str);
+
+        UNLOCK_RETURN(ret);
+    }
+
+    *pstate = (int)state;
+
+    UNLOCK_RETURN(0);
+}
+
+SPA_STATIC_ASSERT((int)FUNNEL_STREAM_STATE_UNCONNECTED ==
+                  (int)PW_STREAM_STATE_UNCONNECTED);
+SPA_STATIC_ASSERT((int)FUNNEL_STREAM_STATE_CONNECTING ==
+                  (int)PW_STREAM_STATE_CONNECTING);
+SPA_STATIC_ASSERT((int)FUNNEL_STREAM_STATE_PAUSED ==
+                  (int)PW_STREAM_STATE_PAUSED);
+SPA_STATIC_ASSERT((int)FUNNEL_STREAM_STATE_STREAMING ==
+                  (int)PW_STREAM_STATE_STREAMING);
+
+void funnel_stream_destroy(struct funnel_stream *stream) {
+    if (!stream)
+        return;
+
+    funnel_stream_stop(stream);
+
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    funnel_free_formats(&stream->config.formats);
+    funnel_free_formats(&stream->cur.config.formats);
+
+    if (stream->stream) {
+        pw_stream_disconnect(stream->stream);
+        pw_stream_destroy(stream->stream);
+    }
+
+    if (stream->timer) {
+        pw_loop_destroy_source(pw_thread_loop_get_loop(stream->ctx->loop),
+                               stream->timer);
+    }
+
+    if (stream->funcs && stream->funcs->destroy)
+        stream->funcs->destroy(stream);
+
+    pw_thread_loop_unlock(ctx->loop);
+
+    shutdown_gbm(stream);
+
+    free((void *)stream->id.instance);
+    free((void *)stream->id.unique);
+    free((void *)stream->id.description);
+    free((void *)stream->id.media_name);
+    free((void *)stream->name);
+    free(stream);
+}
+
+int funnel_stream_dequeue(struct funnel_stream *stream,
+                          struct funnel_buffer **pbuf) {
+    if (!stream->stream)
+        return -EINVAL;
+
+    *pbuf = NULL;
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    if (stream->buffers_dequeued > 0) {
+        pw_log_error("libfunnel: Dequeueing multiple buffers not supported");
+        UNLOCK_RETURN(-EBUSY);
+    }
+
+    enum pw_stream_state state;
+    struct pw_buffer *pwbuffer;
+
+    for (pwbuffer = NULL;; pw_thread_loop_wait(ctx->loop)) {
+        if (ctx->dead) {
+            pw_log_error("libfunnel: Context is dead");
+            UNLOCK_RETURN(-EIO);
+        }
+
+        if (!stream->active) {
+            pw_log_error("libfunnel: Stream is not running");
+            UNLOCK_RETURN(-ESHUTDOWN);
+        }
+
+        if (stream->skip_frames) {
+            stream->skip_frames--;
+            UNLOCK_RETURN(0);
+        }
+
+        state = pw_stream_get_state(stream->stream, NULL);
+        if (state != PW_STREAM_STATE_STREAMING) {
+            if (stream->cur.config.mode == FUNNEL_ASYNC)
+                UNLOCK_RETURN(0);
+            pw_log_info("dequeue: Wait for stream start");
+            unblock_process_thread(stream);
+            continue;
+        }
+
+        if (stream->cur.config.mode == FUNNEL_SINGLE_BUFFERED &&
+            is_buffer_pending(stream)) {
+            pw_log_trace("dequeue: 1B, waiting for pending frame");
+            unblock_process_thread(stream);
+            continue;
+        }
+
+        if (stream->cur.config.mode == FUNNEL_SYNCHRONOUS &&
+            stream->cycle_state != SYNC_CYCLE_ACTIVE) {
+            /*
+             * Tell the process callback that we are ready to start
+             * processing a frame.
+             */
+            pw_log_info("## Waiting for sync process cycle (state=%s)",
+                        sync_cycle_s(stream->cycle_state));
+            if (stream->cycle_state == SYNC_CYCLE_INACTIVE)
+                set_state(stream, SYNC_CYCLE_WAITING);
+            continue;
+        }
+
+        pw_log_trace("Try dequeue");
+        int retries = stream->num_buffers;
+
+        assert(stream->num_buffers > 0);
+
+        /*
+         * Work around PipeWire weirdness with in-use buffers
+         * by trying to dequeue every possible buffer until we
+         * find one that is not in use.
+         */
+        do {
+            pwbuffer = pw_stream_dequeue_buffer(stream->stream);
+        } while (!pwbuffer && errno == EBUSY && --retries);
+
+        if (pwbuffer)
+            break;
+
+        pw_log_warn("dequeue: out of buffers?");
+        if (stream->cur.config.mode == FUNNEL_ASYNC)
+            UNLOCK_RETURN(0);
+
+        // If we are in the sync cycle, bail and skip a process cycle
+        unblock_process_thread(stream);
+    }
+
+    struct funnel_buffer *buf = pwbuffer->user_data;
+    pw_log_trace("  Dequeue buffer %p (%p)", pwbuffer, buf);
+
+    assert(!buf->dequeued);
+    stream->buffers_dequeued++;
+    buf->dequeued = true;
+
+    buf->acquire.queried = false;
+    buf->release.queried = false;
+    buf->release_sync_file_set = false;
+
+    if (buf->backend_sync && !buf->backend_sync_reliable) {
+        int gbm_fd = gbm_device_get_fd(buf->stream->gbm);
+        int ret = drmSyncobjTimelineWait(
+            gbm_fd, &buf->acquire.handle, &buf->acquire.point, 1, 0,
+            DRM_SYNCOBJ_WAIT_FLAGS_WAIT_AVAILABLE, NULL);
+        if (ret < 0) {
+            pw_log_info("Sync point 0x%x/%lld is not materialized, assuming "
+                        "buffer was dropped.",
+                        buf->acquire.handle, (long long)buf->acquire.point);
+            int ret = drmSyncobjTimelineSignal(gbm_fd, &buf->acquire.handle,
+                                               &buf->acquire.point, 1);
+            assert(ret >= 0);
+        }
+    }
+
+    *pbuf = buf;
+
+    UNLOCK_RETURN(1);
+}
+static int funnel_stream_enqueue_internal(struct funnel_stream *stream,
+                                          struct funnel_buffer *buf,
+                                          bool valid) {
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    assert(stream->buffers_dequeued > 0);
+    assert(buf->dequeued);
+    buf->dequeued = false;
+    stream->buffers_dequeued--;
+
+    while (1) {
+        if (!buf->pw_buffer) {
+            funnel_buffer_free(buf);
+            unblock_process_thread(stream);
+            // Stale buffer, discarded (no error)
+            pw_log_info("enqueue: Buffer is stale, dropping buffer");
+            UNLOCK_RETURN(0);
+        }
+
+        if (ctx->dead || !stream->active) {
+            pw_log_info(
+                "enqueue: Context is dead or inactive, dropping buffer");
+            int ret = pw_stream_return_buffer(stream->stream, buf->pw_buffer);
+            if (ret < 0)
+                pw_log_error("Failed to return PW buffer: %d", ret);
+            assert(ret >= 0);
+            UNLOCK_RETURN(0);
+        }
+
+        enum pw_stream_state state = pw_stream_get_state(stream->stream, NULL);
+        if (state != PW_STREAM_STATE_STREAMING) {
+            pw_log_info("enqueue: Stream is not running, dropping buffer");
+
+            int ret = pw_stream_return_buffer(stream->stream, buf->pw_buffer);
+            if (ret < 0)
+                pw_log_error("Failed to return PW buffer: %d", ret);
+            assert(ret >= 0);
+
+            unblock_process_thread(stream);
+            // Dropped buffer due to stream pause, discarded (no error)
+            UNLOCK_RETURN(0);
+        }
+
+        if (stream->cur.config.mode == FUNNEL_ASYNC) {
+            assert(valid); // ASYNC handled in funnel_stream_return
+            if (stream->pending_buffer)
+                return_buffer(stream, stream->pending_buffer);
+            stream->pending_buffer = NULL;
+        } else if (is_buffer_pending(stream)) {
+            if (stream->skip_frames) {
+                stream->skip_frames--;
+                return_buffer(stream, buf);
+                unblock_process_thread(stream);
+                UNLOCK_RETURN(0);
+            }
+            unblock_process_thread(stream);
+            pw_thread_loop_wait(ctx->loop);
+            continue;
+        }
+        break;
+    }
+
+    if (stream->cur.config.mode == FUNNEL_SYNCHRONOUS &&
+        stream->cycle_state != SYNC_CYCLE_ACTIVE) {
+
+        int ret = pw_stream_return_buffer(stream->stream, buf->pw_buffer);
+        if (ret < 0)
+            pw_log_error("Failed to return PW buffer: %d", ret);
+        assert(ret >= 0);
+
+        pw_log_info("enqueue: Aborted sync cycle, dropping buffer");
+        UNLOCK_RETURN(0);
+    }
+
+    assert(!is_buffer_pending(stream));
+    if (valid) {
+        stream->pending_buffer = buf;
+    } else {
+        stream->skip_buffer = true;
+        return_buffer(stream, buf);
+    }
+    unblock_process_thread(stream);
+
+    if (stream->cur.config.mode == FUNNEL_ASYNC)
+        pw_stream_trigger_process(stream->stream);
+
+    UNLOCK_RETURN(valid ? 1 : 0);
+}
+
+int funnel_stream_enqueue(struct funnel_stream *stream,
+                          struct funnel_buffer *buf) {
+    if (!stream->stream)
+        return -EINVAL;
+    if (!buf)
+        return -EINVAL;
+    assert(buf->stream == stream);
+
+    struct funnel_ctx *ctx = stream->ctx;
+
+    int ret;
+
+    if (buf->frontend_sync) {
+        if (!buf->release.queried || !buf->acquire.queried) {
+            pw_log_error("Attempted to enqueue buffer without sync, but "
+                         "sync is in use");
+            return -EINVAL;
+        }
+    }
+
+    pw_thread_loop_lock(ctx->loop);
+
+    if (stream->funcs && stream->funcs->enqueue_buffer) {
+        ret = stream->funcs->enqueue_buffer(buf);
+        if (ret < 0)
+            UNLOCK_RETURN(ret);
+    }
+
+    if (buf->frontend_sync) {
+        if (!buf->backend_sync && !buf->release_sync_file_set) {
+            assert(stream->feat.implicit_sync);
+            int fd = -1;
+
+            ret = funnel_stream_export_sync_file(
+                buf->stream, buf->release.handle, buf->release.point, &fd);
+            if (ret) {
+                pw_log_error(
+                    "Failed to export sync, did you commit the timeline "
+                    "point? (handle = %d, point=%lld)",
+                    buf->release.handle, (long long)buf->release.point);
+                UNLOCK_RETURN(-errno);
+            }
+            assert(fd >= 0);
+
+            buf->release.point++;
+
+            struct dma_buf_import_sync_file args = {
+                .flags = DMA_BUF_SYNC_WRITE,
+                .fd = fd,
+            };
+
+            ret = drmIoctl(buf->fds[0], DMA_BUF_IOCTL_IMPORT_SYNC_FILE, &args);
+            assert(ret >= 0);
+            close(args.fd);
+        } else if (buf->backend_sync) {
+            buf->release.point++;
+        }
+    }
+
+    UNLOCK_RETURN(funnel_stream_enqueue_internal(stream, buf, true));
+}
+
+int funnel_stream_return(struct funnel_stream *stream,
+                         struct funnel_buffer *buf) {
+    if (!stream->stream)
+        return -EINVAL;
+    if (!buf)
+        return -EINVAL;
+    assert(buf->stream == stream);
+
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    if (stream->cur.config.mode == FUNNEL_ASYNC) {
+        assert(stream->buffers_dequeued > 0);
+        assert(buf->dequeued);
+        buf->dequeued = false;
+        stream->buffers_dequeued--;
+
+        unblock_process_thread(stream);
+        pw_stream_trigger_process(stream->stream);
+        return_buffer(stream, buf);
+
+        UNLOCK_RETURN(0);
+    } else {
+        UNLOCK_RETURN(funnel_stream_enqueue_internal(stream, buf, false));
+    }
+}
+
+int funnel_stream_skip_frame(struct funnel_stream *stream) {
+    if (!stream->stream)
+        return -EINVAL;
+
+    struct funnel_ctx *ctx = stream->ctx;
+    pw_thread_loop_lock(ctx->loop);
+
+    stream->skip_frames++;
+    pw_thread_loop_signal(ctx->loop, false);
+
+    UNLOCK_RETURN(0);
+}
+
+void funnel_buffer_get_size(struct funnel_buffer *buf, uint32_t *width,
+                            uint32_t *height) {
+    *width = buf->width;
+    *height = buf->height;
+}
+
+void funnel_buffer_set_user_data(struct funnel_buffer *buf, void *opaque) {
+    buf->opaque = opaque;
+}
+
+void *funnel_buffer_get_user_data(struct funnel_buffer *buf) {
+    return buf->opaque;
+}
+
+bool funnel_buffer_has_sync(struct funnel_buffer *buf) {
+    return buf->frontend_sync;
+}
+
+int funnel_buffer_get_acquire_sync_object(struct funnel_buffer *buf,
+                                          uint32_t *handle, uint64_t *point) {
+    if (!buf->frontend_sync)
+        return -EINVAL;
+
+    *handle = buf->acquire.handle;
+    *point = buf->acquire.point;
+    pw_log_trace("Acquire sync point: 0x%x/%lld", *handle, (long long)*point);
+
+    if (!buf->backend_sync) {
+        struct dma_buf_export_sync_file args = {
+            .flags = DMA_BUF_SYNC_RW,
+            .fd = -1,
+        };
+
+        int ret = drmIoctl(buf->fds[0], DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &args);
+        assert(ret >= 0);
+
+        ret = funnel_stream_import_sync_file(buf->stream, buf->acquire.handle,
+                                             args.fd, buf->acquire.point);
+        assert(ret >= 0);
+        buf->acquire.point++;
+        close(args.fd);
+    }
+
+    buf->acquire.queried = true;
+    return 0;
+}
+
+int funnel_buffer_get_release_sync_object(struct funnel_buffer *buf,
+                                          uint32_t *handle, uint64_t *point) {
+    if (!buf->frontend_sync)
+        return -EINVAL;
+
+    if (buf->release_sync_file_set) {
+        pw_log_error("Cannot mix sync file and sync object APIs");
+        return -EINVAL;
+    }
+
+    *handle = buf->release.handle;
+    *point = buf->release.point;
+    pw_log_trace("Release sync point: 0x%x/%lld", *handle, (long long)*point);
+
+    buf->release.queried = true;
+    return 0;
+}
+
+int funnel_buffer_get_acquire_sync_file(struct funnel_buffer *buf, int *fd) {
+    if (!buf->frontend_sync)
+        return -EINVAL;
+
+    *fd = -1;
+
+    if (!buf->backend_sync) {
+        struct dma_buf_export_sync_file args = {
+            .flags = DMA_BUF_SYNC_RW,
+            .fd = -1,
+        };
+
+        int ret = drmIoctl(buf->fds[0], DMA_BUF_IOCTL_EXPORT_SYNC_FILE, &args);
+        assert(ret >= 0);
+
+        *fd = args.fd;
+    } else {
+        pw_log_trace("Acquire sync point: 0x%x/%lld", buf->acquire.handle,
+                     (long long)buf->acquire.point);
+        int gbm_fd = gbm_device_get_fd(buf->stream->gbm);
+        int ret = drmSyncobjTimelineWait(
+            gbm_fd, &buf->acquire.handle, &buf->acquire.point, 1, INT64_MAX,
+            DRM_SYNCOBJ_WAIT_FLAGS_WAIT_AVAILABLE, NULL);
+        if (ret < 0)
+            return -errno;
+
+        ret = funnel_stream_export_sync_file(buf->stream, buf->acquire.handle,
+                                             buf->acquire.point, fd);
+        if (ret < 0)
+            return ret;
+    }
+
+    buf->acquire.queried = true;
+    return 0;
+}
+
+int funnel_buffer_set_release_sync_file(struct funnel_buffer *buf, int fd) {
+    if (!buf->frontend_sync)
+        return -EINVAL;
+
+    if (!buf->release_sync_file_set && buf->release.queried) {
+        pw_log_error("Cannot mix sync file and sync object APIs");
+        return -EINVAL;
+    }
+
+    if (!buf->backend_sync) {
+        assert(buf->stream->feat.implicit_sync);
+        struct dma_buf_import_sync_file args = {
+            .flags = DMA_BUF_SYNC_WRITE,
+            .fd = fd,
+        };
+
+        int ret = drmIoctl(buf->fds[0], DMA_BUF_IOCTL_IMPORT_SYNC_FILE, &args);
+        assert(ret >= 0);
+    } else {
+        pw_log_trace("Release sync point: 0x%x/%lld", buf->release.handle,
+                     (long long)buf->release.point);
+        int ret = funnel_stream_import_sync_file(
+            buf->stream, buf->release.handle, fd, buf->release.point);
+        if (ret < 0)
+            return ret;
+    }
+
+    buf->release_sync_file_set = true;
+    buf->release.queried = true;
+    return 0;
+}
+
+static int funnel_stream_import_sync_file(struct funnel_stream *stream,
+                                          uint32_t handle, int fd,
+                                          uint64_t point) {
+    struct drm_syncobj_handle args = {
+        .flags = DRM_SYNCOBJ_FD_TO_HANDLE_FLAGS_IMPORT_SYNC_FILE,
+        .fd = fd,
+    };
+
+    int ret;
+    int gbm_fd = gbm_device_get_fd(stream->gbm);
+
+    if (fd < 0 || !handle)
+        return -EINVAL;
+
+#ifdef DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_TIMELINE
+    if (stream->feat.timeline_sync_import_export) {
+        args.flags |= DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_TIMELINE;
+        args.handle = handle;
+        args.point = point;
+    } else
+#endif
+    {
+        assert(stream->dummy_syncobj);
+        args.handle = stream->dummy_syncobj;
+    }
+
+    ret = drmIoctl(gbm_fd, DRM_IOCTL_SYNCOBJ_FD_TO_HANDLE, &args);
+    if (ret < 0)
+        return -errno;
+
+    if (!stream->feat.timeline_sync_import_export) {
+        ret = drmSyncobjTransfer(gbm_fd, handle, point, stream->dummy_syncobj,
+                                 0, 0);
+        if (ret < 0)
+            return -errno;
+    }
+
+    return 0;
+}
+
+static int funnel_stream_export_sync_file(struct funnel_stream *stream,
+                                          uint32_t handle, uint64_t point,
+                                          int *fd) {
+    struct drm_syncobj_handle args = {
+        .flags = DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_EXPORT_SYNC_FILE,
+    };
+
+    int ret;
+    int gbm_fd = gbm_device_get_fd(stream->gbm);
+
+    if (!fd || !handle)
+        return -EINVAL;
+
+    *fd = -1;
+
+#ifdef DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_TIMELINE
+    if (stream->feat.timeline_sync_import_export) {
+        args.flags |= DRM_SYNCOBJ_HANDLE_TO_FD_FLAGS_TIMELINE;
+        args.handle = handle;
+        args.point = point;
+    } else
+#endif
+    {
+        assert(stream->dummy_syncobj);
+        ret = drmSyncobjTransfer(gbm_fd, stream->dummy_syncobj, 0, handle,
+                                 point, 0);
+        if (ret < 0)
+            return -errno;
+
+        args.handle = stream->dummy_syncobj;
+    }
+
+    ret = drmIoctl(gbm_fd, DRM_IOCTL_SYNCOBJ_HANDLE_TO_FD, &args);
+    if (ret < 0)
+        return -errno;
+
+    *fd = args.fd;
+    return 0;
+}
+
+bool funnel_buffer_is_efficient_for_rendering(struct funnel_buffer *buf) {
+    return !(buf->stream->cur.config.has_nonlinear_tiling &&
+             gbm_bo_get_modifier(buf->bo) == DRM_FORMAT_MOD_LINEAR);
+}
