@@ -46,6 +46,7 @@ Locale="*res://lib/locale.gd"
 ModelLibrary="*res://lib/model_library.gd"
 ItemLibrary="*res://lib/item_library.gd"
 BackgroundLibrary="*res://lib/background_library.gd"
+PluginApi="*res://lib/plugin_api/plugin_api.gd"
 Preferences="*res://lib/preferences.gd"
 Automation="*res://lib/automation.gd"
 

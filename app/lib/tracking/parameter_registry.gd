@@ -49,6 +49,15 @@ func add_parameter(parameter_name: StringName, value_range: Vector2 = Vector2(0,
 	# debounce changes
 	_emit_list_update.call_deferred()
 
+## parameters a plugin created and deletes again
+func remove_parameter(parameter_name: StringName) -> void:
+	if not _registry.erase(parameter_name):
+		return
+	for g in _groups:
+		_groups[g].erase(parameter_name)
+	_dirty = true
+	_emit_list_update.call_deferred()
+
 func get_default(parameter_name: StringName):
 	return _registry.get(parameter_name, {}).get("default_value", 0)
 

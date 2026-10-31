@@ -65,6 +65,7 @@ func _ready() -> void:
 		_virtual_camera_hint()
 		_refresh_virtual_cameras()
 		_pipewire_row.call_deferred()
+		_plugin_row.call_deferred()  # after the PipeWire row
 	else:
 		%VirtualWebcam.queue_free()
 		
@@ -274,6 +275,52 @@ func _pipewire_row() -> void:
 	var parent: Node = _vcam_hint.get_parent()
 	parent.add_child(box)
 	parent.move_child(box, _vcam_hint.get_index() + 1)
+
+## switch for the plugin API (lib/plugin_api/plugin_api.gd) and the plugins the user allowed
+func _plugin_row() -> void:
+	var box := VBoxContainer.new()
+	box.name = "PluginApiRow"
+	var toggle := CheckButton.new()
+	toggle.name = "PluginApiToggle"
+	toggle.text = "Allow plugins (port 8001)"
+	toggle.tooltip_text = "Plugins on this computer can connect over WebSocket. Each one asks once, here in the main window."
+	toggle.button_pressed = PluginApi.enabled
+	toggle.toggled.connect(func (on): PluginApi.enabled = on)
+	box.add_child(toggle)
+	var state := Label.new()
+	state.theme_type_variation = &"SubscriptLabel"
+	state.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(state)
+	var list := VBoxContainer.new()
+	box.add_child(list)
+	var refresh := func ():
+		toggle.set_pressed_no_signal(PluginApi.enabled)
+		state.text = tr(PluginApi.error) if PluginApi.error else ""
+		state.visible = state.text != ""
+		state.modulate = Color(1, 0.45, 0.45)
+		for c in list.get_children():
+			c.queue_free()
+		list.visible = PluginApi.enabled
+		for p in PluginApi.allowed_plugins():
+			var row := HBoxContainer.new()
+			var label := Label.new()
+			label.text = "%s (%s)" % [p.name, p.developer]
+			label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(label)
+			var remove := Button.new()
+			remove.text = "Remove"
+			remove.tooltip_text = "The plugin has to ask again next time."
+			remove.pressed.connect(func (): PluginApi.revoke(p.token); row.queue_free())
+			row.add_child(remove)
+			list.add_child(row)
+	PluginApi.enabled_changed.connect(func (_on): refresh.call())
+	PluginApi.approval_finished.connect(refresh)
+	refresh.call()
+	var after: Node = find_child("PipeWireOutputRow", true, false)
+	var anchor: Node = after if after else _vcam_hint
+	anchor.get_parent().add_child(box)
+	anchor.get_parent().move_child(box, anchor.get_index() + 1)
 
 func _on_loopback_item_selected(index: int) -> void:
 	_on_v4l2_toggled(%V4L2Toggle.button_pressed)

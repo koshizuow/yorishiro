@@ -383,3 +383,11 @@ Reload,Reload,重新載入
 Screenshot,Screenshot,截圖
 Add picture...,Add picture...,加入圖片…
 Pictures in the Backgrounds folder show up here. Add one from anywhere on this computer.,Pictures in the Backgrounds folder show up here. Add one from anywhere on this computer.,Backgrounds 資料夾裡的圖片會出現在這裡，也可以從這台電腦的任何地方加入。
+Allow plugins (port 8001),Allow plugins (port 8001),允許外掛（連接埠 8001）
+"Plugins on this computer can connect over WebSocket. Each one asks once, here in the main window.","Plugins on this computer can connect over WebSocket. Each one asks once, here in the main window.",這台電腦上的外掛可以透過 WebSocket 連線。每個外掛第一次連線時，會在主視窗詢問你。
+The plugin has to ask again next time.,The plugin has to ask again next time.,下次外掛要重新詢問。
+Port %d is in use by another program.,Port %d is in use by another program.,連接埠 %d 被其他程式使用中。
+"This plugin wants to control Yorishiro: read and move the model, trigger hotkeys and expressions, send tracking values. Allow it?","This plugin wants to control Yorishiro: read and move the model, trigger hotkeys and expressions, send tracking values. Allow it?",這個外掛想要控制 Yorishiro：讀取與移動模型、觸發熱鍵和表情、送出追蹤數值。要允許嗎？
+Deny,Deny,拒絕
+Allow,Allow,允許
+by %s,by %s,作者：%s

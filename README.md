@@ -29,6 +29,9 @@
   without the app's buttons and menus. A v4l2loopback virtual camera and a transparent window work too.
 - **Tracking for other apps.** The tracker can also send its data in common face tracking protocols
   (iFacialMocap and the iPhone tracking protocol other VTuber apps read).
+- **Plugins.** A local WebSocket API (port 8001, off by default) in the message format VTuber plugins
+  already use: move the model, trigger hotkeys and expressions, send tracking values. Each plugin asks you
+  once before it may connect.
 - **English and Traditional Chinese** interface.
 
 | | |

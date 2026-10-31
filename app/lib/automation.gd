@@ -28,6 +28,8 @@
 ##   --gestures=<prefix>    after the screenshot, operate the model with synthetic mouse and key events (drag,
 ##                          wheel, wheel while dragging, shift+wheel, right drag), save <prefix>_<step>.png and print
 ##                          the model transform after each step
+##   --plugin-api-test[=<png>]  (png: a shot of the approval card) switch the plugin API on, connect as a plugin over WebSocket, get allowed on the card,
+##                          authenticate and check the requests (model, hotkeys, expressions, parameters, injection)
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
 ##                          (saved position, background, change model) and check what pressing it does
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
@@ -217,6 +219,8 @@ func _ready() -> void:
 			await _hotkey_test(args["hotkey-test"])
 		if args.has("app-action-test"):
 			await _app_action_test()
+		if args.has("plugin-api-test"):
+			await _plugin_api_test(str(args["plugin-api-test"]))
 		if args.has("sensitivity-test"):
 			await _sensitivity_test(args["sensitivity-test"])
 		if args.has("eye-test"):
@@ -379,6 +383,111 @@ func _mouse_motion(at: Vector2, rel: Vector2) -> void:
 	m.relative = rel
 	m.button_mask = MOUSE_BUTTON_MASK_LEFT if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) else 0
 	Input.parse_input_event(m)
+
+func _plugin_api_test(card_shot: String):
+	var check := func (what: String, ok: bool): print("[automation] plugin api %s: %s" % [what, "ok" if ok else "FAILED"])
+	PluginApi.enabled = true
+	check.call("listening", PluginApi.is_listening())
+	var ws := WebSocketPeer.new()
+	ws.connect_to_url("ws://127.0.0.1:%d" % PluginApi.PORT)
+	for i in 120:
+		await get_tree().process_frame
+		ws.poll()
+		if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
+			break
+	check.call("connected", ws.get_ready_state() == WebSocketPeer.STATE_OPEN)
+	var n := [0]
+	var ask := func (type: String, data := {}, press := "") -> Dictionary:
+		n[0] += 1
+		var id := "t%d" % n[0]
+		ws.send_text(JSON.stringify({"apiName": "VTubeStudioPublicAPI", "apiVersion": "1.0", "requestID": id,
+			"messageType": type + "Request", "data": data}))
+		for i in 600:
+			await get_tree().process_frame
+			ws.poll()
+			if press and i == 20:
+				var b = get_tree().root.find_child(press, true, false)
+				if b and b.is_visible_in_tree():
+					if card_shot.ends_with(".png") and press == "PluginAllowBtn":
+						get_viewport().get_texture().get_image().save_png(card_shot)
+					b.pressed.emit()
+			while ws.get_available_packet_count() > 0:
+				var msg = JSON.parse_string(ws.get_packet().get_string_from_utf8())
+				if msg is Dictionary and msg.get("requestID") == id:
+					return msg
+		return {}
+	var plugin := {"pluginName": "Test Plugin", "pluginDeveloper": "Yorishiro tests"}
+	var r: Dictionary = await ask.call("APIState")
+	check.call("state, not authenticated yet", r.get("data", {}).get("currentSessionAuthenticated") == false)
+	r = await ask.call("CurrentModel")
+	check.call("needs authentication (error %s)" % r.get("data", {}).get("errorID"), r.get("messageType") == "APIError")
+	r = await ask.call("AuthenticationToken", plugin, "PluginDenyBtn")
+	check.call("denied on the card", r.get("messageType") == "APIError" and r.data.errorID == PluginApi.ERR_TOKEN_DENIED)
+	r = await ask.call("AuthenticationToken", plugin, "PluginAllowBtn")
+	var token: String = r.get("data", {}).get("authenticationToken", "")
+	check.call("allowed on the card", token.length() == 64)
+	r = await ask.call("Authentication", plugin.merged({"authenticationToken": "wrong"}))
+	check.call("wrong token refused", r.get("data", {}).get("authenticated") == false)
+	r = await ask.call("Authentication", plugin.merged({"authenticationToken": token}))
+	check.call("authenticated", r.get("data", {}).get("authenticated") == true)
+	r = await ask.call("CurrentModel")
+	var model_id: String = r.get("data", {}).get("modelID", "")
+	check.call("current model %s, %d parameters" % [r.data.get("modelName"), r.data.get("numberOfLive2DParameters", 0)], r.data.get("modelLoaded") == true and model_id != "")
+	r = await ask.call("AvailableModels")
+	check.call("available models (%d)" % r.get("data", {}).get("numberOfModels", 0), r.data.get("numberOfModels", 0) > 0 and r.data.get("availableModels", []).all(func (m): return m.modelLoaded == (m.modelID == model_id)))
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var model = stage.active_model
+	r = await ask.call("MoveModel", {"timeInSeconds": 0, "valuesAreRelativeToModel": false, "positionX": 0.5, "positionY": 0.0, "rotation": 10, "size": 0})
+	var view: Vector2 = model.get_viewport().get_visible_rect().size
+	check.call("move model (x %.0f, want %.0f, rotation %.0f)" % [model.position.x, view.x * 0.75, model.rotation_degrees], absf(model.position.x - view.x * 0.75) < 1 and absf(model.rotation_degrees - 10) < 0.1)
+	r = await ask.call("CurrentModel")
+	check.call("position read back (%.2f)" % r.data.modelPosition.positionX, absf(r.data.modelPosition.positionX - 0.5) < 0.01)
+	r = await ask.call("Live2DParameterList")
+	check.call("live2d parameters (%d)" % r.get("data", {}).get("parameters", []).size(), r.data.get("parameters", []).size() > 10)
+	r = await ask.call("InputParameterList")
+	check.call("input parameters (%d default)" % r.get("data", {}).get("defaultParameters", []).size(), r.data.get("defaultParameters", []).any(func (p): return p.name == "FaceAngleX"))
+	r = await ask.call("ParameterCreation", {"parameterName": "TestWave", "explanation": "test", "min": -1, "max": 1, "defaultValue": 0})
+	check.call("custom parameter created", r.get("data", {}).get("parameterName") == "TestWave")
+	r = await ask.call("ParameterCreation", {"parameterName": "FaceAngleX", "min": -1, "max": 1, "defaultValue": 0})
+	check.call("built-in parameter not taken over", r.get("messageType") == "APIError")
+	r = await ask.call("InjectParameterData", {"mode": "set", "parameterValues": [{"id": "TestWave", "value": 0.7}, {"id": "FaceAngleX", "value": 25.0}]})
+	var tracking = get_tree().get_first_node_in_group("system:tracking")
+	for i in 3:
+		await get_tree().process_frame
+	check.call("injected (TestWave %.2f, FaceAngleX %.1f)" % [tracking.parameters.get("TestWave", -9), tracking.parameters.get("FaceAngleX", -99)], absf(tracking.parameters.get("TestWave", 0) - 0.7) < 0.001 and absf(tracking.parameters.get("FaceAngleX", 0) - 25.0) < 0.001)
+	r = await ask.call("ParameterValue", {"name": "TestWave"})
+	check.call("parameter value read back (%.2f)" % float(r.get("data", {}).get("value", -9)), absf(float(r.data.get("value", 0)) - 0.7) < 0.001)
+	r = await ask.call("InjectParameterData", {"parameterValues": [{"id": "NoSuchParam", "value": 1}]})
+	check.call("unknown parameter refused", r.get("messageType") == "APIError")
+	for i in 80:  # injected values let go after a second
+		await get_tree().process_frame
+	await get_tree().create_timer(1.1).timeout
+	check.call("injection released (FaceAngleX %.1f)" % tracking.parameters.get("FaceAngleX", 0), absf(tracking.parameters.get("FaceAngleX", 25.0) - 25.0) > 0.001)
+	r = await ask.call("ParameterDeletion", {"parameterName": "TestWave"})
+	check.call("custom parameter deleted", r.get("messageType") == "ParameterDeletionResponse" and Registry.get("TestWave") == null)
+	r = await ask.call("ExpressionState", {"details": false})
+	var expressions: Array = r.get("data", {}).get("expressions", [])
+	check.call("expressions (%d)" % expressions.size(), r.get("messageType") == "ExpressionStateResponse")
+	if expressions:
+		var e: String = expressions[0].file
+		r = await ask.call("ExpressionActivation", {"expressionFile": e, "active": true, "fadeTime": 0.0})
+		for i in 5:
+			await get_tree().process_frame
+		r = await ask.call("ExpressionState", {"details": false, "expressionFile": e})
+		check.call("expression %s on" % e, r.get("data", {}).get("expressions", [{}])[0].get("active") == true)
+		await ask.call("ExpressionActivation", {"expressionFile": e, "active": false, "fadeTime": 0.0})
+	r = await ask.call("HotkeysInCurrentModel")
+	var keys: Array = r.get("data", {}).get("availableHotkeys", [])
+	check.call("hotkeys (%d)" % keys.size(), r.get("messageType") == "HotkeysInCurrentModelResponse")
+	if keys:
+		r = await ask.call("HotkeyTrigger", {"hotkeyID": keys[0].hotkeyID})
+		check.call("hotkey %s (%s) triggered" % [keys[0].name, keys[0].type], r.get("data", {}).get("hotkeyID") == keys[0].hotkeyID)
+	r = await ask.call("FaceFound")
+	check.call("face found answered (%s)" % r.get("data", {}).get("found"), r.get("messageType") == "FaceFoundResponse")
+	r = await ask.call("NoSuchThing")
+	check.call("unknown request refused", r.get("messageType") == "APIError" and r.data.errorID == PluginApi.ERR_TYPE_UNKNOWN)
+	check.call("plugin listed in settings", PluginApi.allowed_plugins().any(func (p): return p.name == "Test Plugin"))
+	ws.close()
 
 func _app_action_test():
 	var list = get_tree().root.find_child("HotkeyList", true, false)

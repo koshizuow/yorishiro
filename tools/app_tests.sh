@@ -22,7 +22,7 @@ run() {  # name, model, app options...
   timeout 400 "$ROOT/run.sh" --disable-vsync -- --model="$model" "$@" --wait-frames=90 --quit > "$OUT/$name.log" 2>&1
   local code=$?
   local lines
-  lines=$(grep -E "^\[automation\] (.*: ok|.*FAILED|eye test|cycle |gesture|hotkey|expression|playing|app action)" "$OUT/$name.log" | grep -v "window screenshot")
+  lines=$(grep -E "^\[automation\] (.*: ok|.*FAILED|eye test|cycle |gesture|hotkey|expression|playing|app action|plugin api)" "$OUT/$name.log" | grep -v "window screenshot")
   echo "== $name (exit $code)"
   echo "$lines" | sed 's/^\[automation\] /   /' | head -40
   grep -E "SCRIPT ERROR" -A2 "$OUT/$name.log" | head -6
@@ -34,6 +34,7 @@ run() {  # name, model, app options...
 run gestures "$HIYORI" --gestures="$OUT/gest" --screenshot="$OUT/gestures.png"
 run hotkeys "$HIYORI" --open-panel=hotkeys --hotkey-test="$OUT/hk" --screenshot-window="$OUT/hotkeys.png"
 run appaction "$HIYORI" --open-panel=hotkeys --app-action-test --screenshot-window="$OUT/appaction.png"
+run pluginapi "$HIYORI" --plugin-api-test="$OUT/plugin_card.png" --screenshot-window="$OUT/pluginapi.png"
 run sensitivity "$HIYORI" --open-panel=sensitivity --sensitivity-test=ParamAngleX --screenshot-window="$OUT/sens.png"
 run calibration "$HIYORI" --open-panel=sensitivity --calibration-test --screenshot-window="$OUT/cal.png"
 run eyes "$HIYORI" --eye-test --screenshot-window="$OUT/eyes.png"
