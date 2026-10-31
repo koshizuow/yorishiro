@@ -36,6 +36,7 @@ func _init() -> void:
 	_viewport.own_world_3d = true
 	_viewport.transparent_bg = true
 	_viewport.msaa_3d = Viewport.MSAA_4X
+	_viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA  # the hands' shader-drawn edges get no MSAA
 	add_child(_viewport)
 
 	var env := WorldEnvironment.new()
