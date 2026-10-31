@@ -14,6 +14,9 @@ def _extra_sinks(args) -> list:
             extra.append(VtsIPhoneSink(args.vts_iphone, args.vts_iphone_sign))
         except OSError as e:
             print(f"VTS iPhone protocol: port {args.vts_iphone} busy ({e}), not sending")
+    if args.ifacialmocap:
+        from .sinks.ifacialmocap import IFacialMocapSink
+        extra.append(IFacialMocapSink(args.ifacialmocap, sign=args.ifacialmocap_sign))
     return extra
 
 
@@ -72,6 +75,10 @@ def main() -> None:
                        help="also act as an iPhone running VTube Studio (VTube Studio, OpenVT), requests on PORT")
         p.add_argument("--vts-iphone-sign", type=_signs, default=None, metavar="X,Y,Z",
                        help="flip head rotation axes for that output, e.g. -1,1,1")
+        p.add_argument("--ifacialmocap", nargs="?", const="127.0.0.1", default=None, metavar="HOST",
+                       help="also send iFacialMocap (VSeeFace, Warudo, VNyan) to HOST:49983")
+        p.add_argument("--ifacialmocap-sign", type=_signs, default=None, metavar="X,Y,Z",
+                       help="flip head rotation axes for that output (x nod, y turn, z tilt)")
 
     g = sub.add_parser("golden", help="replay a recording through the MediaPipe reference")
     g.add_argument("recording", type=Path)
