@@ -319,3 +319,7 @@ Ready: your face is in view.,Ready: your face is in view.,準備好了：已經�
 "Running, but no face is in view. Sit in front of the camera with some light on your face.","Running, but no face is in view. Sit in front of the camera with some light on your face.",追蹤器在執行，但畫面裡沒有臉。請坐到攝影機前，讓臉上有一點光。
 Not working: %s,Not working: %s,無法使用：%s
 Starting the tracker. The first start takes a little longer.,Starting the tracker. The first start takes a little longer.,正在啟動追蹤器，第一次啟動會久一點。
+Camera,Camera,攝影機
+Tracker,Tracker,追蹤模型
+Compute,Compute,運算
+%s (non-commercial),%s (non-commercial),%s（非商用）

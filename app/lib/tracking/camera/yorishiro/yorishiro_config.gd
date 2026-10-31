@@ -24,6 +24,9 @@ var _model: OptionButton
 var _runtime: OptionButton
 var _log: TextEdit
 var _glare_hint: Label
+## the running `trackers --json` (OS.execute_with_pipe result) and what it printed so far
+var _list_proc := {}
+var _list_out := PackedByteArray()
 
 func _ready():
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -97,6 +100,7 @@ func _picker(title: String) -> OptionButton:
 	label.custom_minimum_size = Vector2(70, 0)
 	row.add_child(label)
 	var option = OptionButton.new()
+	option.name = "%sPicker" % title
 	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	option.clip_text = true
 	option.item_selected.connect(func (_i): _on_restart())
@@ -157,6 +161,7 @@ func _glasses_option():
 	add_child(row)
 
 func _process(_delta):
+	_poll_tracker_list()
 	if _glare_hint:
 		_glare_hint.visible = tracker.glare_now
 
@@ -216,36 +221,43 @@ static func _sysfs_line(path: String) -> String:
 	var f := FileAccess.open(path, FileAccess.READ)
 	return f.get_line().strip_edges() if f else ""
 
+## the tracker list comes from `yorishiro-tracker trackers --json`, which takes seconds (Python start).
+## It runs without blocking and _process collects its output. A thread did this before, and quitting the
+## app while it ran crashed it (the app aborted in 2 of 3 quick quits).
 func _load_tracker_list():
 	var cmd = tracker.tracker_command()
 	if not FileAccess.file_exists(cmd):
 		return
-	var thread = Thread.new()
-	# the panel may be freed before the list arrives, so the result goes through a weak reference
-	var panel = weakref(self)
-	var deliver = Callable(get_script(), "_deliver_trackers")
-	thread.start(func ():
-		var out = []
-		OS.execute(cmd, ["trackers", "--json"], out)
-		deliver.call_deferred(panel, out[0] if out else "", thread)
-	)
+	_list_proc = OS.execute_with_pipe(cmd, ["trackers", "--json"], false)
+	_list_out = PackedByteArray()
 
-static func _deliver_trackers(panel: WeakRef, json: String, thread: Thread):
-	thread.wait_to_finish()
-	var me = panel.get_ref()
-	if me:
-		me._fill_trackers(json)
+func _poll_tracker_list():
+	if _list_proc.is_empty():
+		return
+	var pipe: FileAccess = _list_proc["stdio"]
+	_list_out.append_array(pipe.get_buffer(65536))
+	_list_proc["stderr"].get_buffer(65536)  # read and dropped, a full stderr pipe would block the command
+	if OS.is_process_running(_list_proc["pid"]):
+		return
+	_list_out.append_array(pipe.get_buffer(1 << 20))
+	_list_proc = {}
+	_fill_trackers(_list_out.get_string_from_utf8())
+
+func _exit_tree():
+	if not _list_proc.is_empty() and OS.is_process_running(_list_proc["pid"]):
+		OS.kill(_list_proc["pid"])
+	_list_proc = {}
 
 func _fill_trackers(json: String):
-	var list = JSON.parse_string(json)
-	# the list loads on a thread, the tracker may have been switched away and freed meanwhile
+	var list = JSON.parse_string(json) if json.strip_edges() else null
+	# the list takes seconds, the tracker may have been switched away and freed meanwhile
 	if typeof(list) != TYPE_ARRAY or not is_inside_tree() or not is_instance_valid(tracker):
 		return
 	_model.clear()
 	for t in list:
 		if t.has("error"):
 			continue
-		_model.add_item(t["name"] if t.get("commercial_use", true) else "%s (non-commercial)" % t["name"])
+		_model.add_item(t["name"] if t.get("commercial_use", true) else tr("%s (non-commercial)") % t["name"])
 		_model.set_item_metadata(_model.item_count - 1, t["name"])
 		_model.set_item_tooltip(_model.item_count - 1, "%s\n%s" % [t.get("description", ""), t.get("license", "")])
 	for i in _model.item_count:
