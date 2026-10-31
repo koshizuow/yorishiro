@@ -154,8 +154,10 @@ func load_settings(data: Dictionary):
 	
 	var tracking_system = get_tree().get_first_node_in_group("system:tracking")
 	if tracking_system:
-		var source = Collections.path(data, "trackers.source", _default_tracker_index())
+		# settings load when the panel enters the tree, before _ready fills the tracker list, so the
+		# default is looked up a frame later (it picked item 0, OpenSeeFace, for new profiles)
 		await get_tree().process_frame
+		var source = Collections.path(data, "trackers.source", _default_tracker_index())
 		%TrackingSource.select(source)
 		tracking_system.activate_tracker(
 			%TrackingSource.get_selected_metadata().new()

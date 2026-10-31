@@ -5,6 +5,7 @@ const HotkeysPage = preload("res://studio/hud/settings/hotkeys_page.gd")
 const AboutPage = preload("res://studio/hud/settings/about_page.gd")
 const SensitivityPage = preload("res://studio/hud/settings/sensitivity_page.gd")
 const ModelStrip = preload("res://studio/hud/model_strip/model_strip.gd")
+const WelcomeCard = preload("res://studio/hud/welcome/welcome_card.gd")
 ## seconds without mouse movement before the stage buttons fade out (clean window capture)
 const IDLE_FADE_SECONDS = 3.0
 
@@ -176,6 +177,9 @@ func _build_overlay() -> void:
 	stage_models.add_child(strip)
 	layer.add_child(stage_models)
 	layer.move_child(stage_models, 0)
+	var welcome := WelcomeCard.new()
+	layer.add_child(welcome)
+	layer.move_child(welcome, 0)
 	models.pressed.connect(func (): stage_models.visible = not stage_models.visible)
 
 func _model_strip() -> ModelStrip:

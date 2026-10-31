@@ -169,7 +169,7 @@ func _on_restart():
 
 func _on_status(s: Dictionary):
 	var state = s.get("state", "")
-	_state.text = tr("%s: %s") % [tr(STATE_NAMES.get(state, state.capitalize())), _translate_message(s.get("message", ""))]
+	_state.text = tr("%s: %s") % [tr(STATE_NAMES.get(state, state.capitalize())), translate_message(s.get("message", ""))]
 	_state.modulate = STATE_COLORS.get(state, Color.WHITE)
 	var parts = []
 	if s.has("fps"):
@@ -184,12 +184,12 @@ func _on_status(s: Dictionary):
 		parts.append(tr("external tracker"))
 	_details.text = "  |  ".join(parts)
 
-func _translate_message(message: String) -> String:
+static func translate_message(message: String) -> String:
 	for p in MESSAGE_PATTERNS:
 		var m = RegEx.create_from_string(p[0]).search(message)
 		if m:
-			return tr(p[1]) % m.get_string(1)
-	return tr(message)
+			return TranslationServer.translate(p[1]) % m.get_string(1)
+	return TranslationServer.translate(message)
 
 func _on_log(lines: PackedStringArray):
 	_log.text = "\n".join(lines)

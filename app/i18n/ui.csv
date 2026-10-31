@@ -304,3 +304,18 @@ calibrated,calibrated,已校正
 "calibrating, keep a neutral face","calibrating, keep a neutral face",校正中，請保持自然表情
 NON-COMMERCIAL model,NON-COMMERCIAL model,非商用模型
 external tracker,external tracker,外部追蹤器
+Welcome to Yorishiro,Welcome to Yorishiro,歡迎使用 Yorishiro
+Add your model,Add your model,加入你的模型
+A Live2D model folder (with a .model3.json file) or a VRM file.,A Live2D model folder (with a .model3.json file) or a VRM file.,Live2D 模型資料夾（裡面有 .model3.json 檔）或 VRM 檔。
+Choose a model...,Choose a model...,選擇模型…
+Your models,Your models,我的模型
+Face tracking,Face tracking,臉部追蹤
+Tracking settings,Tracking settings,追蹤設定
+Place it,Place it,擺好位置
+"Drag the model to move it, scroll to resize, Shift + scroll to tilt. The gear in the corner opens all settings.","Drag the model to move it, scroll to resize, Shift + scroll to tilt. The gear in the corner opens all settings.",拖曳模型可以移動，滾輪調整大小，Shift + 滾輪旋轉。角落的齒輪可以打開所有設定。
+No face tracking input is selected.,No face tracking input is selected.,還沒有選擇臉部追蹤來源。
+"Another tracking input is selected, see the tracking settings.","Another tracking input is selected, see the tracking settings.",目前用的是其他追蹤來源，詳情請看追蹤設定。
+Ready: your face is in view.,Ready: your face is in view.,準備好了：已經看到你的臉。
+"Running, but no face is in view. Sit in front of the camera with some light on your face.","Running, but no face is in view. Sit in front of the camera with some light on your face.",追蹤器在執行，但畫面裡沒有臉。請坐到攝影機前，讓臉上有一點光。
+Not working: %s,Not working: %s,無法使用：%s
+Starting the tracker. The first start takes a little longer.,Starting the tracker. The first start takes a little longer.,正在啟動追蹤器，第一次啟動會久一點。
