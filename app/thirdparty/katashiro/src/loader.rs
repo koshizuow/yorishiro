@@ -72,10 +72,10 @@ impl AyagamiLoader {
             .collect();
 
         let shaders: Array<Gd<ShaderMaterial>> = array![
-            &shader_material("res://addons/ayagami/shaders/mix.gdshader"),
-            &shader_material("res://addons/ayagami/shaders/add.gdshader"),
-            &shader_material("res://addons/ayagami/shaders/mul.gdshader"),
-            &shader_material("res://addons/ayagami/shaders/mask.gdshader")
+            &shader_material("res://addons/katashiro/shaders/mix.gdshader"),
+            &shader_material("res://addons/katashiro/shaders/add.gdshader"),
+            &shader_material("res://addons/katashiro/shaders/mul.gdshader"),
+            &shader_material("res://addons/katashiro/shaders/mask.gdshader")
         ];
 
         let mut meshes = HashMap::new();

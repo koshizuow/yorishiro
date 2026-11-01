@@ -21,13 +21,17 @@ Licensing by directory
 
 Third-party components used by app/
 
-  Ayagami (ayagami-gd)  https://github.com/AyagamiDev/ayagami-gd
-                        MIT, Copyright (c) The Ayagami Project Contributors.
-                        Included as app/thirdparty/ayagami with Yorishiro's
-                        fixes (git history).
+  Katashiro             Yorishiro's fork of Ayagami's Godot bindings
+                        (ayagami-gd, https://github.com/AyagamiDev/ayagami-gd),
+                        MIT, Copyright (c) The Ayagami Project Contributors,
+                        changes since the fork Copyright (c) 2026 The
+                        Katashiro contributors. In app/thirdparty/katashiro,
+                        built into app/addons/katashiro. Renamed in 2026-11
+                        so it is not mistaken for the upstream project; it is
+                        not endorsed by the Ayagami authors.
                         Statically links the Ayagami core library
                         (https://github.com/AyagamiDev/ayagami), MIT or
-                        Apache-2.0.
+                        Apache-2.0, unmodified.
   libfunnel             https://github.com/hoshinolina/libfunnel
                         MIT, Copyright the libfunnel contributors. Included
                         as app/thirdparty/libfunnel, compiled into
@@ -37,8 +41,10 @@ Third-party components used by app/
                         The Unlicense (public domain)
   godot-keylogger       https://github.com/erodozer/godot-keylogger
                         MIT, Copyright (c) 2025-present erodozer
-  Godot Engine          https://godotengine.org, MIT. Yorishiro currently
-                        needs the Ayagami patched 4.7.1 build.
+  Godot Engine          https://godotengine.org, MIT. Yorishiro runs on a
+                        build with the custom blend modes patch
+                        (godotengine/godot#116686), made with
+                        tools/build_godot.sh from the official source.
 
 Fonts shipped in app/ui/fonts/
 

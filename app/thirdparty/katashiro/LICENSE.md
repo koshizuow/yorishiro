@@ -1,4 +1,5 @@
 Copyright (c) The Ayagami Project Contributors
+Copyright (c) 2026 The Katashiro contributors (the fork in Yorishiro, changes since 2026-10-30)
 
 Permission is hereby granted, free of charge, to any
 person obtaining a copy of this software and associated

@@ -12,8 +12,8 @@
 
 ## 功能
 
-- **Live2D 模型。** 載入模型時會一併讀取它附帶的設定，像是參數綁定、熱鍵、物理和待機動畫。渲染用的是獨立開發的
-  Live2D 渲染器 [Ayagami](https://github.com/AyagamiDev/ayagami)，沒有用到 Live2D Cubism SDK。
+- **Live2D 模型。** 載入模型時會一併讀取它附帶的設定，像是參數綁定、熱鍵、物理和待機動畫。渲染用的是 Katashiro，
+  它是我們從獨立開發的 Live2D 渲染器 [Ayagami](https://github.com/AyagamiDev/ayagami) 的 Godot 擴充分支出來的版本，沒有用到 Live2D Cubism SDK。
 - **內建臉部追蹤。** 打開 app 就會自動啟動追蹤器。它用 MediaPipe FaceMesh 抓臉部特徵點，換算成 ARKit 的 52 種表情，
   也會追蹤視線和頭部位置。眨眼由一個用合成眼睛圖片訓練的模型判斷，就算眼鏡反射螢幕光也抓得到。各家顯示卡都能透過
   Vulkan 執行，NVIDIA 也可以用 CUDA 或 TensorRT，沒有顯示卡的話用 CPU 也行。
@@ -48,11 +48,15 @@
 
 ## 編譯
 
-App 跑在 Ayagami 專案發布的 Godot 4.7.1 上，這個版本加了混合模式的修補。
+App 跑在加了自訂混合模式修補（[godotengine/godot#116686](https://github.com/godotengine/godot/pull/116686)）的
+Godot 4.7.2 上，Live2D 的混合需要這個修補。
 
-1. **引擎。** 到 [AyagamiDev/ayagami-gd](https://github.com/AyagamiDev/ayagami-gd/releases/tag/godot) 的 `godot`
-   release 下載 `godot.linuxbsd.editor.x86_64.llvm`，並核對 sha256。`run.sh` 預設會到 repo 旁邊的 `../tools/godot/`
-   找它，也可以用 `GODOT=/path/to/godot` 指定位置。
+1. **引擎。** 從官方原始碼自己編（需要 `clang lld libwayland-bin python3` 和 [uv](https://docs.astral.sh/uv/)，約 40 分鐘）：
+   ```sh
+   tools/build_godot.sh 4.7.2-stable app/thirdparty/katashiro/patches/custom_blend_modes-4_7_1.patch ../godot-build
+   ```
+   把編好的 `bin/godot.linuxbsd.editor.x86_64.llvm` 放到 repo 旁邊的 `../tools/godot/`（`run.sh` 預設會到這裡找），
+   也可以用 `GODOT=/path/to/godot` 指定位置。
 2. **系統套件**（以 Debian / Ubuntu 的套件名稱為例）：
    `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
 3. **Rust** 1.94 以上。建議用 [rustup](https://rustup.rs) 安裝，發行版內建的版本通常太舊。
@@ -91,7 +95,7 @@ App 跑在 Ayagami 專案發布的 Godot 4.7.1 上，這個版本加了混合模
 
 | 資料夾 | 內容 | 授權 |
 |--------|------|------|
-| `app/` | Yorishiro app（Godot）。最早是從 erodozer 的 [OpenVT](https://github.com/erodozer/open-vt) fork 出來的，裡面包含我們自己維護的 [ayagami-gd](https://github.com/AyagamiDev/ayagami-gd) 和 [libfunnel](https://github.com/hoshinolina/libfunnel) | MIT，見 `app/LICENSE.txt` |
+| `app/` | Yorishiro app（Godot）。最早是從 erodozer 的 [OpenVT](https://github.com/erodozer/open-vt) fork 出來的，裡面包含 Katashiro（我們從 [ayagami-gd](https://github.com/AyagamiDev/ayagami-gd) 分支出來的版本）和 [libfunnel](https://github.com/hoshinolina/libfunnel) | MIT，見 `app/LICENSE.txt` |
 | `tracker/` | 臉部追蹤引擎 `yorishiro-tracker`（輸出 ARKit 52 種表情，模型可替換，支援 Vulkan / CPU / CUDA / TensorRT） | Apache-2.0，見 `tracker/LICENSE` |
 | `tools/` | 開發和測試用的工具 | 依所屬的部分而定 |
 

@@ -20,10 +20,11 @@ case "$PLATFORM" in
 esac
 
 
-build_ayagami () {
-	echo -e "\n#### Preparing ayagami-gd\n\n"
+## Katashiro: our fork of Ayagami's Godot bindings (ayagami-gd), the Live2D renderer
+build_katashiro () {
+	echo -e "\n#### Preparing katashiro-gd\n\n"
 
-	WORKDIR=$PROJ_ROOT/thirdparty/ayagami
+	WORKDIR=$PROJ_ROOT/thirdparty/katashiro
 	ADDONDIR=$PROJ_ROOT/addons
 
 	mkdir -p $ADDONDIR
@@ -31,15 +32,16 @@ build_ayagami () {
 	cd $WORKDIR
 	
 	make package target=$TARGET
-	cp -r $WORKDIR/addons/ayagami $ADDONDIR
+	cp -r $WORKDIR/addons/katashiro $ADDONDIR
 
-	cp $WORKDIR/LICENSE.md $PROJ_ROOT/license/LICENSE.ayagami.md
-	cp $WORKDIR/README.md $ADDONDIR/ayagami/README.md
+	# MIT: Ayagami's copyright notice stays in the license with ours
+	cp $WORKDIR/LICENSE.md $PROJ_ROOT/license/LICENSE.katashiro.md
+	cp $WORKDIR/README.md $ADDONDIR/katashiro/README.md
 	
-	echo "*" > $ADDONDIR/ayagami/.gitignore
+	echo "*" > $ADDONDIR/katashiro/.gitignore
 	
 	# log completion
-	find $ADDONDIR/ayagami -type f
+	find $ADDONDIR/katashiro -type f
 
 	cd $PROJ_ROOT
 }
@@ -129,7 +131,7 @@ build_keylogger() {
 # fetch submodules if they haven't been already
 # git submodule update --init --recursive
 
-build_ayagami
+build_katashiro
 build_core
 if [ "$BUILD_VIRTUALCAMERA" = 1 ]; then
 	build_virtualcamera

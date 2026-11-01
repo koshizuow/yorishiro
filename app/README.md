@@ -1,6 +1,7 @@
 # Yorishiro app
 
-The Yorishiro VTubing app, built with Godot (Ayagami's patched 4.7.1) and the Ayagami Live2D renderer.
+The Yorishiro VTubing app, built with Godot (4.7.2 with the custom blend modes patch, see tools/build_godot.sh) and Katashiro, our fork of
+the Ayagami Live2D renderer's Godot bindings.
 It pairs with `yorishiro-tracker`, the GPU face tracker in `../tracker`.
 
 The app started as a fork of [OpenVT](https://github.com/erodozer/open-vt) by erodozer, released under the

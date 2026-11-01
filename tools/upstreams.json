@@ -7,10 +7,11 @@
       "branch": "main",
       "pin": {
         "kind": "subtree",
-        "prefix": "app/thirdparty/ayagami"
+        "prefix": "app/thirdparty/katashiro",
+        "imported_at": "app/thirdparty/ayagami"
       },
       "policy": "cherry-pick",
-      "note": "Our fork (D25). Check every commit's source: nothing written from the Cubism SDK or Framework (D26)."
+      "note": "Our fork, renamed Katashiro (D37). Check every commit's source: nothing written from the Cubism SDK or Framework (D26)."
     },
     {
       "name": "libfunnel",
@@ -29,11 +30,11 @@
       "branch": "main",
       "pin": {
         "kind": "cargo-lock",
-        "lock": "app/thirdparty/ayagami/Cargo.lock",
+        "lock": "app/thirdparty/katashiro/Cargo.lock",
         "package": "ayagami"
       },
       "policy": "bump",
-      "note": "Unmodified. cargo update -p ayagami in app/thirdparty/ayagami, rebuild, render regression."
+      "note": "Unmodified. cargo update -p ayagami in app/thirdparty/katashiro, rebuild, render regression."
     },
     {
       "name": "godot-rust (gdext)",
@@ -41,11 +42,11 @@
       "branch": "master",
       "pin": {
         "kind": "cargo-lock-version",
-        "lock": "app/thirdparty/ayagami/Cargo.lock",
+        "lock": "app/thirdparty/katashiro/Cargo.lock",
         "package": "godot"
       },
       "policy": "bump",
-      "note": "Released crate, bump with ayagami-gd when it needs a newer one."
+      "note": "Released crate, bump with Katashiro when it needs a newer one."
     },
     {
       "name": "godot-keylogger",
@@ -69,7 +70,7 @@
     }
   ],
   "godot": {
-    "engine_version": "4.7.1",
+    "engine_version": "4.7.2",
     "build_release": {
       "repo": "AyagamiDev/ayagami-gd",
       "tag": "godot"
@@ -78,6 +79,6 @@
       "repo": "godotengine/godot",
       "number": 116686
     },
-    "note": "Patch releases of the same minor through AyagamiDev's build. A new minor is its own project. When the PR is merged, switch to official builds."
+    "note": "We build the engine ourselves (D37, tools/build_godot.sh): patch releases as they come, a new minor is its own project (port the patch). AyagamiDev's build is listed for reference. When the PR is merged, switch to official builds."
   }
 }

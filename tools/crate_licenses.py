@@ -15,7 +15,7 @@ from pathlib import Path
 
 COPYLEFT = ("GPL", "LGPL", "AGPL", "EUPL", "CDDL")
 # file-level copyleft: fine to link and ship as long as those crates' own sources stay available (they are
-# published crates); godot-rust is MPL-2.0, the app already ships it with Ayagami
+# published crates); godot-rust is MPL-2.0, the app already ships it with Katashiro
 WEAK = ("MPL",)
 
 

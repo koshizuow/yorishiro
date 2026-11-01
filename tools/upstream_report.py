@@ -94,12 +94,13 @@ def report_upstream(up: dict, mirrors: Path, fetch: bool) -> list[str]:
     pin = up["pin"]
     changed: set[str] = set()
     if pin["kind"] == "subtree":
-        split, added = subtree_pin(pin["prefix"])
+        # a subtree moved since its import (ayagami -> katashiro) is found by the path it was imported at
+        split, added = subtree_pin(pin.get("imported_at", pin["prefix"]))
         if subprocess.run(["git", "-C", str(mpath), "cat-file", "-e", split + "^{commit}"]).returncode != 0:
             # our own fork commit (OpenVT): bring it over to find where it left upstream
             subprocess.run(["git", "-C", str(mpath), "fetch", "-q", str(ROOT), split], check=True)
         base = git("merge-base", split, up["branch"], cwd=mpath)
-        changed = our_changes(pin["prefix"], added)
+        changed = our_changes(pin["prefix"], added) | our_changes(pin.get("imported_at", pin["prefix"]), added)
         ours = git("rev-list", "--count", f"{base}..{split}", cwd=mpath)
         lines.append(f"- we use: upstream {base[:9]} ({git('log', '-1', '--format=%ad', '--date=short', base, cwd=mpath)})"
                      f" + {ours} commits of our fork before the import + our commits since, "
@@ -143,7 +144,7 @@ def _ver(tag: str) -> tuple[int, ...]:
 
 
 def report_godot(cfg: dict) -> list[str]:
-    lines = ["## Godot engine", "", cfg.get("note", ""), "", f"- we use: {cfg['engine_version']} (AyagamiDev build)"]
+    lines = ["## Godot engine", "", cfg.get("note", ""), "", f"- we use: {cfg['engine_version']} (our build, tools/build_godot.sh)"]
     b = cfg["build_release"]
     rel = github(f"repos/{b['repo']}/releases/tags/{b['tag']}")
     if "error" in rel:

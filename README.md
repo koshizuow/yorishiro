@@ -13,8 +13,8 @@
 ## Features
 
 - **Live2D models.** Models come in with the settings that usually ship with them (parameter bindings,
-  hotkeys, physics, idle animation). Rendering by [Ayagami](https://github.com/AyagamiDev/ayagami), an
-  independent Live2D renderer: no Live2D Cubism SDK inside.
+  hotkeys, physics, idle animation). Rendering by Katashiro, our fork of the Godot bindings of
+  [Ayagami](https://github.com/AyagamiDev/ayagami), an independent Live2D renderer: no Live2D Cubism SDK inside.
 - **Face tracking built in.** The app starts its own tracker: MediaPipe FaceMesh landmarks fitted to the 52
   ARKit expressions, an eye model trained on synthetic eyes (holds up behind glasses that reflect the
   screen), gaze, head position. Runs on any GPU through Vulkan, on NVIDIA through CUDA or TensorRT, or on the CPU.
@@ -53,11 +53,16 @@
 
 ## Build
 
-The app runs on a Godot 4.7.1 build with Ayagami's blend mode patch, published by the Ayagami project.
+The app runs on Godot 4.7.2 with the custom blend modes patch
+([godotengine/godot#116686](https://github.com/godotengine/godot/pull/116686)), which Live2D blending needs.
 
-1. **Engine.** Download `godot.linuxbsd.editor.x86_64.llvm` from the `godot` release of
-   [AyagamiDev/ayagami-gd](https://github.com/AyagamiDev/ayagami-gd/releases/tag/godot) and check its sha256.
-   `run.sh` looks for it in `../tools/godot/` next to the repository, or set `GODOT=/path/to/godot`.
+1. **Engine.** Build it from the official source (needs `clang lld libwayland-bin python3` and
+   [uv](https://docs.astral.sh/uv/); about 40 minutes):
+   ```sh
+   tools/build_godot.sh 4.7.2-stable app/thirdparty/katashiro/patches/custom_blend_modes-4_7_1.patch ../godot-build
+   ```
+   Put `bin/godot.linuxbsd.editor.x86_64.llvm` from the build folder in `../tools/godot/` next to the repository
+   (where `run.sh` looks for it), or set `GODOT=/path/to/godot`.
 2. **System packages** (Debian / Ubuntu names):
    `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
 3. **Rust** 1.94 or newer through [rustup](https://rustup.rs) (distribution packages are often older).
@@ -101,7 +106,7 @@ The app runs on a Godot 4.7.1 build with Ayagami's blend mode patch, published b
 
 | Directory | What | License |
 |-----------|------|---------|
-| `app/` | The Yorishiro app (Godot). Started as a fork of [OpenVT](https://github.com/erodozer/open-vt) by erodozer. Includes our copies of [ayagami-gd](https://github.com/AyagamiDev/ayagami-gd) and [libfunnel](https://github.com/hoshinolina/libfunnel) | MIT, see `app/LICENSE.txt` |
+| `app/` | The Yorishiro app (Godot). Started as a fork of [OpenVT](https://github.com/erodozer/open-vt) by erodozer. Includes Katashiro (our fork of [ayagami-gd](https://github.com/AyagamiDev/ayagami-gd)) and [libfunnel](https://github.com/hoshinolina/libfunnel) | MIT, see `app/LICENSE.txt` |
 | `tracker/` | `yorishiro-tracker`, the face tracking engine (ARKit 52 out, pluggable models, Vulkan / CPU / CUDA / TensorRT) | Apache-2.0, see `tracker/LICENSE` |
 | `tools/` | Development and test tools | Same as the part they belong to |
 
