@@ -24,7 +24,7 @@ func _draw() -> void:
 	draw_circle(centroid, 2, Color.RED, true, -1.0, true)
 
 	if item.pin_mode == VtItem.PinMode.VERTICES and item.pinned_to != null:
-		var _ary = RenderingServer.mesh_surface_get_arrays(item.pinned_to.mesh, 0)
+		var _ary = VtItem.mesh_shape(item.pinned_to)
 		var f = _ary[Mesh.ARRAY_INDEX]
 		for i in range(0, len(f), 3):
 			var t = [

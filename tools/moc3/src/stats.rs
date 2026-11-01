@@ -1,8 +1,8 @@
-// stats MODEL.moc3...: art meshes, masks (distinct clip sets, as Katashiro makes one mask viewport per set),
+// stats MODEL.moc3... (NAMES=1: every art mesh by uid): art meshes, masks (distinct clip sets, as Katashiro makes one mask viewport per set),
 // blend modes in use, offscreen parts (Cubism 5.3)
 use std::collections::{BTreeMap, BTreeSet};
 use std::{env, fs::File};
-use katashiro_core::core::{ArtMesh, ItemArray, Model, Part};
+use katashiro_core::core::{ArtMesh, Item, ItemArray, Model, Part};
 use katashiro_core::file;
 
 fn main() {
@@ -22,6 +22,13 @@ fn main() {
                 masks.insert(clips);
             }
             *blends.entry(format!("{:?}/{:?}", a.blend_config().color, a.blend_config().alpha)).or_default() += 1;
+        }
+        if env::var("NAMES").is_ok() {
+            for i in 0..meshes.count() {
+                let a = meshes.index(i).unwrap();
+                let clips: Vec<u32> = a.clips().into_iter().map(|c| c.uid()).collect();
+                println!("  {} {} {:?} clips {:?}{}", a.uid(), a.id(), a.blend_config().color, clips, if a.invert_mask() { " inverted" } else { "" });
+            }
         }
         let parts = model.parts();
         let offscreen = (0..parts.count()).filter(|&i| parts.index(i).unwrap().offscreen()).count();

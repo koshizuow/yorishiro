@@ -56,7 +56,7 @@ func _process(_delta: float) -> void:
 		global_position = model.to_global(pin + pin_offset - model.size / 2)
 		rotation = model.rotation + angle
 	else:
-		var _ary = RenderingServer.mesh_surface_get_arrays(pinned_to.mesh, 0)
+		var _ary = mesh_shape(pinned_to)
 		var f = _ary[Mesh.ARRAY_INDEX]
 		var t = [
 			_ary[Mesh.ARRAY_VERTEX][f[pin_indicies]],
@@ -103,14 +103,14 @@ func _on_drag_released() -> void:
 	for mesh in meshes:
 		if not is_pinnable(mesh):
 			continue
-		if not mesh.visible:
+		if not mesh.get_parent().get_parent().mesh_visible(mesh.name):
 			continue
 			
 		# handle pinning in pixel subviewport
 		# convert screen coordinate to mesh viewport
 		var p = mesh.get_global_transform_with_canvas().affine_inverse() * mesh.get_viewport().get_screen_transform().affine_inverse() * c
 			
-		var _ary = RenderingServer.mesh_surface_get_arrays(mesh.mesh, 0)
+		var _ary = mesh_shape(mesh)
 		var v = _ary[Mesh.ARRAY_VERTEX]
 		var f = _ary[Mesh.ARRAY_INDEX]
 		for vtx in range(0, len(f), 3):
@@ -139,6 +139,13 @@ func _on_drag_pressed() -> void:
 	pinned_to = null
 	pin_offset = Vector2.ZERO
 	pin_changed.emit(null)
+
+## an art mesh's triangles and its current vertices: the model node keeps the vertices, the mesh node (which
+## no longer draws, Katashiro draws the whole model) has the triangles from loading
+static func mesh_shape(mesh: MeshInstance2D) -> Array:
+	var ary := RenderingServer.mesh_surface_get_arrays(mesh.mesh, 0)
+	ary[Mesh.ARRAY_VERTEX] = mesh.get_parent().get_parent().mesh_vertices(mesh.name)
+	return ary
 
 func is_pinnable(mesh: Node):
 	return model.get("modifiers/meshes/%s/pinnable" % [mesh.name])

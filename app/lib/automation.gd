@@ -1236,7 +1236,7 @@ func _debug_meshes_after(args: Dictionary, model):
 			print("[automation]   %s missing" % mesh_name)
 			continue
 		var mat = mi.material
-		var verts: PackedVector2Array = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var verts: PackedVector2Array = mi.get_parent().get_parent().mesh_vertices(mi.name)
 		var vb := Rect2(verts[0], Vector2.ZERO)
 		for vv in verts:
 			vb = vb.expand(vv)

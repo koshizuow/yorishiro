@@ -4,17 +4,23 @@ use std::sync::Arc;
 use katashiro_core::meta::DisplayInfo;
 use godot::classes::file_access::ModeFlags;
 use godot::classes::notify::CanvasItemNotification;
-use godot::classes::{ArrayMesh, FileAccess, INode2D, MeshInstance2D, ShaderMaterial, SubViewport};
+use godot::classes::canvas_item::TextureFilter;
+use godot::classes::canvas_item_material::BlendMode as CanvasBlend;
+use godot::classes::rendering_device::TextureSamples;
+use godot::classes::sub_viewport::UpdateMode;
+use godot::classes::viewport::Msaa;
+use godot::classes::{ArrayMesh, CanvasItemMaterial, FileAccess, INode2D, MeshInstance2D, ShaderMaterial, Sprite2D, SubViewport, Texture2D};
 use godot::meta::ClassId;
 use godot::prelude::*;
 
-use katashiro_core::core::{Item, Model, Param};
+use katashiro_core::core::{ArtMesh, Collection, Item, Model, Param};
 use katashiro_core::driver::{DrawNode, Driver};
 use katashiro_core::file::ParsedModel;
 use katashiro_core::pose::{Key, Pose, PoseMap, Value};
 use godot::register::info::{PropertyHint, PropertyHintInfo, PropertyInfo, PropertyUsageFlags};
 
 use crate::mutator::IMutator;
+use crate::rd_renderer::RdRenderer;
 
 pub const PARAMETER_PREFIX: &str = "parameters/";
 const PARAMETER_RANGE_SUFFIX: &str = "/range";
@@ -71,6 +77,11 @@ pub struct KatashiroModel {
     pub pose: Option<Pose>,
     pub pose_map: Arc<PoseMap>,
     pub last_pose: Option<Pose>,
+
+    /// route B: the whole model through RenderingDevice (KATASHIRO_RENDERER=canvas keeps the mesh nodes)
+    renderer: Option<RdRenderer>,
+    view: Option<Gd<Sprite2D>>,
+    mesh_uids: HashMap<StringName, u32>,
 }
 
 #[godot_api]
@@ -306,6 +317,107 @@ impl KatashiroModel {
         }
     }
 
+    /// An art mesh's current vertices in the model's local pixels (what its mesh node held), for pinning
+    #[func]
+    pub fn mesh_vertices(&self, name: StringName) -> PackedVector2Array {
+        let (Some(md), Some(uid)) = (self.model.as_ref(), self.mesh_uids.get(&name)) else {
+            return PackedVector2Array::new();
+        };
+        let px = md.model.canvas_properties().scale;
+        md.driver
+            .artmesh_state(*uid)
+            .map(|st| st.vertices.iter().map(|v| Vector2::new(v.x * px, v.y * px)).collect())
+            .unwrap_or_default()
+    }
+
+    /// Whether an art mesh is drawn now
+    #[func]
+    pub fn mesh_visible(&self, name: StringName) -> bool {
+        let (Some(md), Some(uid)) = (self.model.as_ref(), self.mesh_uids.get(&name)) else { return false };
+        md.driver.artmesh_state(*uid).is_some_and(|st| st.visual.visible && !st.vertices.is_empty())
+    }
+
+    /// The app's own multiply and screen colors for an art mesh instead of the model's (enabled false: the
+    /// model's again)
+    #[func]
+    pub fn set_mesh_colors(&mut self, name: StringName, enabled: bool, multiply: Color, screen: Color) {
+        let Some(uid) = self.mesh_uids.get(&name).copied() else { return };
+        if let Some(r) = self.renderer.as_mut() {
+            if enabled {
+                r.color_overrides.insert(uid, (multiply, screen));
+            } else {
+                r.color_overrides.remove(&uid);
+            }
+        }
+    }
+
+    /// Switches to drawing through RenderingDevice: the mesh nodes and mask viewports stay for their names
+    /// and first shapes but no longer draw
+    fn start_rd_renderer(&mut self) {
+        if std::env::var("KATASHIRO_RENDERER").is_ok_and(|v| v == "canvas") {
+            return;
+        }
+        let md = self.model.as_ref().unwrap();
+        let count = md.model.artmeshes().into_iter().map(|a| a.texture() as usize + 1).max().unwrap_or(0);
+        let mut textures: Vec<Option<Gd<Texture2D>>> = vec![None; count];
+        for (uid, node) in self.meshes.iter() {
+            let i = md.model.artmeshes().get(*uid).unwrap().texture() as usize;
+            if textures[i].is_none() {
+                textures[i] = node.get_texture();
+            }
+        }
+        let Some(textures) = textures.into_iter().collect::<Option<Vec<_>>>() else {
+            godot_error!("Katashiro: a model texture is missing, drawing with mesh nodes");
+            return;
+        };
+        let renderer = match RdRenderer::new(&md.model, &textures) {
+            Ok(r) => r,
+            Err(e) => {
+                godot_error!("Katashiro: {e}, drawing with mesh nodes");
+                return;
+            }
+        };
+        let mut view = Sprite2D::new_alloc();
+        view.set_name("RdView");
+        view.set_as_top_level(true);
+        view.set_centered(false);
+        view.set_texture(&renderer.texture());
+        view.set_texture_filter(TextureFilter::NEAREST);
+        let mut material = CanvasItemMaterial::new_gd();
+        material.set_blend_mode(CanvasBlend::PREMULT_ALPHA);
+        view.set_material(&material);
+        let mut group = self.mesh_group.clone().unwrap();
+        group.set_visible(false);
+        let index = group.get_index();
+        self.base_mut().add_child(&view);
+        self.base_mut().move_child(&view, index);
+        for mask in self.masks.iter_mut() {
+            mask.set_update_mode(UpdateMode::DISABLED);
+        }
+        self.view = Some(view);
+        self.renderer = Some(renderer);
+    }
+
+    fn render_rd(&mut self) {
+        let to_target = self.base().get_global_transform_with_canvas();
+        let canvas = self.base().get_canvas_transform();
+        let size = self.base().get_viewport_rect().size;
+        let samples = match self.base().get_viewport().map(|v| v.get_msaa_2d()) {
+            Some(Msaa::MSAA_2X) => TextureSamples::SAMPLES_2,
+            Some(Msaa::MSAA_4X) => TextureSamples::SAMPLES_4,
+            Some(Msaa::MSAA_8X) => TextureSamples::SAMPLES_8,
+            _ => TextureSamples::SAMPLES_1,
+        };
+        let md = self.model.as_mut().unwrap();
+        md.driver.drive(md.model.as_ref());
+        let r = self.renderer.as_mut().unwrap();
+        let size = Vector2i::new(size.x.ceil() as i32, size.y.ceil() as i32);
+        r.render(&md.model, &md.driver, to_target, size, samples);
+        if let Some(view) = self.view.as_mut() {
+            view.set_global_transform(canvas.affine_inverse());
+        }
+    }
+
     #[func]
     pub fn get_parameters(&self) -> Array<StringName> {
         let mut arr: Vec<_> = self
@@ -380,9 +492,11 @@ impl INode2D for KatashiroModel {
                     acc
                 });
 
+            self.mesh_uids = self.meshes.iter().map(|(uid, n)| (n.get_name(), *uid)).collect();
             self.update_meshes(true);
             self.update_masks();
             self.reorder_meshes();
+            self.start_rd_renderer();
 
             self.base_mut().set_process_internal(true);
 
@@ -441,9 +555,13 @@ impl INode2D for KatashiroModel {
             self.model.as_mut().unwrap().driver.apply_pose(&output_pose);
             self.last_pose = Some(output_pose.clone());
 
-            self.update_meshes(false);
-            self.update_masks();
-            self.reorder_meshes();
+            if self.renderer.is_some() {
+                self.render_rd();
+            } else {
+                self.update_meshes(false);
+                self.update_masks();
+                self.reorder_meshes();
+            }
         }
     }
 

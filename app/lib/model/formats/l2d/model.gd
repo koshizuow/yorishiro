@@ -364,7 +364,7 @@ func _load_from_vts():
 		if mesh.name in tint:
 			var colors = tint[mesh.name]
 			settings.multiply_color = colors.multiply
-			settings.screen_color = colors.creen
+			settings.screen_color = colors.screen
 		
 func save_model_settings(settings: Dictionary):
 	super.save_model_settings(settings)

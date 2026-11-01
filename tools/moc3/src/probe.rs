@@ -24,7 +24,7 @@ fn main() {
             Some(st) => {
                 let (mut lo, mut hi) = (st.vertices[0], st.vertices[0]);
                 for v in st.vertices { lo = lo.min(*v); hi = hi.max(*v); }
-                println!("{id}: visible {} opacity {:.3} depth {} bbox {:?}..{:?}", st.visual.visible, st.visual.opacity, st.depth, lo, hi);
+                println!("{id}: visible {} opacity {:.3} depth {} bbox {:?}..{:?} multiply {:?} screen {:?}", st.visual.visible, st.visual.opacity, st.depth, lo, hi, st.visual.multiply_color, st.visual.screen_color);
                 if env::var("VERTS").is_ok() { println!("  {:?}", st.vertices.iter().map(|v| (v.x * 1500.0, v.y * 1500.0)).collect::<Vec<_>>()); }
             }
             None => println!("{id}: no state"),
