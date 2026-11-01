@@ -270,6 +270,10 @@ impl WarpState {
         assert!(self.size.x >= 1 && self.size.y >= 1);
 
         let fsize = self.size.as_vec2();
+        // in-range points read the grid directly: one bounds check here instead of four per point
+        let (row, max_x, max_y) = (self.size.x + 1, self.size.x - 1, self.size.y - 1);
+        assert!(self.vertices.len() >= row * (self.size.y + 1));
+        let grid = &self.vertices[..];
 
         coords.iter_mut().for_each(|c| {
             if c.min_element() < 0. || c.max_element() > 1. {
@@ -303,13 +307,16 @@ impl WarpState {
                 }
             } else {
                 let rpos = *c * fsize;
-                let ipos = rpos.as_usizevec2().clamp(USizeVec2::ZERO, self.size - 1);
-                let fpos = rpos - ipos.as_vec2();
-                //println!("rpos={:?} ipos={:?}, fpos={:?}", rpos, ipos, fpos);
-                let p00 = self.point(ipos);
-                let p01 = self.point(ipos + USizeVec2::X);
-                let p10 = self.point(ipos + USizeVec2::Y);
-                let p11 = self.point(ipos + USizeVec2::ONE);
+                // as_usizevec2 then clamp, written out (both coordinates are >= 0 here)
+                let ix = (rpos.x as usize).min(max_x);
+                let iy = (rpos.y as usize).min(max_y);
+                let fpos = rpos - vec2(ix as f32, iy as f32);
+                let i = row * iy + ix;
+                // SAFETY: ix <= size.x - 1 and iy <= size.y - 1, so i + row + 1 <= row * (size.y + 1) - 1,
+                // within the grid (asserted above)
+                let (p00, p01, p10, p11) = unsafe {
+                    (*grid.get_unchecked(i), *grid.get_unchecked(i + 1), *grid.get_unchecked(i + row), *grid.get_unchecked(i + row + 1))
+                };
                 if self.bilinear {
                     let p0 = p00.lerp(p01, fpos.x);
                     let p1 = p10.lerp(p11, fpos.x);
@@ -1254,7 +1261,9 @@ impl<T: Model> Driver<T> {
             let arrays: Vec<&[Coord]> = forms.into_iter().map(|f| f.vertices()).collect();
 
             let form = blend(&values, &weights);
-            let mut vertices = Vec::new();
+            // the previous frame's buffer, no allocation per mesh and frame
+            let mut vertices = std::mem::take(&mut self.artmesh.get_mut(artmesh.uid()).vertices);
+            vertices.clear();
             vertices.resize(artmesh.vertex_count() as usize, Vec2::ZERO);
 
             blend_arrays(&arrays, &mut vertices, &weights);

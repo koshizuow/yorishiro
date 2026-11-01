@@ -64,6 +64,8 @@
 ##                          the stage not rendered, each autoload and tracking input stopped, to see which part
 ##                          costs what, and each script's nodes with _process off; --perf-rounds=<n> repeats them in turn and prints medians,
 ##                          --perf-only=<a,b> keeps only the phases whose names contain one of these
+##   --render-stats=<s>     after the screenshot, measure that long: GPU and CPU render time summed over every viewport
+##                          (the stage, each mask viewport), draw calls and objects per frame, the number of viewports
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -252,6 +254,8 @@ func _ready() -> void:
 			await _calibration_test(args)
 		if args.has("record"):
 			await _record(args)
+		if args.has("render-stats"):
+			await _render_stats(float(args["render-stats"]))
 		if args.has("perf-report"):
 			await _perf_report(float(args["perf-report"]), int(args.get("perf-rounds", "1")), str(args.get("perf-only", "")))
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
@@ -274,6 +278,39 @@ func _ready() -> void:
 		get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST)
 		await get_tree().process_frame
 		get_tree().quit()
+
+## GPU and CPU render time of every viewport (stage, mask viewports, window) and the draw calls, medians per frame
+func _render_stats(seconds: float):
+	var rs := RenderingServer
+	var viewports: Array[RID] = [get_viewport().get_viewport_rid()]
+	for vp in get_tree().root.find_children("*", "SubViewport", true, false):
+		viewports.append(vp.get_viewport_rid())
+	for vp in viewports:
+		rs.viewport_set_measure_render_time(vp, true)
+	var gpu: Array[float] = []
+	var cpu: Array[float] = []
+	var calls: Array[float] = []
+	var objects: Array[float] = []
+	var t0 := Time.get_ticks_msec()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	while Time.get_ticks_msec() - t0 < seconds * 1000:
+		await RenderingServer.frame_post_draw
+		var g := 0.0
+		var c := 0.0
+		for vp in viewports:
+			g += rs.viewport_get_measured_render_time_gpu(vp)
+			c += rs.viewport_get_measured_render_time_cpu(vp)
+		gpu.append(g)
+		cpu.append(c)
+		calls.append(rs.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
+		objects.append(rs.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME))
+	var med := func (a: Array[float]) -> float:
+		var b := a.duplicate()
+		b.sort()
+		return b[b.size() / 2] if b.size() else 0.0
+	print("[automation] render stats: %d viewports, GPU %.2f ms, render CPU %.2f ms, %d draw calls, %d objects per frame (medians of %d frames), %.0f fps" % [
+		viewports.size(), med.call(gpu), med.call(cpu), med.call(calls), med.call(objects), gpu.size(), Engine.get_frames_per_second()])
 
 ## opens every library model in turn, the way the picker does, and reports how each one went
 func _cycle_models(args: Dictionary):

@@ -16,3 +16,11 @@ path = "src/load_model.rs"
 [[bin]]
 name = "probe"
 path = "src/probe.rs"
+
+[[bin]]
+name = "stats"
+path = "src/stats.rs"
+
+[[bin]]
+name = "bench"
+path = "src/bench.rs"
