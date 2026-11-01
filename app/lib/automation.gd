@@ -59,6 +59,11 @@
 ##   --follow-face=<x,y,z>  move the loaded model with the face, these amounts (VTS units), or "off"
 ##   --record=<dir>         after the screenshot, save the window as <dir>/00001.jpg ... at 30 fps for
 ##                          --record-seconds (default 10), and the tracked values per frame in <dir>/params.csv
+##   --perf-report=<seconds> after the screenshot, the main thread's and the whole app's CPU per frame (from /proc),
+##                          measured that long as is, then with the models not processed, the interface hidden,
+##                          the stage not rendered, each autoload and tracking input stopped, to see which part
+##                          costs what; --perf-rounds=<n> repeats them in turn and prints medians,
+##                          --perf-only=<a,b> keeps only the phases starting with these names
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -248,6 +253,8 @@ func _ready() -> void:
 			await _calibration_test(args)
 		if args.has("record"):
 			await _record(args)
+		if args.has("perf-report"):
+			await _perf_report(float(args["perf-report"]), int(args.get("perf-rounds", "1")), str(args.get("perf-only", "")))
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		if tracking:
 			var p = tracking.parameters
@@ -1015,6 +1022,82 @@ func _calibration_test(args: Dictionary):
 	check.call("parts %s" % [page.last_calibration.get("applied")], page.last_calibration.get("applied", []).size() >= 3)
 
 const RECORD_PARAMS = ["FaceAngleX", "FaceAngleY", "FaceAngleZ", "EyeOpenLeft", "EyeOpenRight", "MouthOpen", "MouthSmile", "Brows", "FacePositionX", "FacePositionY", "FacePositionZ"]
+
+func _perf_report(seconds: float, rounds: int = 1, only: String = ""):
+	# Godot's own TIME_PROCESS monitor read more than a whole frame here, so the main thread's real CPU time
+	# comes from /proc, and what costs it is found by switching parts off in turn
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var models: Node = stage.find_child("ModelLayer", true, false) if stage else null
+	var interface = get_tree().root.find_child("Interface", true, false)  # a CanvasLayer
+	var viewports: Array[Viewport] = [get_viewport()]
+	viewports.append_array(get_tree().root.find_children("*", "SubViewport", true, false))
+	for v in viewports:
+		RenderingServer.viewport_set_measure_render_time(v.get_viewport_rid(), true)
+	var phases := [["as is", func (_on): pass]]
+	if models:
+		phases.append(["models not processed", func (on): models.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT])
+	# each autoload and each tracking input stopped in turn (process and input), the parts that run every frame
+	var parts: Array[Node] = []
+	for n in get_tree().root.get_children():
+		if n != self and n != get_tree().current_scene:
+			parts.append(n)
+	var tracking = get_tree().get_first_node_in_group("system:tracking")
+	if tracking:
+		parts.append(tracking)
+		parts.append_array(tracking.get_children())
+	for part in parts:
+		var before: Node.ProcessMode = part.process_mode
+		phases.append(["%s stopped" % part.name, func (on): part.process_mode = Node.PROCESS_MODE_DISABLED if on else before])
+	if interface:
+		phases.append(["interface hidden", func (on): interface.visible = not on])
+	if stage:
+		phases.append(["stage not rendered", func (on): stage.capture_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED if on else SubViewport.UPDATE_ALWAYS])
+	var scene := get_tree().current_scene
+	phases.append(["studio stopped", func (on): scene.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT])
+	if only:
+		phases = phases.filter(func (ph): return ph[0] == "as is" or Array(only.split(",")).any(func (w): return ph[0].begins_with(w)))
+	var results := {}  # phase -> main thread ms per frame of each round
+	for round in rounds:
+		for phase in phases:
+			phase[1].call(true)
+			for i in 30:
+				await RenderingServer.frame_post_draw
+			var frames := 0
+			var render := 0.0
+			var t0 := Time.get_ticks_usec()
+			var main0 := _cpu_ms("/proc/thread-self/stat")
+			var all0 := _cpu_ms("/proc/self/stat")
+			while Time.get_ticks_usec() - t0 < seconds * 1e6:
+				await RenderingServer.frame_post_draw
+				frames += 1
+				render += RenderingServer.get_frame_setup_time_cpu()
+				for v in viewports:
+					if is_instance_valid(v):
+						render += RenderingServer.viewport_get_measured_render_time_cpu(v.get_viewport_rid())
+			var n: float = max(frames, 1)
+			var main: float = (_cpu_ms("/proc/thread-self/stat") - main0) / n
+			results[phase[0]] = results.get(phase[0], []) + [main]
+			print("[automation] perf %-28s %3.0f fps, main thread %5.2f ms CPU per frame, whole app %5.2f, renderer's own measure %4.2f" % [
+				phase[0], frames / seconds, main, (_cpu_ms("/proc/self/stat") - all0) / n, render / n])
+			phase[1].call(false)
+	if rounds > 1:
+		# rounds alternate the phases, so the CPU's clock changes (powersave governor) average out
+		for key in results:
+			var v: Array = results[key]
+			v.sort()
+			print("[automation] perf median %-28s %5.2f ms (%s)" % [key, v[v.size() / 2], ", ".join(v.map(func (x): return "%.2f" % x))])
+	for v in viewports:
+		if is_instance_valid(v):
+			RenderingServer.viewport_set_measure_render_time(v.get_viewport_rid(), false)
+
+## utime + stime of a /proc stat file in ms (Linux, 100 ticks a second)
+func _cpu_ms(path: String) -> float:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if not f:
+		return 0.0
+	var line := f.get_line()
+	var rest := line.substr(line.rfind(")") + 2).split(" ")
+	return (int(rest[11]) + int(rest[12])) * 10.0
 
 func _record(args: Dictionary):
 	var dir: String = args["record"]
