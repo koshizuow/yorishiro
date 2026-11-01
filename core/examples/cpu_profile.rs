@@ -78,6 +78,11 @@ fn main() {
     let points: Vec<_> = frames.iter().map(|f| mesh.process(f).unwrap().unwrap().points).collect();
     let roi = mesh.roi.unwrap();
     stage("face: crop (warp 256x256)", &frames, |_, f| { std::hint::black_box(f.warp_affine(&roi_matrix(&roi), 256, 256, Border::Constant)); });
+    let crop = frames[0].warp_affine(&roi_matrix(&roi), 256, 256, Border::Constant);
+    stage("face: to NCHW float", &frames, |_, _| { std::hint::black_box(crop.to_nchw(1.0 / 255.0, 0.0)); });
+    let input = crop.to_nchw(1.0 / 255.0, 0.0);
+    let mut net = yorishiro_core::net::Net::open(&mp.join("face_landmarks"), &rt, threads).unwrap();
+    stage("face: landmark network alone", &frames, |_, _| { net.run(3, 256, 256, input.clone()).unwrap(); });
     mesh.roi = None;
     stage("face: landmarks, one pass", &frames, |_, f| { mesh.process(f).unwrap(); });
     println!("    (one pass measured {pass:.2} ms at open; flip averaging doubles the passes)");
