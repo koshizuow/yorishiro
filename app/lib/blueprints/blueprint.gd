@@ -118,10 +118,12 @@ func _on_connection_request(from_node: StringName, from_port: int, to_node: Stri
 			disconnect_node(i.from_node, i.from_port, to_node, to_port)
 		
 	connect_node(from_node, from_port, to_node, to_port)
+	invalidate_routes()
 	n2.bind(s2, n1)
 
 func _on_disconnection_request(from_node: StringName, from_port: int, to_node: StringName, to_port: int) -> void:
 	disconnect_node(from_node, from_port, to_node, to_port)
+	invalidate_routes()
 
 	var source: VtAction = get_node(NodePath(from_node))
 	var target: VtAction = get_node(NodePath(to_node))
@@ -139,6 +141,7 @@ func _on_child_entered_tree(node: Node) -> void:
 	
 	graph_elements[id] = node
 	node.slot_updated.connect(_on_action.bind(node))
+	invalidate_routes()
 	
 func _on_child_exiting_tree(node: Node) -> void:
 	if node is not VtAction:
@@ -148,26 +151,50 @@ func _on_child_exiting_tree(node: Node) -> void:
 	if not id.is_empty() and id in graph_elements:
 		graph_elements.erase(id)
 	node.slot_updated.disconnect(_on_action.bind(node))
+	invalidate_routes()
 		
+## Where each output port leads: node name -> {port -> [[target, from_slot, output type, to_slot, input type]]}.
+## _on_action runs for every value of every node each frame (tens of times), and reading `connections` builds a
+## new array of dictionaries each time, so the routes are kept and built again only after the connections or
+## nodes change (invalidate_routes(), called wherever the graph is rewired), and once a second in case
+## something rewired it without saying so.
+var _routes := {}
+var _routes_frame := -1
+const ROUTES_MAX_AGE_FRAMES := 60
+
+func invalidate_routes() -> void:
+	_routes_frame = -1
+
+func _build_routes() -> void:
+	_routes = {}
+	# not get_connection_list_from_node(): it errors for nodes that were never connected
+	for conn in connections:
+		var source := get_node_or_null(NodePath(conn.from_node)) as VtAction
+		var target := get_node_or_null(NodePath(conn.to_node)) as VtAction
+		if source == null or target == null:
+			continue
+		var from_slot = source.get_output_slot_by_port(conn.from_port)
+		var to_slot = target.get_input_slot_by_port(conn.to_port)
+		if to_slot == -1:
+			continue
+		var ports: Dictionary = _routes.get_or_add(conn.from_node, {})
+		ports.get_or_add(conn.from_port, []).append([target, from_slot, source.get_output_type(from_slot), to_slot, target.get_input_type(to_slot)])
+
 func _on_action(from_port: int, node: VtAction):
 	if not enabled:
 		return
-		
-	# not get_connection_list_from_node(): it errors for nodes that were never connected
-	for conn in connections:
-		if not (conn.from_node == node.name and conn.from_port == from_port):
+	var frame := Engine.get_process_frames()
+	if _routes_frame < 0 or frame - _routes_frame >= ROUTES_MAX_AGE_FRAMES:
+		_build_routes()
+		_routes_frame = frame
+	for route in _routes.get(node.name, {}).get(from_port, []):
+		var target: VtAction = route[0]
+		if not is_instance_valid(target):
 			continue
-			
-		var target: VtAction = get_node(NodePath(conn.to_node))
-		if target == null:
-			continue
-			
-		var from_slot = node.get_output_slot_by_port(from_port)
-		var output = node.get_output_type(from_slot)
-		var to_slot = target.get_input_slot_by_port(conn.to_port)
-		var input = target.get_input_type(to_slot)
-		if to_slot == -1:
-			continue
+		var from_slot = route[1]
+		var output = route[2]
+		var to_slot = route[3]
+		var input = route[4]
 		match output:
 			VtAction.SlotType.TRIGGER:
 				target.invoke_trigger(to_slot)

@@ -301,6 +301,7 @@ func _delete(e: Dictionary) -> void:
 ## only knows its ports after a layout, so the engine lookup fails for nodes made since
 func _unwire(graph, c: Dictionary) -> void:
 	graph.disconnect_node(c.from_node, c.from_port, c.to_node, c.to_port)
+	graph.invalidate_routes()
 	var source = graph.get_node_or_null(NodePath(c.from_node))
 	var target = graph.get_node_or_null(NodePath(c.to_node))
 	if source and target:
@@ -312,6 +313,7 @@ func _disconnect_all(graph, node) -> void:
 	for c in graph.connections.duplicate():
 		if c.from_node == node.name or c.to_node == node.name:
 			graph.disconnect_node(c.from_node, c.from_port, c.to_node, c.to_port)
+	graph.invalidate_routes()
 
 #endregion
 

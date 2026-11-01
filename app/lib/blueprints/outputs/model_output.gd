@@ -139,9 +139,10 @@ func _update_model():
 	if model.is_queued_for_deletion():
 		return
 	
+	# the labels are for the graph editor, set only while it shows (_process refreshes them then): a Label's
+	# text reshapes it even when hidden
 	for p in bindings:
 		model.set("parameters/%s" % [p], bindings[p])
-		binding_display[p].text = "%1.2f" % bindings[p]
 	_dirty = false
 	bindings.clear()
 	

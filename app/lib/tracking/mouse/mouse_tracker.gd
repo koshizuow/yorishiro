@@ -30,9 +30,6 @@ func _input(event: InputEvent) -> void:
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta: float) -> void:
 	var mouse = GlobalInput.get_mouse_position()
-	var size = DisplayServer.screen_get_size()
-	var center = size / 2
-	
 	update({
 		"MousePositionX": mouse.x,
 		"MousePositionY": mouse.y,

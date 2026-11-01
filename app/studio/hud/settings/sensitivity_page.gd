@@ -516,6 +516,7 @@ func _insert(chain: Dictionary, link: Dictionary, type: StringName, params: Dict
 	# a new node only has ports after the graph lays it out
 	await get_tree().process_frame
 	graph.disconnect_node(link.from_node, link.from_port, link.to_node, link.to_port)
+	graph.invalidate_routes()
 	to.unbind(to.get_input_slot_by_port(link.to_port), from)
 	graph._on_connection_request(link.from_node, link.from_port, node.name, node.get_input_port_by_name("value"))
 	graph._on_connection_request(node.name, node.get_output_port_by_name("value"), link.to_node, link.to_port)

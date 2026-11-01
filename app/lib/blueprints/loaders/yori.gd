@@ -54,6 +54,7 @@ func _deserialize(graph: Blueprint, model: VtModel, data: Dictionary):
 		if n == null:
 			push_error("invalid action type (%s), clearing graph" % i.type)
 			graph.clear_connections()
+			graph.invalidate_routes()
 			for c in graph.get_children():
 				c.queue_free()
 			return

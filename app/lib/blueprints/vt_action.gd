@@ -66,6 +66,8 @@ func build_slots() -> void:
 	# call the virtual function to build the physical slots onto the node
 	_build_slots()
 	size.y = 0
+	if graph and graph.has_method("invalidate_routes"):
+		graph.invalidate_routes()
 	
 	if graph:
 		# rebind prior connections to new port positions based on name

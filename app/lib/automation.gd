@@ -62,8 +62,8 @@
 ##   --perf-report=<seconds> after the screenshot, the main thread's and the whole app's CPU per frame (from /proc),
 ##                          measured that long as is, then with the models not processed, the interface hidden,
 ##                          the stage not rendered, each autoload and tracking input stopped, to see which part
-##                          costs what; --perf-rounds=<n> repeats them in turn and prints medians,
-##                          --perf-only=<a,b> keeps only the phases starting with these names
+##                          costs what, and each script's nodes with _process off; --perf-rounds=<n> repeats them in turn and prints medians,
+##                          --perf-only=<a,b> keeps only the phases whose names contain one of these
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -1052,10 +1052,26 @@ func _perf_report(seconds: float, rounds: int = 1, only: String = ""):
 		phases.append(["interface hidden", func (on): interface.visible = not on])
 	if stage:
 		phases.append(["stage not rendered", func (on): stage.capture_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED if on else SubViewport.UPDATE_ALWAYS])
+	# every script whose nodes run _process or _physics_process each frame, those nodes' processing off together
+	var groups := {}
+	for n in get_tree().root.find_children("*", "", true, false):
+		if n == self or not (n.is_processing() or n.is_physics_processing()):
+			continue
+		var script = n.get_script()
+		var key: String = script.resource_path.get_file() if script else n.get_class()
+		groups[key] = groups.get(key, []) + [n]
+	for key in groups:
+		var nodes: Array = groups[key]
+		var states := nodes.map(func (n): return [n.is_processing(), n.is_physics_processing()])
+		phases.append(["%s x%d off" % [key, nodes.size()], func (on):
+			for i in nodes.size():
+				if is_instance_valid(nodes[i]):
+					nodes[i].set_process(states[i][0] and not on)
+					nodes[i].set_physics_process(states[i][1] and not on)])
 	var scene := get_tree().current_scene
 	phases.append(["studio stopped", func (on): scene.process_mode = Node.PROCESS_MODE_DISABLED if on else Node.PROCESS_MODE_INHERIT])
 	if only:
-		phases = phases.filter(func (ph): return ph[0] == "as is" or Array(only.split(",")).any(func (w): return ph[0].begins_with(w)))
+		phases = phases.filter(func (ph): return ph[0] == "as is" or Array(only.split(",")).any(func (w): return w in ph[0]))
 	var results := {}  # phase -> main thread ms per frame of each round
 	for round in rounds:
 		for phase in phases:
@@ -1077,7 +1093,7 @@ func _perf_report(seconds: float, rounds: int = 1, only: String = ""):
 			var n: float = max(frames, 1)
 			var main: float = (_cpu_ms("/proc/thread-self/stat") - main0) / n
 			results[phase[0]] = results.get(phase[0], []) + [main]
-			print("[automation] perf %-28s %3.0f fps, main thread %5.2f ms CPU per frame, whole app %5.2f, renderer's own measure %4.2f" % [
+			print("[automation] perf %-40s %3.0f fps, main thread %5.2f ms CPU per frame, whole app %5.2f, renderer's own measure %4.2f" % [
 				phase[0], frames / seconds, main, (_cpu_ms("/proc/self/stat") - all0) / n, render / n])
 			phase[1].call(false)
 	if rounds > 1:
@@ -1085,7 +1101,7 @@ func _perf_report(seconds: float, rounds: int = 1, only: String = ""):
 		for key in results:
 			var v: Array = results[key]
 			v.sort()
-			print("[automation] perf median %-28s %5.2f ms (%s)" % [key, v[v.size() / 2], ", ".join(v.map(func (x): return "%.2f" % x))])
+			print("[automation] perf median %-40s %5.2f ms (%s)" % [key, v[v.size() / 2], ", ".join(v.map(func (x): return "%.2f" % x))])
 	for v in viewports:
 		if is_instance_valid(v):
 			RenderingServer.viewport_set_measure_render_time(v.get_viewport_rid(), false)
