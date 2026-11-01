@@ -1,12 +1,12 @@
 ## Live2D pose groups (<model>.pose3.json, FileReferences.Pose in model3.json): parts that are alternatives
-## of each other, such as two sets of arms. Ayagami draws every part, so without this a model shows all of
+## of each other, such as two sets of arms. Katashiro draws every part, so without this a model shows all of
 ## them at once. Written from the file format and the models' behavior only (D25, D26).
 ##
 ## Per group one part is shown, at first the first one. Motions pick another by raising its part opacity
 ## (PartOpacity curves); the newly picked part fades in over FadeInTime (0.5 s when the file has none) while
 ## the others fade out behind it. Parts in a member's Link follow that member.
 ## Runs as the last mutator of the model, so its opacities are what gets drawn.
-extends AyagamiMutator
+extends KatashiroMutator
 
 const DEFAULT_FADE = 0.5
 
@@ -74,7 +74,7 @@ func _picked_by_motion(g: Dictionary, players: Array) -> int:
 				best_value = v
 	return best
 
-func _apply(pose: AyagamiPose) -> void:
+func _apply(pose: KatashiroPose) -> void:
 	for g in _groups:
 		for i in g["parts"].size():
 			var id: String = g["parts"][i]

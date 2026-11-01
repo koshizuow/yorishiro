@@ -23,7 +23,7 @@ pub enum BlendMode {
 
 #[derive(GodotClass)]
 #[class(tool, init, base=Resource)]
-pub struct AyagamiExpressionTrack {
+pub struct KatashiroExpressionTrack {
     #[export]
     pub property_name: StringName,
     #[export]
@@ -34,25 +34,25 @@ pub struct AyagamiExpressionTrack {
 
 #[derive(GodotClass)]
 #[class(tool, init, base = Resource)]
-pub struct AyagamiExpression {
+pub struct KatashiroExpression {
     #[export]
-    pub tracks: Array<Gd<AyagamiExpressionTrack>>,
+    pub tracks: Array<Gd<KatashiroExpressionTrack>>,
 }
 
 #[derive(GodotClass)]
 #[class(tool, init, base = Node)]
-pub struct AyagamiExpressionMutator {
+pub struct KatashiroExpressionMutator {
     base: Base<Node>,
 
     #[export]
-    pub expressions: Array<Gd<AyagamiExpression>>,
+    pub expressions: Array<Gd<KatashiroExpression>>,
 
     expression_grouping: HashMap<StringName, Vec<StringName>>,
     weight: HashMap<StringName, f32>,
 }
 
 #[godot_dyn]
-impl IMutator for AyagamiExpressionMutator {
+impl IMutator for KatashiroExpressionMutator {
     fn apply(&mut self, pose: &mut Pose) {
         for ex in self.expressions.iter_shared() {
             let e = ex.get_name().to_string_name();
@@ -73,7 +73,7 @@ impl IMutator for AyagamiExpressionMutator {
 }
 
 #[godot_api]
-impl AyagamiExpressionMutator {
+impl KatashiroExpressionMutator {
     #[func]
     pub fn is_activated(&self, expression: StringName) -> bool {
         return *self.weight.get(&expression).unwrap_or(&0.0) > 0.0;
@@ -131,7 +131,7 @@ impl AyagamiExpressionMutator {
 }
 
 #[godot_api]
-impl INode for AyagamiExpressionMutator {
+impl INode for KatashiroExpressionMutator {
     fn on_get(&self, parameter: StringName) -> Option<Variant> {
         if parameter.begins_with(WEIGHT_PREFIX) {
             let name = parameter.trim_prefix(WEIGHT_PREFIX).to_string_name();

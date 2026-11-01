@@ -14,11 +14,11 @@ pub const PHYSICS_EXTENSION: &str = "physics3.json";
 
 #[derive(GodotClass)]
 #[class(tool, no_init, base = Resource)]
-pub struct AyagamiPhysicsMeta {
+pub struct KatashiroPhysicsMeta {
     pub physics: Physics3,
 }
 
-impl AyagamiPhysicsMeta {
+impl KatashiroPhysicsMeta {
     pub fn as_options(&self) -> PhysicsOptions {
         PhysicsOptions::accurate(Some(60.0))
     }
@@ -26,31 +26,31 @@ impl AyagamiPhysicsMeta {
 
 #[derive(GodotClass)]
 #[class(tool, init, base=ResourceFormatLoader)]
-pub struct AyagamiPhysicsLoader {
+pub struct KatashiroPhysicsLoader {
     base: Base<ResourceFormatLoader>,
 }
 
 #[godot_api]
-impl IResourceFormatLoader for AyagamiPhysicsLoader {
+impl IResourceFormatLoader for KatashiroPhysicsLoader {
     fn get_recognized_extensions(&self) -> PackedStringArray {
         PackedArray::from(["json".into()])
     }
 
     fn get_resource_script_class(&self, path: GString) -> GString {
         if path.ends_with(PHYSICS_EXTENSION) {
-            "AyagamiPhysicsMeta".into()
+            "KatashiroPhysicsMeta".into()
         } else {
             GString::new()
         }
     }
 
     fn handles_type(&self, ty: StringName) -> bool {
-        ty == "AyagamiPhysicsMeta".to_string_name()
+        ty == "KatashiroPhysicsMeta".to_string_name()
     }
 
     fn get_resource_type(&self, path: GString) -> GString {
         if path.ends_with(PHYSICS_EXTENSION) {
-            "AyagamiPhysicsMeta".into()
+            "KatashiroPhysicsMeta".into()
         } else {
             GString::new()
         }
@@ -70,7 +70,7 @@ impl IResourceFormatLoader for AyagamiPhysicsLoader {
         });
         if !s.is_empty() {
             if let Ok(physics) = serde_json::from_str(&s.to_string()) {
-                return Gd::from_object(AyagamiPhysicsMeta { physics }).to_variant();
+                return Gd::from_object(KatashiroPhysicsMeta { physics }).to_variant();
             }
         }
         return Error::FAILED.to_variant();
@@ -88,14 +88,14 @@ pub enum PhysicsMode {
 
 #[derive(GodotClass)]
 #[class(tool, init, base=Node)]
-pub struct AyagamiPhysicsMutator {
+pub struct KatashiroPhysicsMutator {
     base: Base<Node>,
     physics_controller: Option<katashiro_core::physics::PhysicsEngine>,
 
     #[export(file = "*.physics3.json")]
     #[var(set = set_definition)]
     pub definition: GString,
-    options: Option<Gd<AyagamiPhysicsMeta>>,
+    options: Option<Gd<KatashiroPhysicsMeta>>,
 
     #[export]
     #[var(set = set_fps)]
@@ -120,7 +120,7 @@ pub struct AyagamiPhysicsMutator {
 }
 
 #[godot_api]
-impl AyagamiPhysicsMutator {
+impl KatashiroPhysicsMutator {
     fn reload_physics(&mut self) {
         if let Some(options) = self.options.as_ref() {
             let maybe_fps = if self.fps > 0.0 { Some(self.fps) } else { None };
@@ -158,9 +158,9 @@ impl AyagamiPhysicsMutator {
 
         let Some(options) = ResourceLoader::singleton()
             .load_ex(&path)
-            .type_hint("AyagamiPhysicsMeta")
+            .type_hint("KatashiroPhysicsMeta")
             .done()
-            .map(|r| r.try_cast::<AyagamiPhysicsMeta>().unwrap())
+            .map(|r| r.try_cast::<KatashiroPhysicsMeta>().unwrap())
         else {
             panic!("Could not load physics from {}", path)
         };
@@ -218,7 +218,7 @@ impl AyagamiPhysicsMutator {
 }
 
 #[godot_dyn]
-impl IMutator for AyagamiPhysicsMutator {
+impl IMutator for KatashiroPhysicsMutator {
     fn apply(&mut self, pose: &mut Pose) {
         if !self.enabled {
             return;

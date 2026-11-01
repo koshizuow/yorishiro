@@ -2,19 +2,19 @@ use godot::classes::{AnimationPlayer, EditorImportPlugin, IEditorImportPlugin, R
 use godot::global::Error;
 use godot::prelude::*;
 
-use crate::expression::{AyagamiExpressionMutator, GROUP_PREFIX};
-use crate::loader::AyagamiLoader;
+use crate::expression::{KatashiroExpressionMutator, GROUP_PREFIX};
+use crate::loader::KatashiroLoader;
 
 #[derive(GodotClass)]
 #[class(tool, init, base=EditorImportPlugin)]
-pub struct AyagamiImporter {
+pub struct KatashiroImporter {
     base: Base<EditorImportPlugin>,
 }
 
 #[godot_api]
-impl IEditorImportPlugin for AyagamiImporter {
+impl IEditorImportPlugin for KatashiroImporter {
     fn get_importer_name(&self) -> GString {
-        "ayagami.model".into()
+        "katashiro.model".into()
     }
 
     fn get_recognized_extensions(&self) -> PackedArray<GString> {
@@ -30,7 +30,7 @@ impl IEditorImportPlugin for AyagamiImporter {
     }
 
     fn get_visible_name(&self) -> GString {
-        "Scene (Ayagami)".into()
+        "Scene (Katashiro)".into()
     }
 
     fn get_preset_name(&self, _: i32) -> GString {
@@ -67,12 +67,12 @@ impl IEditorImportPlugin for AyagamiImporter {
         _gen_files: Array<GString>,
     ) -> Error {
         let dir = &source_file.clone().get_base_dir();
-        let model = AyagamiLoader::singleton().bind().load_model(source_file);
+        let model = KatashiroLoader::singleton().bind().load_model(source_file);
 
         if options.at("include_motions").to::<bool>() {
             let mut animation_player =
                 model.get_node_as::<AnimationPlayer>(&"MotionController".to_node_path());
-            let mut animation_library = AyagamiLoader::singleton()
+            let mut animation_library = KatashiroLoader::singleton()
                 .bind()
                 .load_motion_library(model.clone());
             animation_library.set_local_to_scene(true);
@@ -82,8 +82,8 @@ impl IEditorImportPlugin for AyagamiImporter {
 
         if options.at("include_expressions").to::<bool>() {
             let mut expression_controller = model
-                .get_node_as::<AyagamiExpressionMutator>(&"ExpressionController".to_node_path());
-            let expressions = AyagamiLoader::singleton().bind().load_expression_library(
+                .get_node_as::<KatashiroExpressionMutator>(&"ExpressionController".to_node_path());
+            let expressions = KatashiroLoader::singleton().bind().load_expression_library(
                 dir.clone(),
                 options.at("group_expressions_by_folder").to::<bool>(),
             );
@@ -107,14 +107,14 @@ impl IEditorImportPlugin for AyagamiImporter {
 
 #[derive(GodotClass)]
 #[class(tool, init, base=EditorImportPlugin)]
-pub struct AyagamiMotionImporter {
+pub struct KatashiroMotionImporter {
     base: Base<EditorImportPlugin>,
 }
 
 #[godot_api]
-impl IEditorImportPlugin for AyagamiMotionImporter {
+impl IEditorImportPlugin for KatashiroMotionImporter {
     fn get_importer_name(&self) -> GString {
-        "ayagami.motion".into()
+        "katashiro.motion".into()
     }
 
     fn get_recognized_extensions(&self) -> PackedArray<GString> {
@@ -130,7 +130,7 @@ impl IEditorImportPlugin for AyagamiMotionImporter {
     }
 
     fn get_visible_name(&self) -> GString {
-        "Animation (Ayagami Motion)".into()
+        "Animation (Katashiro Motion)".into()
     }
 
     fn get_preset_name(&self, _: i32) -> GString {
@@ -149,7 +149,7 @@ impl IEditorImportPlugin for AyagamiMotionImporter {
         _platform_variants: Array<GString>,
         _gen_files: Array<GString>,
     ) -> Error {
-        match AyagamiLoader::singleton().bind().load_motion(source_file) {
+        match KatashiroLoader::singleton().bind().load_motion(source_file) {
             Some(mut animation) => {
                 // pack the model into a reusable scene
                 animation.set_path(&format!("{}.{}", save_path, self.get_save_extension()));
@@ -165,14 +165,14 @@ pub const EXPRESSION_EXTENSION: &str = "exp3.json";
 
 #[derive(GodotClass)]
 #[class(tool, init, base=EditorImportPlugin)]
-pub struct AyagamiExpressionImporter {
+pub struct KatashiroExpressionImporter {
     base: Base<EditorImportPlugin>,
 }
 
 #[godot_api]
-impl IEditorImportPlugin for AyagamiExpressionImporter {
+impl IEditorImportPlugin for KatashiroExpressionImporter {
     fn get_importer_name(&self) -> GString {
-        "ayagami.expression".into()
+        "katashiro.expression".into()
     }
 
     fn get_recognized_extensions(&self) -> PackedArray<GString> {
@@ -184,11 +184,11 @@ impl IEditorImportPlugin for AyagamiExpressionImporter {
     }
 
     fn get_resource_type(&self) -> GString {
-        "AyagamiExpression".into()
+        "KatashiroExpression".into()
     }
 
     fn get_visible_name(&self) -> GString {
-        "Ayagami Expression".into()
+        "Katashiro Expression".into()
     }
 
     fn get_preset_name(&self, _: i32) -> GString {
@@ -207,7 +207,7 @@ impl IEditorImportPlugin for AyagamiExpressionImporter {
         _platform_variants: Array<GString>,
         _gen_files: Array<GString>,
     ) -> Error {
-        match AyagamiLoader::singleton()
+        match KatashiroLoader::singleton()
             .bind()
             .load_expression(source_file)
         {

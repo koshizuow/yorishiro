@@ -47,7 +47,7 @@ pub struct LoadedModel<T: Model, R: AsRef<T>> {
 
 #[derive(GodotClass)]
 #[class(tool, init, base = Node2D)]
-pub struct AyagamiModel {
+pub struct KatashiroModel {
     base: Base<Node2D>,
     #[var(pub)]
     size: Vector2i,
@@ -74,7 +74,7 @@ pub struct AyagamiModel {
 }
 
 #[godot_api]
-impl AyagamiModel {
+impl KatashiroModel {
     #[signal]
     pub fn loaded();
 
@@ -338,9 +338,9 @@ impl AyagamiModel {
 }
 
 #[godot_api]
-impl INode2D for AyagamiModel {
+impl INode2D for KatashiroModel {
     fn on_notification(&mut self, what: CanvasItemNotification) {
-        // reconnect scene to an ayagami driver when instantiated from an imported resource
+        // reconnect scene to a core driver when instantiated from an imported resource
         if what == CanvasItemNotification::READY {
             if !self.is_loaded() {
                 self.load();
@@ -452,7 +452,7 @@ impl INode2D for AyagamiModel {
             return false;
         }
 
-        // check if attempting to set a value on the internal ayagami driver
+        // check if attempting to set a value on the internal core driver
         if let (Some(pose), Some(key), Ok(mut v)) = (
             self.pose.as_mut(),
             param_to_key(property).as_ref(),

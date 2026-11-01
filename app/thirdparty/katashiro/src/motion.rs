@@ -6,14 +6,14 @@ use godot::{
 };
 
 use crate::{
-    model::{AyagamiModel, PARAMETER_PREFIX, PART_PREFIX, param_to_key},
+    model::{KatashiroModel, PARAMETER_PREFIX, PART_PREFIX, param_to_key},
     mutator::IMutator,
 };
 use katashiro_core::pose::{Key, Pose, Value};
 
 #[derive(GodotClass)]
 #[class(tool, init, base = AnimationPlayer)]
-pub struct AyagamiMotionMutator {
+pub struct KatashiroMotionMutator {
     base: Base<AnimationPlayer>,
 
     // internal pose based on parent node's pose map
@@ -23,11 +23,11 @@ pub struct AyagamiMotionMutator {
 }
 
 #[godot_api]
-impl AyagamiMotionMutator {
+impl KatashiroMotionMutator {
     #[func]
     pub fn reset(&mut self) {
         if let Some(parent) = self.base().get_parent() {
-            if let Ok(model) = parent.try_cast::<AyagamiModel>() {
+            if let Ok(model) = parent.try_cast::<KatashiroModel>() {
                 self.pose = Some(Pose::with_map(model.bind().pose_map.clone()));
             }
         } else {
@@ -45,7 +45,7 @@ impl AyagamiMotionMutator {
 }
 
 #[godot_dyn]
-impl IMutator for AyagamiMotionMutator {
+impl IMutator for KatashiroMotionMutator {
     fn apply(&mut self, pose: &mut Pose) {
         if self.base().get_current_animation() != StringName::default() {
             if let Some(p) = self.pose.as_ref() {
@@ -56,7 +56,7 @@ impl IMutator for AyagamiMotionMutator {
 }
 
 #[godot_api]
-impl IAnimationPlayer for AyagamiMotionMutator {
+impl IAnimationPlayer for KatashiroMotionMutator {
     fn on_notification(&mut self, notification: NodeNotification) {
         if notification == NodeNotification::READY {
             // if the parent is already initialized, it's safe to load the pose model from it
@@ -76,11 +76,11 @@ impl IAnimationPlayer for AyagamiMotionMutator {
 
             // if the model isn't already loaded, wait for the signal to be able to reset to an accurate pose map
             if let Some(parent) = self.base().get_parent() {
-                if let Ok(model) = parent.try_cast::<AyagamiModel>() {
+                if let Ok(model) = parent.try_cast::<KatashiroModel>() {
                     model
                         .signals()
                         .loaded()
-                        .connect_other(self, AyagamiMotionMutator::loaded_hook);
+                        .connect_other(self, KatashiroMotionMutator::loaded_hook);
                 }
             }
         }

@@ -8,9 +8,9 @@ const ExpressionEditor = preload("./expression_editor.gd")
 var item: VtModel
 ## opens this list again (set by the item row), after the editor closes
 var reopen: Callable
-var buttons: Dictionary[AyagamiExpression, Array] = {}
+var buttons: Dictionary[KatashiroExpression, Array] = {}
 
-@onready var exp_controller: AyagamiExpressionMutator = item.get_expression_controller()
+@onready var exp_controller: KatashiroExpressionMutator = item.get_expression_controller()
 @onready var expressions = exp_controller.expressions.duplicate()
 func _ready():
 	title = tr("Set Expression [%s]") % item.display_name
@@ -83,7 +83,7 @@ func _ready():
 	var list_height = %ExpressionList.size.y
 	self.size.y = clamp(list_height, 128, 800)
 		
-func make_row(e: AyagamiExpression, btn_group: ButtonGroup = null):
+func make_row(e: KatashiroExpression, btn_group: ButtonGroup = null):
 	var e_name = e.get_name()
 		
 	var row = HBoxContainer.new()
@@ -137,7 +137,7 @@ func _open_editor(expression_name: String) -> void:
 		overlay.open_sub_page(key, editor)
 	editor.grab_focus()
 
-func toggle_expression(activate: bool, expression: AyagamiExpression, fade: float):
+func toggle_expression(activate: bool, expression: KatashiroExpression, fade: float):
 	for b in buttons[expression]:
 		b.set_pressed_no_signal(activate)
 		

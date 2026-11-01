@@ -19,7 +19,7 @@ var _name := LineEdit.new()
 var _filter := LineEdit.new()
 var _only_used := CheckBox.new()
 var _error := Label.new()
-var _preview: AyagamiExpression
+var _preview: KatashiroExpression
 var _original_weight := 0.0
 
 func _ready() -> void:
@@ -198,13 +198,13 @@ func _tracks_of(expression_name: String) -> Dictionary:
 # --- preview: the edited expression at full weight, the original one off meanwhile ---
 
 func _start_preview() -> void:
-	var controller: AyagamiExpressionMutator = model.get_expression_controller()
+	var controller: KatashiroExpressionMutator = model.get_expression_controller()
 	if original:
 		_original_weight = float(controller.get("weight/%s" % original))
 		controller.set("weight/%s" % original, 0.0)
-	_preview = AyagamiExpression.new()
+	_preview = KatashiroExpression.new()
 	_preview.resource_name = PREVIEW
-	var list: Array[AyagamiExpression] = []
+	var list: Array[KatashiroExpression] = []
 	list.assign(controller.expressions)
 	list.append(_preview)
 	controller.expressions = list
@@ -214,10 +214,10 @@ func _start_preview() -> void:
 func _update_preview() -> void:
 	if _preview == null:
 		return
-	var tracks: Array[AyagamiExpressionTrack] = []
+	var tracks: Array[KatashiroExpressionTrack] = []
 	var t := _tracks()
 	for id in t:
-		var track := AyagamiExpressionTrack.new()
+		var track := KatashiroExpressionTrack.new()
 		track.property_name = "parameters/%s" % id
 		track.blend_mode = BLEND_KEYS[BLENDS.find(t[id][1])]
 		track.amount = t[id][0]
@@ -227,8 +227,8 @@ func _update_preview() -> void:
 func _end_preview() -> void:
 	if _preview == null or not is_instance_valid(model):
 		return
-	var controller: AyagamiExpressionMutator = model.get_expression_controller()
-	var list: Array[AyagamiExpression] = []
+	var controller: KatashiroExpressionMutator = model.get_expression_controller()
+	var list: Array[KatashiroExpression] = []
 	for e in controller.expressions:
 		if e != _preview:
 			list.append(e)

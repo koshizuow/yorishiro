@@ -5,30 +5,30 @@ use crate::importer::*;
 
 #[derive(GodotClass)]
 #[class(tool, init, base=EditorPlugin)]
-struct AyagamiPlugin {
+struct KatashiroPlugin {
     base: Base<EditorPlugin>,
-    model_importer: Gd<AyagamiImporter>,
-    motion_importer: Gd<AyagamiMotionImporter>,
-    expression_importer: Gd<AyagamiExpressionImporter>,
+    model_importer: Gd<KatashiroImporter>,
+    motion_importer: Gd<KatashiroMotionImporter>,
+    expression_importer: Gd<KatashiroExpressionImporter>,
 }
 
 #[godot_api]
-impl IEditorPlugin for AyagamiPlugin {
+impl IEditorPlugin for KatashiroPlugin {
     fn enter_tree(&mut self) {
         {
-            let plugin: Gd<AyagamiImporter> = AyagamiImporter::new_gd();
+            let plugin: Gd<KatashiroImporter> = KatashiroImporter::new_gd();
             self.model_importer = plugin.clone();
             self.base_mut().add_import_plugin(&plugin);
         }
 
         {
-            let plugin: Gd<AyagamiMotionImporter> = AyagamiMotionImporter::new_gd();
+            let plugin: Gd<KatashiroMotionImporter> = KatashiroMotionImporter::new_gd();
             self.motion_importer = plugin.clone();
             self.base_mut().add_import_plugin(&plugin);
         }
 
         {
-            let plugin: Gd<AyagamiExpressionImporter> = AyagamiExpressionImporter::new_gd();
+            let plugin: Gd<KatashiroExpressionImporter> = KatashiroExpressionImporter::new_gd();
             self.expression_importer = plugin.clone();
             self.base_mut().add_import_plugin(&plugin);
         }

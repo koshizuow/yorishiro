@@ -89,7 +89,7 @@ func invoke_trigger(slot: int) -> void:
 		activate = false
 		
 	var fade = %Fade/Value.value / 1000.0
-	var controller: AyagamiExpressionMutator = model.get_expression_controller()
+	var controller: KatashiroExpressionMutator = model.get_expression_controller()
 	var groups:Array = controller.get("expression_groups/%s" % expression)
 	var tween = create_tween().set_parallel(true)
 	if not groups.is_empty() and activate:

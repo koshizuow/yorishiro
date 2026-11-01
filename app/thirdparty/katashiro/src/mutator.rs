@@ -3,7 +3,7 @@ use godot::prelude::*;
 use godot::register::info::{PropertyHintInfo, PropertyInfo, PropertyUsageFlags};
 
 use crate::model::{
-    AyagamiModel, PARAMETER_PREFIX, PART_PREFIX, key_param, key_part, param_to_key,
+    KatashiroModel, PARAMETER_PREFIX, PART_PREFIX, key_param, key_part, param_to_key,
 };
 use katashiro_core::pose::{Key, Pose, Value};
 
@@ -13,12 +13,12 @@ pub trait IMutator {
 
 #[derive(GodotClass)]
 #[class(tool, no_init, base = RefCounted)]
-pub struct AyagamiPose {
+pub struct KatashiroPose {
     pose: Pose,
 }
 
 #[godot_api]
-impl AyagamiPose {
+impl KatashiroPose {
     #[func]
     fn blend(&mut self, property: StringName, value: f32, #[opt(default = 1.0)] weight: f32) {
         if let Some(k) = param_to_key(property).as_ref() {
@@ -49,7 +49,7 @@ impl AyagamiPose {
 
 #[derive(GodotClass)]
 #[class(tool, init, base = Node)]
-pub struct AyagamiMutator {
+pub struct KatashiroMutator {
     base: Base<Node>,
     #[export(range = (0.0, 1.0))]
     #[init(val = 1.0)]
@@ -57,27 +57,27 @@ pub struct AyagamiMutator {
 }
 
 #[godot_dyn]
-impl IMutator for AyagamiMutator {
+impl IMutator for KatashiroMutator {
     fn apply(&mut self, pose: &mut Pose) {
-        let data: Gd<AyagamiPose> = Gd::from_object(AyagamiPose { pose: pose.clone() });
+        let data: Gd<KatashiroPose> = Gd::from_object(KatashiroPose { pose: pose.clone() });
         <Self>::apply(self, data.clone());
         pose.blend(&data.bind().pose, self.weight);
     }
 }
 
 // Script class for making mutators
-// because Ayagami Poses are not serializable as Variants to be exposed to the GDScript API
+// because Katashiro poses are not serializable as Variants to be exposed to the GDScript API
 // we instead pass through a Dictionary following the standard property naming pattern on models
 // to mutate the pose in the chain
 #[godot_api]
-impl AyagamiMutator {
+impl KatashiroMutator {
     #[func(virtual)]
-    fn apply(&mut self, mut _pose: Gd<AyagamiPose>) {}
+    fn apply(&mut self, mut _pose: Gd<KatashiroPose>) {}
 }
 
 #[derive(GodotClass)]
 #[class(tool, init, base = Node)]
-pub struct AyagamiOverrideMutator {
+pub struct KatashiroOverrideMutator {
     base: Base<Node>,
 
     #[export]
@@ -87,7 +87,7 @@ pub struct AyagamiOverrideMutator {
 }
 
 #[godot_api]
-impl AyagamiOverrideMutator {
+impl KatashiroOverrideMutator {
     #[func]
     pub fn reset(&mut self) {
         self.parameters.clear();
@@ -96,7 +96,7 @@ impl AyagamiOverrideMutator {
 }
 
 #[godot_dyn]
-impl IMutator for AyagamiOverrideMutator {
+impl IMutator for KatashiroOverrideMutator {
     fn apply(&mut self, pose: &mut Pose) {
         for (k, v) in self.parameters.iter_shared() {
             if let Some(p) = pose.get_mut_flattened(&key_param(k)) {
@@ -112,9 +112,9 @@ impl IMutator for AyagamiOverrideMutator {
 }
 
 #[godot_api]
-impl INode for AyagamiOverrideMutator {
+impl INode for KatashiroOverrideMutator {
     fn on_set(&mut self, property: StringName, value: Variant) -> bool {
-        // check if attempting to set a value on the internal ayagami driver
+        // check if attempting to set a value on the internal core driver
         if property.begins_with(PARAMETER_PREFIX) {
             if let Ok(v) = value.try_to::<f32>() {
                 self.parameters.set(&property, v);
@@ -132,7 +132,7 @@ impl INode for AyagamiOverrideMutator {
 
     fn on_get(&self, property: StringName) -> Option<Variant> {
         if let Some(parent) = self.base().get_parent() {
-            if let Ok(model) = parent.clone().try_cast::<AyagamiModel>() {
+            if let Ok(model) = parent.clone().try_cast::<KatashiroModel>() {
                 if let Some(k) = param_to_key(property).as_ref() {
                     if let Some(pose) = model.bind().pose.as_ref() {
                         if let Some(v) = pose.get_flattened(k) {
@@ -148,7 +148,7 @@ impl INode for AyagamiOverrideMutator {
 
     fn on_get_property_list(&mut self) -> Vec<PropertyInfo> {
         if let Some(parent) = self.base().get_parent() {
-            if let Ok(model) = parent.clone().try_cast::<AyagamiModel>() {
+            if let Ok(model) = parent.clone().try_cast::<KatashiroModel>() {
                 return model
                     .bind()
                     .pose_map

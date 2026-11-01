@@ -4,7 +4,7 @@ extends "../../vt_model.gd"
 
 const Pose3 = preload("res://lib/model/formats/l2d/pose3.gd")
 
-var model: AyagamiModel
+var model: KatashiroModel
 var container: Node
 ## parent of the model (or its pixel viewport), offset by the follow-the-face movement so the user's own
 ## placement on the VtModel stays untouched
@@ -131,7 +131,7 @@ func _build_model():
 		await get_tree().process_frame
 		
 	print_debug("loading model from %s" % modelmeta.model)
-	model = AyagamiLoader.load_model(modelmeta.model)
+	model = KatashiroLoader.load_model(modelmeta.model)
 	if model == null:
 		push_error("could not load model %s" % modelmeta.model)
 		return false
@@ -139,7 +139,7 @@ func _build_model():
 	mover.add_child(model)
 	await get_tree().process_frame # wait for the model to initialize
 	
-	var anim_lib = AyagamiLoader.load_motion_library(model)
+	var anim_lib = KatashiroLoader.load_motion_library(model)
 	var idle_anim: AnimationPlayer = model.get_node("MotionController")
 	if idle_anim.has_animation_library(""):
 		idle_anim.remove_animation_library("") # remove just in case
@@ -155,7 +155,7 @@ func _build_model():
 		var os_a = a.duplicate(true)
 		os_a.loop_mode = Animation.LOOP_NONE
 		os_lib.add_animation(anim, os_a)
-	var one_shot = AyagamiMotionMutator.new()
+	var one_shot = KatashiroMotionMutator.new()
 	one_shot.add_animation_library("", os_lib)
 	one_shot.name = "OneshotMotionController"
 	model.add_child(one_shot)
@@ -214,7 +214,7 @@ func get_idle_animation_player() -> AnimationPlayer:
 func get_animation_player() -> AnimationPlayer:
 	return model.get_node("OneshotMotionController")
 	
-func get_expression_controller() -> AyagamiExpressionMutator:
+func get_expression_controller() -> KatashiroExpressionMutator:
 	return model.get_node("ExpressionController")
 
 ## expressions made or changed in the expression editor, beside the model's settings file; the model's own
@@ -233,19 +233,19 @@ func user_expression_names() -> PackedStringArray:
 
 ## the model's expressions and the user's, keeping the weights of those still there
 func load_expressions() -> void:
-	var controller: AyagamiExpressionMutator = get_expression_controller()
+	var controller: KatashiroExpressionMutator = get_expression_controller()
 	var weights := {}
 	for e in controller.expressions:
 		weights[e.get_name()] = controller.get("weight/%s" % e.get_name())
-	var library: Dictionary = AyagamiLoader.load_expression_library(modelmeta.model.get_base_dir(), true)
-	var list: Array[AyagamiExpression] = []
+	var library: Dictionary = KatashiroLoader.load_expression_library(modelmeta.model.get_base_dir(), true)
+	var list: Array[KatashiroExpression] = []
 	var groups := {}
 	for e in library.keys():
 		list.append(e)
 		groups[e.get_name()] = library[e]
 	var dir := user_expression_dir()
 	for n in user_expression_names():
-		var e: AyagamiExpression = AyagamiLoader.load_expression(ProjectSettings.globalize_path(dir.path_join(n + ".exp3.json")))
+		var e: KatashiroExpression = KatashiroLoader.load_expression(ProjectSettings.globalize_path(dir.path_join(n + ".exp3.json")))
 		if e == null:
 			continue
 		var i := list.find_custom(func (x): return x.get_name() == n)

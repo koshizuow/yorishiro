@@ -15,11 +15,11 @@ use godot::prelude::*;
 use katashiro_core::core::{ArtMesh, BlendMode, Collection, Item, Model};
 use katashiro_core::driver::DrawNode;
 
-use crate::expression::{AyagamiExpression, AyagamiExpressionMutator, AyagamiExpressionTrack};
+use crate::expression::{KatashiroExpression, KatashiroExpressionMutator, KatashiroExpressionTrack};
 use crate::importer::EXPRESSION_EXTENSION;
-use crate::model::{AyagamiModel, PARAMETER_PREFIX, PART_PREFIX};
-use crate::motion::AyagamiMotionMutator;
-use crate::physics::AyagamiPhysicsMutator;
+use crate::model::{KatashiroModel, PARAMETER_PREFIX, PART_PREFIX};
+use crate::motion::KatashiroMotionMutator;
+use crate::physics::KatashiroPhysicsMutator;
 
 fn shader_material(s: &str) -> Gd<ShaderMaterial> {
     let mut rl = ResourceLoader::singleton();
@@ -34,19 +34,19 @@ fn shader_material(s: &str) -> Gd<ShaderMaterial> {
 
 #[derive(GodotClass)]
 #[class(tool, init, singleton)]
-pub struct AyagamiLoader;
+pub struct KatashiroLoader;
 
 #[godot_api]
-impl AyagamiLoader {
+impl KatashiroLoader {
     #[func]
-    pub fn load_model(&self, file_path: GString) -> Gd<AyagamiModel> {
+    pub fn load_model(&self, file_path: GString) -> Gd<KatashiroModel> {
         let settings: katashiro_core::meta::Model3 = {
             let json = FileAccess::get_file_as_string(&file_path);
             serde_json::from_str(&json.to_string()).expect("unable to parse model3 json")
         };
         let base_path = file_path.get_base_dir();
 
-        let mut scene = AyagamiModel::new_alloc();
+        let mut scene = KatashiroModel::new_alloc();
         scene.set_scene_file_path(&file_path);
 
         // build materials for each texture
@@ -90,7 +90,7 @@ impl AyagamiLoader {
         scene.add_child(&mask_group);
         mask_group.set_owner(&scene);
 
-        let mut expression_controller = AyagamiExpressionMutator::new_alloc();
+        let mut expression_controller = KatashiroExpressionMutator::new_alloc();
         expression_controller.set_name("ExpressionController");
         scene.add_child(&expression_controller);
         expression_controller.set_owner(&scene);
@@ -305,7 +305,7 @@ impl AyagamiLoader {
 
         // setup animation player
         {
-            let mut motion_controller = AyagamiMotionMutator::new_alloc();
+            let mut motion_controller = KatashiroMotionMutator::new_alloc();
             motion_controller.set_name("MotionController");
             motion_controller.set_root(&".".to_node_path());
             scene.add_child(&motion_controller);
@@ -319,7 +319,7 @@ impl AyagamiLoader {
 
         // setup physics
         {
-            let mut mutator = AyagamiPhysicsMutator::new_alloc();
+            let mut mutator = KatashiroPhysicsMutator::new_alloc();
             mutator.set_name("PhysicsController");
 
             scene.add_child(&mutator);
@@ -499,7 +499,7 @@ impl AyagamiLoader {
     }
 
     #[func]
-    pub fn load_motion_library(&self, model: Gd<AyagamiModel>) -> Gd<AnimationLibrary> {
+    pub fn load_motion_library(&self, model: Gd<KatashiroModel>) -> Gd<AnimationLibrary> {
         let base_path: GString = ProjectSettings::singleton()
             .globalize_path(&model.bind().base().get_scene_file_path().get_base_dir());
         let mut animation_library = AnimationLibrary::new_gd();
@@ -520,7 +520,7 @@ impl AyagamiLoader {
         return animation_library;
     }
 
-    pub fn create_reset_motion(&self, model: &Gd<AyagamiModel>) -> Gd<Animation> {
+    pub fn create_reset_motion(&self, model: &Gd<KatashiroModel>) -> Gd<Animation> {
         let mut animation = Animation::new_gd();
         animation.set_name("RESET");
         animation.set_length(0.0001);
@@ -545,11 +545,11 @@ impl AyagamiLoader {
     }
 
     #[func]
-    pub fn load_expression(&self, file_path: GString) -> Option<Gd<AyagamiExpression>> {
+    pub fn load_expression(&self, file_path: GString) -> Option<Gd<KatashiroExpression>> {
         let json = FileAccess::get_file_as_string(&file_path);
         let data: VarDictionary = Json::parse_string(&json).to();
 
-        let mut expression = AyagamiExpression::new_gd();
+        let mut expression = KatashiroExpression::new_gd();
 
         expression.bind_mut().tracks = Array::from_iter(
             data.get("Parameters")
@@ -557,7 +557,7 @@ impl AyagamiLoader {
                 .iter_shared()
                 .map(|p| p.to::<VarDictionary>())
                 .map(|track_data| {
-                    let mut track = AyagamiExpressionTrack::new_gd();
+                    let mut track = KatashiroExpressionTrack::new_gd();
                     track.bind_mut().property_name = format!(
                         "{}{}",
                         PARAMETER_PREFIX,
@@ -596,10 +596,10 @@ impl AyagamiLoader {
         &self,
         path: GString,
         #[opt(default = false)] group_by_folder: bool,
-    ) -> Dictionary<Gd<AyagamiExpression>, StringName> {
+    ) -> Dictionary<Gd<KatashiroExpression>, StringName> {
         let base_path: GString = ProjectSettings::singleton().globalize_path(&path);
 
-        let expressions: Array<Gd<AyagamiExpression>> = glob(&format!(
+        let expressions: Array<Gd<KatashiroExpression>> = glob(&format!(
             "{}/**/*.{}",
             base_path.to_string(),
             EXPRESSION_EXTENSION

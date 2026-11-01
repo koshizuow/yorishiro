@@ -6,7 +6,7 @@ func model_directory() -> String:
 	return "user://Live2DModels"
 
 func model_format() -> StringName:
-	return "Live2D/Ayagami"
+	return "Live2D/Katashiro"
 	
 func supported_extension() -> Array[String]:
 	return [".model3.json", ".moc3"]
