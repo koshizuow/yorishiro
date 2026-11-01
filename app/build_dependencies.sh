@@ -20,6 +20,16 @@ case "$PLATFORM" in
 esac
 
 
+## Our Rust addons share one Cargo workspace (the repo root, outputs in its target/). Both are built in one cargo
+## call: building one alone resolves godot-rust with other features and compiles it again.
+build_workspace () {
+	FEATURES=""
+	if [ -n "$NCNN_DIR" ]; then
+		FEATURES="--features yorishiro-core-gd/ncnn"
+	fi
+	cargo build --release -p katashiro-gd -p yorishiro-core-gd $FEATURES --manifest-path $PROJ_ROOT/../Cargo.toml
+}
+
 ## Katashiro: our fork of Ayagami's Godot bindings (ayagami-gd), the Live2D renderer
 build_katashiro () {
 	echo -e "\n#### Preparing katashiro-gd\n\n"
@@ -29,9 +39,9 @@ build_katashiro () {
 
 	mkdir -p $ADDONDIR
 	
-	cd $WORKDIR
-	
-	make package target=$TARGET
+	# release only: the .gdextension loads it for the editor too
+	build_workspace || return 1
+	cp $PROJ_ROOT/../target/release/libkatashiro_gd.so $WORKDIR/addons/katashiro/lib/libkatashiro_gd.release.x86_64.so
 	cp -r $WORKDIR/addons/katashiro $ADDONDIR
 
 	# MIT: Ayagami's copyright notice stays in the license with ours
@@ -53,17 +63,10 @@ build_katashiro () {
 build_core () {
 	echo -e "\n#### Preparing yorishiro-core\n\n"
 
-	WORKDIR=$PROJ_ROOT/../core/gd
 	ADDON=$PROJ_ROOT/addons/yorishiro_core
-	FEATURES=""
-	if [ -n "$NCNN_DIR" ]; then
-		FEATURES="--features ncnn"
-	fi
-
-	cd $WORKDIR
-	cargo build --release $FEATURES || return 1
+	build_workspace || return 1
 	mkdir -p $ADDON/lib
-	cp target/release/libyorishiro_core_gd.so $ADDON/lib/libyorishiro_core_gd.x86_64.so
+	cp $PROJ_ROOT/../target/release/libyorishiro_core_gd.so $ADDON/lib/libyorishiro_core_gd.x86_64.so
 	if [ -n "$NCNN_DIR" ]; then
 		cp -L $NCNN_DIR/lib/libncnn.so.1 $ADDON/lib/  # found through the node library's $ORIGIN rpath
 	fi

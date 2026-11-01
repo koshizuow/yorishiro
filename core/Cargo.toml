@@ -19,9 +19,6 @@ v4l = "0.14.0"
 # NCNN_VULKAN and NCNN_SHARED_LIB, found through NCNN_DIR (its install prefix)
 ncnn = ["dep:cc"]
 
-[profile.release]
-debug = 1
-
 [build-dependencies]
 cc = { version = "1.10.0", optional = true }
 

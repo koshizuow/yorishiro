@@ -1,8 +1,8 @@
 // probe MODEL.moc3 "Param=val,..." ArtMeshA,ArtMeshB : driven visibility, opacity and vertex bbox
 use std::{env, fs::File};
-use ayagami::core::{ArtMesh, Collection, Item, ItemArray, Model};
-use ayagami::driver::{DrawNode, Driver};
-use ayagami::file;
+use katashiro_core::core::{ArtMesh, Collection, Item, ItemArray, Model};
+use katashiro_core::driver::{DrawNode, Driver};
+use katashiro_core::file;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

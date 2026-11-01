@@ -1,2 +1,3 @@
 # App data when running from source (see run.sh): models, settings, logs, shader caches
 /userdata/
+/target/

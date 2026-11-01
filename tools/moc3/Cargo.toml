@@ -1,0 +1,18 @@
+[package]
+name = "moc3-tools"
+version = "0.0.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "moc3 inspection tools on Katashiro's core"
+publish = false
+
+[dependencies]
+katashiro-core = { path = "../../app/thirdparty/katashiro/core" }
+
+[[bin]]
+name = "load-model"
+path = "src/load_model.rs"
+
+[[bin]]
+name = "probe"
+path = "src/probe.rs"
