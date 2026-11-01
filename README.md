@@ -53,16 +53,9 @@
 
 ## Build
 
-The app runs on Godot 4.7.2 with the custom blend modes patch
-([godotengine/godot#116686](https://github.com/godotengine/godot/pull/116686)), which Live2D blending needs.
-
-1. **Engine.** Build it from the official source (needs `clang lld libwayland-bin python3` and
-   [uv](https://docs.astral.sh/uv/); about 40 minutes):
-   ```sh
-   tools/build_godot.sh 4.7.2-stable app/thirdparty/katashiro/patches/custom_blend_modes-4_7_1.patch ../godot-build
-   ```
-   Put `bin/godot.linuxbsd.editor.x86_64.llvm` from the build folder in `../tools/godot/` next to the repository
-   (where `run.sh` looks for it), or set `GODOT=/path/to/godot`.
+1. **Engine.** The official [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/) editor for
+   Linux (x86_64, standard, not .NET). Unzip it into `../tools/godot/` next to the repository, where `run.sh` looks
+   for it, or set `GODOT=/path/to/godot`.
 2. **System packages** (Debian / Ubuntu names):
    `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
 3. **Rust** 1.94 or newer through [rustup](https://rustup.rs) (distribution packages are often older).
@@ -81,7 +74,7 @@ The app runs on Godot 4.7.2 with the custom blend modes patch
    cd ..
    ```
 6. **PipeWire output helper:** `app/native/funnel_out/build.sh`
-7. **Import the project once:** `../tools/godot/godot.linuxbsd.editor.x86_64.llvm --headless --path app --import`
+7. **Import the project once:** `./run.sh --headless --import`
 
 ## Usage
 

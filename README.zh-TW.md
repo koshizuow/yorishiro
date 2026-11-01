@@ -48,14 +48,8 @@
 
 ## 編譯
 
-App 跑在加了自訂混合模式修補（[godotengine/godot#116686](https://github.com/godotengine/godot/pull/116686)）的
-Godot 4.7.2 上，Live2D 的混合需要這個修補。
-
-1. **引擎。** 從官方原始碼自己編（需要 `clang lld libwayland-bin python3` 和 [uv](https://docs.astral.sh/uv/)，約 40 分鐘）：
-   ```sh
-   tools/build_godot.sh 4.7.2-stable app/thirdparty/katashiro/patches/custom_blend_modes-4_7_1.patch ../godot-build
-   ```
-   把編好的 `bin/godot.linuxbsd.editor.x86_64.llvm` 放到 repo 旁邊的 `../tools/godot/`（`run.sh` 預設會到這裡找），
+1. **引擎。** 下載官方的 [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/) Linux 版編輯器
+   （x86_64，標準版，不是 .NET 版），解壓到 repo 旁邊的 `../tools/godot/`（`run.sh` 預設會到這裡找），
    也可以用 `GODOT=/path/to/godot` 指定位置。
 2. **系統套件**（以 Debian / Ubuntu 的套件名稱為例）：
    `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
@@ -75,7 +69,7 @@ Godot 4.7.2 上，Live2D 的混合需要這個修補。
    cd ..
    ```
 6. **PipeWire 輸出程式：** `app/native/funnel_out/build.sh`
-7. **第一次使用前先匯入專案：** `../tools/godot/godot.linuxbsd.editor.x86_64.llvm --headless --path app --import`
+7. **第一次使用前先匯入專案：** `./run.sh --headless --import`
 
 ## 使用方式
 

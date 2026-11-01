@@ -144,15 +144,7 @@ def _ver(tag: str) -> tuple[int, ...]:
 
 
 def report_godot(cfg: dict) -> list[str]:
-    lines = ["## Godot engine", "", cfg.get("note", ""), "", f"- we use: {cfg['engine_version']} (our build, tools/build_godot.sh)"]
-    b = cfg["build_release"]
-    rel = github(f"repos/{b['repo']}/releases/tags/{b['tag']}")
-    if "error" in rel:
-        lines.append(f"- AyagamiDev build: could not check ({rel['error']})")
-    else:
-        assets = ", ".join(a["name"] for a in rel.get("assets", [])[:6])
-        lines.append(f"- AyagamiDev build release '{rel.get('name') or b['tag']}': published {rel.get('published_at', '?')[:10]}, "
-                     f"assets {assets}")
+    lines = ["## Godot engine", "", cfg.get("note", ""), "", f"- we use: {cfg['engine_version']} (official build)"]
     ours = _ver(cfg["engine_version"])
     out = subprocess.run(["git", "ls-remote", "--tags", "https://github.com/godotengine/godot.git"],
                          capture_output=True, text=True).stdout
@@ -167,7 +159,7 @@ def report_godot(cfg: dict) -> list[str]:
     else:
         state = "MERGED" if p.get("merged_at") else p.get("state", "?")
         lines.append(f"- blend mode PR #{pr['number']}: {state}"
-                     + (f" on {p['merged_at'][:10]}, official builds can replace the patched one" if p.get("merged_at") else ""))
+                     + (f" on {p['merged_at'][:10]}, Katashiro can switch to exact blend modes" if p.get("merged_at") else ""))
     return lines + [""]
 
 

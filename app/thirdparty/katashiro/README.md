@@ -10,15 +10,12 @@ Features
 - import `.exp3.json` expressions
 - control expressions with tweenable weights or groupable toggle states
 
-## Correct Rendering in Godot
+## Rendering in Godot
 
-Default blend modes available to Shaders in Godot 4.7.x do not match the reference blending.
-
-Until functionality is merged into Godot, a custom build of the engine with patches are required for the shaders to render models properly.
-The patch should be applied against 4.7.1
-
-Related PR<br>
-https://github.com/godotengine/godot/pull/116686
+Katashiro runs on official Godot builds. Live2D's blend modes are drawn with Godot's own: normal as premultiplied
+alpha, multiply as `blend_mul` over a white-filled colour, additive as `blend_add` with the colour scaled so its
+largest premultiplied channel becomes the alpha. Upstream Ayagami needed an engine patch
+(godotengine/godot#116686) instead.
 
 ## Asset Attribution
 
