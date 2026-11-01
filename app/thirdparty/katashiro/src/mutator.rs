@@ -5,7 +5,7 @@ use godot::register::info::{PropertyHintInfo, PropertyInfo, PropertyUsageFlags};
 use crate::model::{
     AyagamiModel, PARAMETER_PREFIX, PART_PREFIX, key_param, key_part, param_to_key,
 };
-use ayagami::pose::{Key, Pose, Value};
+use katashiro_core::pose::{Key, Pose, Value};
 
 pub trait IMutator {
     fn apply(&mut self, _pose: &mut Pose);

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ayagami::pose::Pose;
+use katashiro_core::pose::Pose;
 use fastxfix::CommonStr;
 use glob::glob;
 use godot::classes::animation::{LoopMode, TrackType};
@@ -12,8 +12,8 @@ use godot::classes::{
 };
 use godot::prelude::*;
 
-use ayagami::core::{ArtMesh, BlendMode, Collection, Item, Model};
-use ayagami::driver::DrawNode;
+use katashiro_core::core::{ArtMesh, BlendMode, Collection, Item, Model};
+use katashiro_core::driver::DrawNode;
 
 use crate::expression::{AyagamiExpression, AyagamiExpressionMutator, AyagamiExpressionTrack};
 use crate::importer::EXPRESSION_EXTENSION;
@@ -40,7 +40,7 @@ pub struct AyagamiLoader;
 impl AyagamiLoader {
     #[func]
     pub fn load_model(&self, file_path: GString) -> Gd<AyagamiModel> {
-        let settings: ayagami::meta::Model3 = {
+        let settings: katashiro_core::meta::Model3 = {
             let json = FileAccess::get_file_as_string(&file_path);
             serde_json::from_str(&json.to_string()).expect("unable to parse model3 json")
         };

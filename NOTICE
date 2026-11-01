@@ -29,9 +29,11 @@ Third-party components used by app/
                         built into app/addons/katashiro. Renamed in 2026-11
                         so it is not mistaken for the upstream project; it is
                         not endorsed by the Ayagami authors.
-                        Statically links the Ayagami core library
-                        (https://github.com/AyagamiDev/ayagami), MIT or
-                        Apache-2.0, unmodified.
+                        Its core library katashiro-core
+                        (app/thirdparty/katashiro/core) is the ayagami crate
+                        (https://github.com/AyagamiDev/ayagami, commit
+                        0d1d7aa) with our changes, MIT or Apache-2.0,
+                        Copyright (c) The Ayagami Project Contributors.
   libfunnel             https://github.com/hoshinolina/libfunnel
                         MIT, Copyright the libfunnel contributors. Included
                         as app/thirdparty/libfunnel, compiled into
@@ -41,10 +43,8 @@ Third-party components used by app/
                         The Unlicense (public domain)
   godot-keylogger       https://github.com/erodozer/godot-keylogger
                         MIT, Copyright (c) 2025-present erodozer
-  Godot Engine          https://godotengine.org, MIT. Yorishiro runs on a
-                        build with the custom blend modes patch
-                        (godotengine/godot#116686), made with
-                        tools/build_godot.sh from the official source.
+  Godot Engine          https://godotengine.org, MIT. Yorishiro runs on the
+                        official builds.
 
 Fonts shipped in app/ui/fonts/
 
@@ -131,7 +131,7 @@ Evaluation only, not used by the tracker and not distributed
   (CC BY-SA 4.0, tracker/tools/eval_hands.py), also never for training.
   Live2D sample models and the Live2D Cubism SDK are not included and are not
   redistributed. Users download them and accept Live2D's terms themselves.
-  Yorishiro renders Live2D models with Ayagami and does not ship Live2D Cubism
+  Yorishiro renders Live2D models with Katashiro (from Ayagami) and does not ship Live2D Cubism
   Core.
 
 "Live2D" and "Cubism" are trademarks of Live2D Inc. "VTube Studio" is a

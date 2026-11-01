@@ -1,12 +1,14 @@
 [package]
-name = "ayagami"
+name = "katashiro-core"
 version = "0.1.0"
 edition = "2024"
+license = "MIT OR Apache-2.0"
+description = "Katashiro's Live2D model reader and deformer, from the ayagami crate"
+publish = false
 
 [dependencies]
 byteorder = "1.5.0"
 derive_more = { version = "2.1.1", features = ["debug", "display"] }
-env_logger = "0.11.10"
 glam = { version = "0.33.1", features = ["zerocopy"] }
 log = "0.4.32"
 paste = "1.0.15"
@@ -20,8 +22,4 @@ zerocopy = { version = "0.8.52", features = ["std"] }
 zerocopy-derive = "0.8.52"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
-
-[[bin]]
-name = "load-model"
-path = "src/main.rs"
+name = "katashiro_core"

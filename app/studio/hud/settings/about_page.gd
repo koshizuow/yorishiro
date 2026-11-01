@@ -5,9 +5,9 @@ extends ScrollContainer
 ## [name, author or source, license, what it does here]
 const COMPONENTS = [
 	["OpenVT", "erodozer", "MIT", "The app this one was forked from"],
-	["Godot Engine", "Godot contributors, with the custom blend modes patch (godot#116686)", "MIT", "Game engine the app runs on"],
+	["Godot Engine", "Godot contributors", "MIT", "Game engine the app runs on"],
 	["Katashiro", "Yorishiro's fork of ayagami-gd by The Ayagami Project Contributors", "MIT", "Live2D models in Godot"],
-	["Ayagami", "The Ayagami Project Contributors", "MIT / Apache-2.0", "Live2D renderer (the core library Katashiro uses)"],
+	["Ayagami", "The Ayagami Project Contributors", "MIT / Apache-2.0", "Live2D model reader and deformer (Katashiro's core, from the ayagami crate)"],
 	["gd-virtualcamera", "erodozer", "Unlicense", "Virtual webcam output"],
 	["libfunnel", "the libfunnel contributors", "MIT", "Sending the stage to OBS over PipeWire"],
 	["PipeWire", "PipeWire contributors", "MIT", "Sending the stage to OBS over PipeWire"],
@@ -21,6 +21,7 @@ const COMPONENTS = [
 const LICENSE_FILES = [
 	["Yorishiro app (with OpenVT)", "res://LICENSE.txt"],
 	["Katashiro (fork of ayagami-gd)", "res://license/LICENSE.katashiro.md"],
+	["Katashiro core (from ayagami)", "res://license/LICENSE.katashiro-core.md"],
 	["gd-virtualcamera", "res://license/LICENSE.gdvirtualcamera.md"],
 	["libfunnel", "res://license/LICENSE.libfunnel.txt"],
 	["godot-keylogger", "res://license/LICENSE.keylogger.md"],

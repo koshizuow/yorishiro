@@ -9,7 +9,7 @@ use crate::{
     model::{AyagamiModel, PARAMETER_PREFIX, PART_PREFIX, param_to_key},
     mutator::IMutator,
 };
-use ayagami::pose::{Key, Pose, Value};
+use katashiro_core::pose::{Key, Pose, Value};
 
 #[derive(GodotClass)]
 #[class(tool, init, base = AnimationPlayer)]

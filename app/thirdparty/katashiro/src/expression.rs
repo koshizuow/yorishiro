@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use crate::model::key_param;
 use crate::mutator::IMutator;
-use ayagami::pose::{Pose, Value};
+use katashiro_core::pose::{Pose, Value};
 
 const ACTIVE_PREFIX: &str = "expressions/";
 const WEIGHT_PREFIX: &str = "weight/";

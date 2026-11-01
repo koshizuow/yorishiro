@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
-use ayagami::meta::Physics3;
-use ayagami::physics::{PhysicsEngine, PhysicsOptions};
-use ayagami::pose::{Key, Value};
+use katashiro_core::meta::Physics3;
+use katashiro_core::physics::{PhysicsEngine, PhysicsOptions};
+use katashiro_core::pose::{Key, Value};
 use godot::classes::{FileAccess, IResourceFormatLoader, ResourceFormatLoader, ResourceLoader};
 use godot::global::Error;
 use godot::prelude::*;
 
 use crate::mutator::IMutator;
-use ayagami::pose::Pose;
+use katashiro_core::pose::Pose;
 
 pub const PHYSICS_EXTENSION: &str = "physics3.json";
 
@@ -90,7 +90,7 @@ pub enum PhysicsMode {
 #[class(tool, init, base=Node)]
 pub struct AyagamiPhysicsMutator {
     base: Base<Node>,
-    physics_controller: Option<ayagami::physics::PhysicsEngine>,
+    physics_controller: Option<katashiro_core::physics::PhysicsEngine>,
 
     #[export(file = "*.physics3.json")]
     #[var(set = set_definition)]

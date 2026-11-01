@@ -36,6 +36,8 @@ build_katashiro () {
 
 	# MIT: Ayagami's copyright notice stays in the license with ours
 	cp $WORKDIR/LICENSE.md $PROJ_ROOT/license/LICENSE.katashiro.md
+	# the core crate, from ayagami: MIT or Apache-2.0, its copyright file and the MIT text
+	cat $WORKDIR/core/COPYRIGHT - $WORKDIR/core/LICENSE-MIT <<< "" > $PROJ_ROOT/license/LICENSE.katashiro-core.md
 	cp $WORKDIR/README.md $ADDONDIR/katashiro/README.md
 	
 	echo "*" > $ADDONDIR/katashiro/.gitignore

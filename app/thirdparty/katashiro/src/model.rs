@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ayagami::meta::DisplayInfo;
+use katashiro_core::meta::DisplayInfo;
 use godot::classes::file_access::ModeFlags;
 use godot::classes::notify::CanvasItemNotification;
 use godot::classes::{ArrayMesh, FileAccess, INode2D, MeshInstance2D, ShaderMaterial, SubViewport};
 use godot::meta::ClassId;
 use godot::prelude::*;
 
-use ayagami::core::{Item, Model, Param};
-use ayagami::driver::{DrawNode, Driver};
-use ayagami::file::ParsedModel;
-use ayagami::pose::{Key, Pose, PoseMap, Value};
+use katashiro_core::core::{Item, Model, Param};
+use katashiro_core::driver::{DrawNode, Driver};
+use katashiro_core::file::ParsedModel;
+use katashiro_core::pose::{Key, Pose, PoseMap, Value};
 use godot::register::info::{PropertyHint, PropertyHintInfo, PropertyInfo, PropertyUsageFlags};
 
 use crate::mutator::IMutator;
@@ -87,7 +87,7 @@ impl AyagamiModel {
         let resource_path = &self.base().get_scene_file_path();
 
         let base_path = resource_path.get_base_dir();
-        let settings: ayagami::meta::Model3 = {
+        let settings: katashiro_core::meta::Model3 = {
             godot_print!("model path: {}", resource_path);
             let json = FileAccess::get_file_as_string(resource_path);
             serde_json::from_str(&json.to_string()).expect("unable to parse model3 json")
