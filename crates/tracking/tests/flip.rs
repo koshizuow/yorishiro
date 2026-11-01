@@ -12,8 +12,8 @@ fn flip_averaging_matches_python() {
         eprintln!("skipping");
         return;
     }
-    let mirror = Npz::open(&root.join("tracker/models/core/fit.npz")).unwrap().ints("flip_mirror").unwrap();
-    let mut mesh = FaceMesh::open(&root.join("tracker/models/mediapipe"), 4).unwrap();
+    let mirror = Npz::open(&root.join("models/core/fit.npz")).unwrap().ints("flip_mirror").unwrap();
+    let mut mesh = FaceMesh::open(&root.join("models/mediapipe"), 4).unwrap();
     mesh.flip_mirror = Some(mirror);
     for name in ["crema-d-60", "20261029-105439"] {
         let roi = Npz::open(&td.join(format!("{name}-inference.npz"))).unwrap().f64s("roi").unwrap().0;

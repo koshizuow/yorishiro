@@ -9,8 +9,8 @@ fn main() {
     let index: usize = a[1].parse().unwrap();
     let root = std::path::Path::new(&a[2]);
     let seconds: f64 = a.get(3).and_then(|s| s.parse().ok()).unwrap_or(10.0);
-    let (mp, fit, eyes) = (root.join("tracker/models/mediapipe"), root.join("tracker/models/core/fit.npz"),
-                           root.join("tracker/src/yorishiro_tracker/assets/eye_openness.onnx"));
+    let (mp, fit, eyes) = (root.join("models/mediapipe"), root.join("models/core/fit.npz"),
+                           root.join("models/eye_openness.onnx"));
     let mut tracker = Tracker::open(&ModelPaths { mediapipe: &mp, fit: &fit, eyes: Some(&eyes) }, 4).unwrap();
     let cam = Camera::open(index, 1280, 720, 30).unwrap();
     println!("camera {index}: {}", cam.mode);

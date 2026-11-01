@@ -1,7 +1,7 @@
 //! A network on any of the core's runtimes, by its file stem (<stem>.onnx for ONNX Runtime,
 //! <stem>.ncnn.param / .bin for ncnn), as the Python tracker's backends.factory.open_model.
 
-use crate::backend::{Error, OrtModel, Provider};
+use crate::backend::{Error, OrtModel};
 use std::path::Path;
 
 /// Where a network runs.
@@ -9,8 +9,6 @@ use std::path::Path;
 pub enum Runtime {
     /// ONNX Runtime CPU (the reference)
     OrtCpu,
-    /// ONNX Runtime with CUDA (fp32) or TensorRT (fp16)
-    Ort(Provider),
     /// ncnn on the first Vulkan GPU, fp16 or fp32
     #[cfg(feature = "ncnn")]
     Vulkan { fp16: bool },
@@ -30,7 +28,6 @@ impl Net {
         let onnx = stem.with_extension("onnx");
         Ok(match runtime {
             Runtime::OrtCpu => Net::Ort(OrtModel::open(&onnx, threads)?),
-            Runtime::Ort(p) => Net::Ort(OrtModel::open_on(&onnx, threads, p)?),
             #[cfg(feature = "ncnn")]
             Runtime::Vulkan { fp16 } => Net::Ncnn(crate::ncnn::NcnnModel::open(stem, true, *fp16, threads)?),
             #[cfg(feature = "ncnn")]

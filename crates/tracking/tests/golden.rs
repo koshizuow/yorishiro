@@ -1,5 +1,5 @@
 //! Every stage against the Python tracker on recorded landmarks (golden files from
-//! tracker/tools/export_core.py, kept with the private test data). Skipped when they are not there.
+//! the retired Python tracker's export_core.py, kept with the private test data). Skipped when they are not there.
 //!     cargo test --release -- --nocapture
 
 use std::path::PathBuf;
@@ -53,9 +53,9 @@ const STAGES: [(&str, f64); 9] = [
 
 fn check(name: &str) -> bool {
     let path = testdata().join("core-golden").join(format!("{name}.npz"));
-    let fit = root().join("tracker/models/core/fit.npz");
+    let fit = root().join("models/core/fit.npz");
     if !path.exists() || !fit.exists() {
-        eprintln!("skipping {name}: {} or {} missing (run tracker/tools/export_core.py)", path.display(), fit.display());
+        eprintln!("skipping {name}: {} or {} missing (golden data comes with the private test data)", path.display(), fit.display());
         return true;
     }
     let mut g = Npz::open(&path).unwrap();

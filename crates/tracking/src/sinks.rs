@@ -1,4 +1,4 @@
-//! Tracking for other apps on this computer or the network (tracker/src/yorishiro_tracker/sinks/): the VTube
+//! Tracking for other apps on this computer or the network (ported from the retired Python tracker's sinks/): the VTube
 //! Studio iPhone protocol (VTube Studio, OpenVT and others take it as a phone's tracking) and iFacialMocap
 //! (VSeeFace, Warudo, VNyan). Both send the finished frame (after the neutral and smoothing), unmirrored.
 

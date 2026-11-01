@@ -1,5 +1,5 @@
 //! Hand tracking against the Python tracker (golden hagrid-hands-hands.npz and its PNG frames from
-//! tracker/tools/export_core.py, ORT CPU). Needs the private test data and ORT_DYLIB_PATH.
+//! the retired Python tracker's export_core.py, ORT CPU). Needs the private test data and ORT_DYLIB_PATH.
 //! Tracking runs on its own for the hand counts and sides; landmarks and the Hand* inputs are compared on
 //! Python's crops (open loop): fed back frame after frame, a 0.02 px difference wanders to about 0.2 px on a
 //! still picture, as with the face.
@@ -25,7 +25,7 @@ fn hands_match_python() {
     let rois = g.f64s("roi").unwrap().0;
     let params: Vec<std::collections::HashMap<String, f64>> =
         serde_json::from_str(&std::fs::read_to_string(golden.with_extension("params.json")).unwrap()).unwrap();
-    let mut tracker = HandTracker::open(&root.join("tracker/models/mediapipe/hands"), &Runtime::OrtCpu, 4).unwrap();
+    let mut tracker = HandTracker::open(&root.join("models/mediapipe/hands"), &Runtime::OrtCpu, 4).unwrap();
     let (mut same_count, mut same_side, mut lm_max, mut lm_sum, mut n_lm, mut p_max) = (0, 0, 0.0f64, 0.0, 0, 0.0f64);
     let mut worst_param = String::new();
     for i in 0..count.len() {

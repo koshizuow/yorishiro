@@ -1,4 +1,4 @@
-//! ncnn with Vulkan (feature "ncnn"): the GPU path for AMD and Intel graphics, and NVIDIA without CUDA, like
+//! ncnn with Vulkan (feature "ncnn"): the GPU path on any graphics card (NVIDIA, AMD, Intel), like
 //! the Python tracker's NcnnBackend. Models are the pnnx conversions next to the ONNX files
 //! (<name>.ncnn.param / .ncnn.bin, from tools/export_mediapipe.py). Through ncnn's C API plus a small shim
 //! (ncnn_shim.cpp) for listing GPUs.

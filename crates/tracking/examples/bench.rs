@@ -5,8 +5,8 @@ use yorishiro_tracking::tracker::{ModelPaths, Tracker};
 fn main() {
     let a: Vec<String> = std::env::args().collect();
     let root = std::path::Path::new(&a[2]);
-    let (mp, fit, eyes) = (root.join("tracker/models/mediapipe"), root.join("tracker/models/core/fit.npz"),
-                           root.join("tracker/src/yorishiro_tracker/assets/eye_openness.onnx"));
+    let (mp, fit, eyes) = (root.join("models/mediapipe"), root.join("models/core/fit.npz"),
+                           root.join("models/eye_openness.onnx"));
     let threads: usize = a.get(3).and_then(|v| v.parse().ok()).unwrap_or(2);
     let mut t = Tracker::open(&ModelPaths { mediapipe: &mp, fit: &fit, eyes: Some(&eyes) }, threads).unwrap();
     let frames: Vec<Image> = (0..100).map(|i| Image::load(&std::path::Path::new(&a[1]).join(format!("{i:05}.png"))).unwrap()).collect();

@@ -1,4 +1,4 @@
-//! Head and eye angles (tracker/src/yorishiro_tracker/pose.py).
+//! Head and eye angles (ported from the retired Python tracker's pose.py).
 
 use crate::f32r;
 use crate::frame::arkit;

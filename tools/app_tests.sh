@@ -1,5 +1,5 @@
 #!/bin/bash
-# Runs the app's automation checks one after another with the replay tracker (crema-d-60) and prints one
+# Runs the app's automation checks one after another, the tracker replaying a recording (crema-d-60), and prints one
 # line per check: ok, FAILED, or the measured values. Shots and logs go to $1 (default a temp dir).
 # They run on a copy of the development data (userdata/yorishiro) in the out dir, the checks change settings.
 #   tools/app_tests.sh [out dir]
@@ -7,7 +7,9 @@ set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${1:-$(mktemp -d /tmp/yorishiro-tests.XXXX)}
 mkdir -p "$OUT"
-export YORISHIRO_TRACKER=$ROOT/tools/replay_tracker.sh
+# recordings live with the private test data (YORISHIRO_TESTDATA, default ../testdata)
+TESTDATA=${YORISHIRO_TESTDATA:-$ROOT/../testdata}
+export YORISHIRO_RECORDING=${YORISHIRO_RECORDING:-$TESTDATA/recordings/crema-d-60}
 # a copy without caches; models referenced by absolute path still point at the originals
 mkdir -p "$OUT/userdata"
 rsync -a --exclude shader_cache --exclude vulkan --exclude logs "$ROOT/userdata/yorishiro" "$OUT/userdata/"
@@ -36,15 +38,15 @@ run hotkeys "$HIYORI" --open-panel=hotkeys --hotkey-test="$OUT/hk" --screenshot-
 run appaction "$HIYORI" --open-panel=hotkeys --app-action-test --screenshot-window="$OUT/appaction.png"
 run pluginapi "$HIYORI" --plugin-api-test="$OUT/plugin_card.png" --screenshot-window="$OUT/pluginapi.png"
 run expressioneditor "$HIYORI" --open-panel=model --expression-editor-test="$OUT/expression_editor.png" --screenshot-window="$OUT/expressioneditor.png"
-"$ROOT/tracker/.venv/bin/python" "$ROOT/tools/lip_sync_vowels.py" "$OUT/vowels.wav"
+uv run --quiet "$ROOT/tools/lip_sync_vowels.py" "$OUT/vowels.wav"
 run lipsync "$HIYORI" --mic-test="$OUT/vowels.wav" --screenshot-window="$OUT/lipsync.png"
 # hands need a recording that shows hands (built from HaGRID pictures, testdata/recordings/hagrid-hands)
-HANDS_REC=$ROOT/../testdata/recordings/hagrid-hands
+HANDS_REC=$TESTDATA/recordings/hagrid-hands
 if [ -f "$HANDS_REC/meta.json" ]; then
   YORISHIRO_RECORDING=$HANDS_REC run hands "$HIYORI" --hand-test --screenshot-window="$OUT/hands.png"
 fi
-# the built-in Rust core on the development loopback camera, when both are there
-if [ -f "$ROOT/app/addons/yorishiro_tracking/lib/libyorishiro_tracking_gd.x86_64.so" ] && [ -e /dev/video10 ] && pgrep -x ffmpeg > /dev/null; then
+# the camera path (V4L2) on the development loopback camera, when it is fed (tools/virtual_cam.sh)
+if [ -e /dev/video10 ] && pgrep -x ffmpeg > /dev/null; then
   run core "$HIYORI" --core-test=10 --screenshot-window="$OUT/core.png"
 fi
 run sensitivity "$HIYORI" --open-panel=sensitivity --sensitivity-test=ParamAngleX --screenshot-window="$OUT/sens.png"

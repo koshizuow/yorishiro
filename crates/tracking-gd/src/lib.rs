@@ -1,7 +1,7 @@
-//! YorishiroCore: the tracking core as a Godot node (Phase B4), in place of the yorishiro-tracker process.
-//! It speaks the process's link protocol (tracker/src/yorishiro_tracker/sinks/link.py) as dictionaries:
-//! poll() returns status messages and the newest frame ({found, vts, arkit, glare}), so the app's tracker
-//! input (yorishiro_tracker.gd) handles both the same way. Camera, inference and fit run in a thread.
+//! YorishiroCore: the tracking core as a Godot node. poll() returns status messages and the newest frame
+//! ({found, vts, arkit, glare, hands}) as dictionaries, the messages the Python tracker process once sent
+//! over UDP, for the app's tracker input (yorishiro_tracker.gd). Camera (or a replayed recording),
+//! inference and fit run in a thread.
 
 use godot::prelude::*;
 use std::path::PathBuf;
@@ -9,12 +9,13 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
-use yorishiro_tracking::backend::{preload_nvidia, runtime as ort_runtime, Provider};
-use yorishiro_tracking::camera::Camera;
+use yorishiro_tracking::backend::runtime as ort_runtime;
+use yorishiro_tracking::camera::{Camera, Frame};
 use yorishiro_tracking::frame::ARKIT52;
 use yorishiro_tracking::hands::{hand_params, HandTracker};
 use yorishiro_tracking::image::Image;
 use yorishiro_tracking::inference::LandmarkRuntime;
+use yorishiro_tracking::recording::Recording;
 use yorishiro_tracking::sinks::{IFacialMocapSink, VtsIphoneSink, VTS_REQUEST_PORT};
 use yorishiro_tracking::tracker::{ModelPaths, Tracker};
 use yorishiro_tracking::vts::vts_params;
@@ -37,7 +38,7 @@ struct FrameOut {
     hand_points: Vec<(String, Vec<[f64; 3]>)>,
 }
 
-/// Hand tracking beside the face (the Python tracker's HandWorker): its own thread on the newest picture, the
+/// Hand tracking beside the face: its own thread on the newest picture, the
 /// face never waits for it.
 struct HandWorker {
     latest: Arc<(Mutex<Option<Image>>, std::sync::Condvar)>,
@@ -135,17 +136,20 @@ pub struct YorishiroCore {
     /// /dev/video<camera>
     #[export]
     camera: i32,
-    /// ort-cpu, cuda, tensorrt, vulkan, vulkan-fp32, ncnn-cpu (the last three when built with ncnn)
+    /// vulkan, vulkan-fp32, ncnn-cpu (when built with ncnn), ort-cpu
     #[export]
     #[init(val = GString::from("ort-cpu"))]
     runtime: GString,
-    /// the tracker's models folder (mediapipe/, core/fit.npz, cache/)
+    /// a recording folder (meta.json, frames/) to replay in a loop instead of the camera, empty for the camera
+    #[export]
+    replay: GString,
+    /// the models folder (mediapipe/, core/fit.npz)
     #[export]
     models_dir: GString,
-    /// the eye openness model (assets/eye_openness.onnx), empty for the lid gap
+    /// the eye openness model (models/eye_openness.onnx), empty for the lid gap
     #[export]
     eye_model: GString,
-    /// libonnxruntime.so to load: the CPU build, or the GPU build for cuda and tensorrt
+    /// libonnxruntime.so to load (the official CPU build), empty for ORT_DYLIB_PATH or the system's
     #[export]
     ort_library: GString,
     /// the avatar mirrors the user (the VTuber default)
@@ -175,6 +179,7 @@ impl YorishiroCore {
         let shared = Arc::new(Shared::default());
         let cfg = Config {
             camera: self.camera.max(0) as usize,
+            replay: Some(self.replay.to_string()).filter(|s| !s.is_empty()).map(PathBuf::from),
             runtime: self.runtime.to_string(),
             models: PathBuf::from(self.models_dir.to_string()),
             eye_model: Some(self.eye_model.to_string()).filter(|s| !s.is_empty()).map(PathBuf::from),
@@ -200,7 +205,7 @@ impl YorishiroCore {
         self.shared = None;
     }
 
-    /// A new neutral from the next faces, like the process's calibrate command.
+    /// A new neutral from the next faces.
     #[func]
     fn recalibrate(&mut self) {
         if let Some(s) = &self.shared {
@@ -225,7 +230,7 @@ impl YorishiroCore {
             d.set("state", state);
             d.set("message", message);
             for (k, v) in numbers {
-                // the link sends these as JSON booleans
+                // booleans in the messages
                 if ["face", "calibrated", "commercial_use"].contains(&k.as_str()) {
                     d.set(k, v != 0.0);
                 } else {
@@ -294,6 +299,7 @@ impl INode for YorishiroCore {
 
 struct Config {
     camera: usize,
+    replay: Option<PathBuf>,
     runtime: String,
     models: PathBuf,
     eye_model: Option<PathBuf>,
@@ -304,11 +310,9 @@ struct Config {
     hands: bool,
 }
 
-fn landmark_runtime(name: &str, models: &std::path::Path) -> Result<LandmarkRuntime, String> {
+fn landmark_runtime(name: &str) -> Result<LandmarkRuntime, String> {
     Ok(match name {
         "ort-cpu" => LandmarkRuntime::OrtCpu,
-        "cuda" => LandmarkRuntime::Ort(Provider::Cuda),
-        "tensorrt" => LandmarkRuntime::Ort(Provider::TensorRt { cache: models.join("cache/tensorrt-core") }),
         #[cfg(feature = "ncnn")]
         "vulkan" => LandmarkRuntime::Vulkan { fp16: true },
         #[cfg(feature = "ncnn")]
@@ -330,28 +334,36 @@ fn cpu_threads(runtime: &LandmarkRuntime) -> usize {
     }
 }
 
-/// The worker: models, camera, then frames until stopped. Mirrors serve.py's loop and its status messages.
+enum Source {
+    Camera(Camera),
+    Recording(Recording),
+}
+
+impl Source {
+    fn next(&mut self, after: u64) -> Result<Frame, String> {
+        match self {
+            Source::Camera(c) => c.next(after),
+            Source::Recording(r) => r.next(),
+        }
+    }
+}
+
+/// The worker: models, camera, then frames until stopped.
 fn run(cfg: Config, s: Arc<Shared>) {
-    let source = format!("camera {}", cfg.camera);
+    let source = match &cfg.replay {
+        Some(dir) => format!("recording {}", dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()),
+        None => format!("camera {}", cfg.camera),
+    };
     let texts = |extra: &[(&str, &str)]| -> Vec<(String, String)> {
         let mut t = vec![("source".to_string(), source.clone()), ("tracker".into(), "facemesh-core".into())];
         t.extend(extra.iter().map(|(k, v)| (k.to_string(), v.to_string())));
         t
     };
     s.status("starting", "loading tracker facemesh-core", vec![], texts(&[]));
-    if let Some(lib) = &cfg.ort_library {
-        if cfg.runtime == "cuda" || cfg.runtime == "tensorrt" {
-            // .../site-packages/onnxruntime/capi/libonnxruntime.so -> .../site-packages
-            if let Some(site) = lib.parent().and_then(|p| p.parent()).and_then(|p| p.parent()) {
-                s.log(format!("preloaded {} NVIDIA libraries", preload_nvidia(site)));
-            }
-        }
-        if let Err(e) = ort_runtime(Some(lib)) {
-            s.status("error", &format!("ONNX Runtime did not load: {e}"), vec![], texts(&[]));
-            return;
-        }
+    if let Err(e) = ort_runtime(cfg.ort_library.as_deref()) {
+        return s.status("error", &format!("ONNX Runtime did not load: {e}"), vec![], texts(&[]));
     }
-    let runtime = match landmark_runtime(&cfg.runtime, &cfg.models) {
+    let runtime = match landmark_runtime(&cfg.runtime) {
         Ok(r) => r,
         Err(e) => return s.status("error", &e, vec![], texts(&[])),
     };
@@ -365,16 +377,27 @@ fn run(cfg: Config, s: Arc<Shared>) {
     };
     let runtime_name = tracker.mesh.runtime.clone();
     s.log(format!("tracker facemesh-core on {runtime_name}"));
-    let camera = match Camera::open(cfg.camera, 1280, 720, 30) {
-        Ok(c) => c,
-        Err(e) => {
-            return s.status("error", &format!("cannot open camera {}: {e}. Check that no other app uses it, or pick another camera.", cfg.camera),
-                            vec![], texts(&[]));
-        }
+    let mut camera = match &cfg.replay {
+        Some(dir) => match Recording::open(dir, true) {
+            Ok(r) => {
+                s.log(format!("replaying {}", dir.display()));
+                Source::Recording(r)
+            }
+            Err(e) => return s.status("error", &format!("cannot replay: {e}"), vec![], texts(&[])),
+        },
+        None => match Camera::open(cfg.camera, 1280, 720, 30) {
+            Ok(c) => {
+                s.log(format!("camera {}: {}", cfg.camera, c.mode));
+                Source::Camera(c)
+            }
+            Err(e) => {
+                return s.status("error", &format!("cannot open camera {}: {e}. Check that no other app uses it, or pick another camera.", cfg.camera),
+                                vec![], texts(&[]));
+            }
+        },
     };
-    s.log(format!("camera {}: {}", cfg.camera, camera.mode));
     let hand_worker = if cfg.hands {
-        match HandTracker::open(&cfg.models.join("mediapipe/hands"), &landmark_runtime(&cfg.runtime, &cfg.models).unwrap_or(LandmarkRuntime::OrtCpu), threads) {
+        match HandTracker::open(&cfg.models.join("mediapipe/hands"), &landmark_runtime(&cfg.runtime).unwrap_or(LandmarkRuntime::OrtCpu), threads) {
             Ok(t) => {
                 s.log(format!("hand tracking on {}", t.runtime));
                 Some(HandWorker::start(t))

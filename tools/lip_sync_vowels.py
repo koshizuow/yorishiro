@@ -1,8 +1,12 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy"]
+# ///
 """Synthetic vowels for the lip sync test: a glottal pulse train through formant resonators (a source-filter
 voice), a, i, u, e, o with silence between, as a 16-bit mono WAV plus a JSON of where each part is.
 Only numpy, no recordings, so the test needs no private data.
-    python3 tools/lip_sync_vowels.py out.wav
+    tools/lip_sync_vowels.py out.wav
 """
 import json
 import sys

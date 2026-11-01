@@ -8,7 +8,7 @@ fn main() {
     let mut g = Npz::open(&root.join("../testdata/core-golden/hagrid-hands-hands.npz")).unwrap();
     let roi = g.f64s("roi").unwrap().0;
     let lms = g.f64s("landmarks").unwrap().0;
-    let mut t = HandTracker::open(&root.join("tracker/models/mediapipe/hands"), &Runtime::OrtCpu, 4).unwrap();
+    let mut t = HandTracker::open(&root.join("models/mediapipe/hands"), &Runtime::OrtCpu, 4).unwrap();
     for i in [0usize, 1, 2, 5, 10, 12, 30, 60, 61, 90] {
         // feed frames in order up to i
         let _ = i;

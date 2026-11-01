@@ -8,10 +8,6 @@ const STATE_NAMES = {"running": "Running", "starting": "Starting", "error": "Err
 ## matched here so the value can be put into the translated text. Others are shown as they come.
 const MESSAGE_PATTERNS = [
 	["^loading tracker (.+)$", "loading tracker %s"],
-	["^port (\\d+) is in use by another program$", "port %s is in use by another program"],
-	["^yorishiro-tracker is not installed at (.+)\\. Run `uv sync` in the tracker folder\\.$", "yorishiro-tracker is not installed at %s. Run `uv sync` in the tracker folder."],
-	["^could not start (.+)$", "could not start %s"],
-	["^tracker stopped \\(exit code (-?\\d+)\\), see the log$", "tracker stopped (exit code %s), see the log"],
 ]
 
 var tracker
@@ -20,13 +16,9 @@ var _state: Label
 var _details: Label
 var _preview: FacePreview
 var _camera: OptionButton
-var _model: OptionButton
 var _runtime: OptionButton
 var _log: TextEdit
 var _glare_hint: Label
-## the running `trackers --json` (OS.execute_with_pipe result) and what it printed so far
-var _list_proc := {}
-var _list_out := PackedByteArray()
 
 func _ready():
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -58,18 +50,11 @@ func _ready():
 		_camera.add_item("no camera found", 0)
 	_select_id(_camera, tracker.camera)
 
-	_model = _picker("Tracker")
-	_model.add_item(tracker.tracker_name)
-	_model.set_item_metadata(0, tracker.tracker_name)
-	_load_tracker_list()
-
 	_runtime = _picker("Compute")
 	for r in tracker.RUNTIMES:
 		_runtime.add_item(r)
 	_select_text(_runtime, tracker.runtime)
 
-
-	_engine_option()
 	_lost_options()
 	_glasses_option()
 	_output_options()
@@ -163,28 +148,6 @@ func _glasses_option():
 	add_child(row)
 
 ## sending the tracking to other apps; changing one restarts the tracker with the new outputs
-## where the tracking runs: the tracker program, or the core built into the app (when it is built)
-func _engine_option():
-	if not tracker.core_available():
-		return
-	var row := HBoxContainer.new()
-	var label := Label.new()
-	label.text = "Engine"
-	row.add_child(label)
-	var pick := OptionButton.new()
-	pick.name = "EnginePicker"
-	pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pick.add_item("Tracker program (Python)")
-	pick.add_item("Built into the app (Rust core, experimental)")
-	pick.tooltip_text = "The built-in core runs camera and tracking inside Yorishiro, without the separate program."
-	pick.select(1 if tracker.engine == "core" else 0)
-	pick.item_selected.connect(func (i):
-		tracker.engine = "core" if i == 1 else "process"
-		tracker.save_settings()
-		tracker.restart())
-	row.add_child(pick)
-	add_child(row)
-
 func _output_options():
 	var hands = CheckButton.new()
 	hands.name = "TrackHands"
@@ -217,13 +180,11 @@ func _output_options():
 		add_child(check)
 
 func _process(_delta):
-	_poll_tracker_list()
 	if _glare_hint:
 		_glare_hint.visible = tracker.glare_now
 
 func _on_restart():
 	tracker.camera = _camera.get_selected_id()
-	tracker.tracker_name = _model.get_item_metadata(_model.selected)
 	tracker.runtime = _runtime.get_item_text(_runtime.selected)
 	tracker.save_settings()
 	tracker.restart()
@@ -241,8 +202,6 @@ func _on_status(s: Dictionary):
 		parts.append(s["runtime"])
 	if s.get("commercial_use") == false:
 		parts.append(tr("NON-COMMERCIAL model"))
-	if not tracker.is_managed() and state != "error":
-		parts.append(tr("external tracker"))
 	_details.text = "  |  ".join(parts)
 
 static func translate_message(message: String) -> String:
@@ -276,49 +235,6 @@ func _list_cameras() -> Array:
 static func _sysfs_line(path: String) -> String:
 	var f := FileAccess.open(path, FileAccess.READ)
 	return f.get_line().strip_edges() if f else ""
-
-## the tracker list comes from `yorishiro-tracker trackers --json`, which takes seconds (Python start).
-## It runs without blocking and _process collects its output. A thread did this before, and quitting the
-## app while it ran crashed it (the app aborted in 2 of 3 quick quits).
-func _load_tracker_list():
-	var cmd = tracker.tracker_command()
-	if not FileAccess.file_exists(cmd):
-		return
-	_list_proc = OS.execute_with_pipe(cmd, ["trackers", "--json"], false)
-	_list_out = PackedByteArray()
-
-func _poll_tracker_list():
-	if _list_proc.is_empty():
-		return
-	var pipe: FileAccess = _list_proc["stdio"]
-	_list_out.append_array(pipe.get_buffer(65536))
-	_list_proc["stderr"].get_buffer(65536)  # read and dropped, a full stderr pipe would block the command
-	if OS.is_process_running(_list_proc["pid"]):
-		return
-	_list_out.append_array(pipe.get_buffer(1 << 20))
-	_list_proc = {}
-	_fill_trackers(_list_out.get_string_from_utf8())
-
-func _exit_tree():
-	if not _list_proc.is_empty() and OS.is_process_running(_list_proc["pid"]):
-		OS.kill(_list_proc["pid"])
-	_list_proc = {}
-
-func _fill_trackers(json: String):
-	var list = JSON.parse_string(json) if json.strip_edges() else null
-	# the list takes seconds, the tracker may have been switched away and freed meanwhile
-	if typeof(list) != TYPE_ARRAY or not is_inside_tree() or not is_instance_valid(tracker):
-		return
-	_model.clear()
-	for t in list:
-		if t.has("error"):
-			continue
-		_model.add_item(t["name"] if t.get("commercial_use", true) else tr("%s (non-commercial)") % t["name"])
-		_model.set_item_metadata(_model.item_count - 1, t["name"])
-		_model.set_item_tooltip(_model.item_count - 1, "%s\n%s" % [t.get("description", ""), t.get("license", "")])
-	for i in _model.item_count:
-		if _model.get_item_metadata(i) == tracker.tracker_name:
-			_model.select(i)
 
 func _select_id(option: OptionButton, id: int):
 	var i = option.get_item_index(id)

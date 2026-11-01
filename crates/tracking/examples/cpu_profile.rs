@@ -1,9 +1,8 @@
 //! Where the CPU goes, stage by stage, on the PNG frames:
 //! cargo run --release --features ncnn --example cpu_profile -- <frames dir> <monorepo> [runtime] [threads]
-//! runtime: ort-cpu (default), cuda, tensorrt, vulkan, ncnn-cpu. Prints wall and process CPU milliseconds per frame for
+//! runtime: ort-cpu (default), vulkan, ncnn-cpu. Prints wall and process CPU milliseconds per frame for
 //! each stage (CPU above wall means several threads worked), so a GPU runtime shows what is still on the CPU.
 use std::time::Instant;
-use yorishiro_tracking::backend::Provider;
 use yorishiro_tracking::glare::lens_glare;
 use yorishiro_tracking::hands::HandTracker;
 use yorishiro_tracking::image::{Border, Image};
@@ -40,16 +39,9 @@ fn main() {
     let root = std::path::Path::new(&a[2]);
     let rt_name = a.get(3).map(String::as_str).unwrap_or("ort-cpu");
     let threads: usize = a.get(4).and_then(|v| v.parse().ok()).unwrap_or(4);
-    let (mp, fit, eyes_path) = (root.join("tracker/models/mediapipe"), root.join("tracker/models/core/fit.npz"),
-                                root.join("tracker/src/yorishiro_tracker/assets/eye_openness.onnx"));
-    // NVIDIA runtimes need the GPU build of ONNX Runtime (NVIDIA_ORT_DYLIB_PATH), as tests/nvidia.rs
-    if let Some(lib) = std::env::var_os("NVIDIA_ORT_DYLIB_PATH").map(std::path::PathBuf::from) {
-        yorishiro_tracking::backend::preload_nvidia(lib.parent().unwrap().parent().unwrap().parent().unwrap());
-        yorishiro_tracking::backend::runtime(Some(&lib)).unwrap();
-    }
+    let (mp, fit, eyes_path) = (root.join("models/mediapipe"), root.join("models/core/fit.npz"),
+                                root.join("models/eye_openness.onnx"));
     let rt = match rt_name {
-        "cuda" => LandmarkRuntime::Ort(Provider::Cuda),
-        "tensorrt" => LandmarkRuntime::Ort(Provider::TensorRt { cache: root.join("tracker/models/cache/tensorrt-core") }),
         "vulkan" => LandmarkRuntime::Vulkan { fp16: true },
         "ncnn-cpu" => LandmarkRuntime::NcnnCpu,
         _ => LandmarkRuntime::OrtCpu,

@@ -1,6 +1,6 @@
 //! The outputs to other apps against the Python tracker's sinks on random frames (written by a small Python
 //! script to SINK_GOLDEN): iFacialMocap text equal character for character, the VTS iPhone JSON equal value
-//! for value (the timestamp aside). Golden: testdata/core-golden/sinks.json from tracker/tools/export_core.py,
+//! for value (the timestamp aside). Golden: testdata/core-golden/sinks.json from the retired Python tracker's export_core.py,
 //! or SINK_GOLDEN; skipped without either.
 use yorishiro_tracking::frame::FaceFrame;
 use yorishiro_tracking::sinks::{IFacialMocapSink, VtsIphoneSink};

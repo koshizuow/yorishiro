@@ -1,5 +1,5 @@
 //! The whole tracker on pictures against the Python tracker (golden <recording>-full.npz on the PNG frames
-//! as OpenCV decoded them, from tracker/tools/export_core.py). Needs the private test data and
+//! as OpenCV decoded them, from the retired Python tracker's export_core.py). Needs the private test data and
 //! ORT_DYLIB_PATH, skipped otherwise.
 //!
 //! Two ways: from Python's landmarks (everything after them, with the eye model, MediaPipe's mouth and the
@@ -29,8 +29,8 @@ fn check(name: &str, own_landmarks: bool) -> bool {
         eprintln!("skipping {name}: needs {} and ORT_DYLIB_PATH", golden.display());
         return true;
     }
-    let (mp, fit, eyes) = (root().join("tracker/models/mediapipe"), root().join("tracker/models/core/fit.npz"),
-                           root().join("tracker/src/yorishiro_tracker/assets/eye_openness.onnx"));
+    let (mp, fit, eyes) = (root().join("models/mediapipe"), root().join("models/core/fit.npz"),
+                           root().join("models/eye_openness.onnx"));
     let mut tracker = Tracker::open(&ModelPaths { mediapipe: &mp, fit: &fit, eyes: Some(&eyes) }, 2).unwrap();
     // the golden run has no flip averaging; on a fast CPU the core would switch it on
     tracker.mesh.flip_mirror = None;

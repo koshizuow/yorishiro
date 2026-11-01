@@ -35,12 +35,12 @@
 ##   --mic-test=<wav>       lip sync: play the wav (tools/lip_sync_vowels.py, with its .json timeline) through
 ##                          the voice bus instead of the microphone, print the voice values per part and check
 ##                          silence, volume and the vowel that wins in each
-##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png; --hand-core=<camera> runs it on the
-##                          built-in core and that camera) switch hand tracking on (restarts the Yorishiro tracker with --hands), run with a
-##                          recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands), check the Hand* inputs
-##   --core-test=<camera>   switch the Yorishiro tracker to the built-in Rust core (addons/yorishiro_tracking) on that
-##                          camera (the development loopback camera is 10), check it runs and moves the model;
-##                          --core-runtime=<vulkan|tensorrt|cuda|...> picks the landmark runtime (ort-cpu)
+##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png) switch hand tracking on (restarts
+##                          the tracker), run with a recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands),
+##                          check the Hand* inputs
+##   --core-test=<camera>   switch the tracker from the replayed recording to that camera (the development loopback
+##                          camera is 10), check it runs and moves the model, with the outputs to other apps on;
+##                          --core-runtime=<vulkan|vulkan-fp32|ncnn-cpu|ort-cpu> picks the runtime (vulkan)
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
 ##                          (saved position, background, change model) and check what pressing it does
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key
@@ -74,7 +74,7 @@ var _pose_tracker
 const TRACKERS = {
 	"yorishiro": "res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd",
 	"openseeface": "res://lib/tracking/camera/openseeface/osf_tracker.gd",
-	# the VTube Studio iPhone protocol input, asking 127.0.0.1 (yorishiro-tracker serve --vts-iphone)
+	# the VTube Studio iPhone protocol input, asking 127.0.0.1 (the tracker's VTS iPhone output)
 	"vts-iphone": "res://lib/tracking/camera/vts_blendshapes/vts_tracker.gd",
 }
 
@@ -238,9 +238,9 @@ func _ready() -> void:
 		if args.has("expression-editor-test"):
 			await _expression_editor_test(str(args["expression-editor-test"]))
 		if args.has("core-test"):
-			await _core_test(int(args["core-test"]), str(args.get("core-runtime", "ort-cpu")))
+			await _core_test(int(args["core-test"]), str(args.get("core-runtime", "vulkan")))
 		if args.has("hand-test"):
-			await _hand_test(str(args["hand-test"]), int(args.get("hand-core", "-1")))
+			await _hand_test(str(args["hand-test"]))
 		if args.has("mic-test"):
 			await _mic_test(str(args["mic-test"]))
 		if args.has("plugin-api-test"):
@@ -481,14 +481,15 @@ func _core_test(cam: int, runtime: String):
 	if not face.core_available():
 		return
 	face.stop()
-	face.engine = "core"
+	var keep_replay: String = face.replay
+	face.replay = ""
 	face.camera = cam
 	face.runtime = runtime
 	# the outputs to other apps too, a receiver may listen (tools: a VTS iPhone request, iFacialMocap on 49983)
 	face.send_vts_iphone = true
 	face.send_ifacialmocap = true
 	face.restart()
-	# models load first (TensorRT engines take a while), the 15 s count from the first face
+	# models load first, the 15 s count from the first face
 	var t0 := Time.get_ticks_msec()
 	while not face.found and Time.get_ticks_msec() - t0 < 90000:
 		await get_tree().process_frame
@@ -507,22 +508,18 @@ func _core_test(cam: int, runtime: String):
 	check.call("running (%s)" % face.status.get("state"), face.status.get("state") == "running")
 	check.call("faces in %d frames" % found_frames, found_frames > 100)
 	check.call("the head moves the model (FaceAngleX spread %.1f)" % spread, spread > 1.0)
-	check.call("Rust core named in the status", str(face.status.get("runtime", "")).contains("Rust core"))
-	face.engine = "process"
+	check.call("camera named in the status", str(face.status.get("source", "")) == "camera %d" % cam)
+	face.replay = keep_replay
 	face.send_vts_iphone = false
 	face.send_ifacialmocap = false
 	face.save_settings()
 
-func _hand_test(shots: String, core_camera: int = -1):
+func _hand_test(shots: String):
 	var check := func (what: String, ok: bool): print("[automation] hands %s: %s" % [what, "ok" if ok else "FAILED"])
 	var tracking = get_tree().get_first_node_in_group("system:tracking")
 	var face = tracking.get_node("FaceTracker")
 	check.call("Yorishiro tracker", "track_hands" in face)
 	face.track_hands = true
-	if core_camera >= 0:  # the built-in core on a camera instead of the tracker program
-		face.engine = "core"
-		face.camera = core_camera
-		face.runtime = "ort-cpu"
 	face.restart()
 	var seen := {"HandLeftFound": 0, "HandRightFound": 0}
 	var open_hi := 0.0
@@ -561,7 +558,6 @@ func _hand_test(shots: String, core_camera: int = -1):
 	check.call("right hand seen (%d frames)" % seen.HandRightFound, seen.HandRightFound > 10)
 	check.call("open and closed hand apart (Open %.2f to %.2f)" % [open_lo, open_hi], open_hi > 0.6 and open_lo < 0.35)
 	face.track_hands = false
-	face.engine = "process"
 	face.save_settings()
 
 func _mic_test(wav: String):

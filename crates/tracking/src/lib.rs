@@ -1,13 +1,10 @@
-//! Yorishiro's face tracking core (Phase B, D21/D32): the Python tracker's landmark -> ARKit 52 -> VTube
-//! Studio style input pipeline, ported stage by stage and held to golden outputs written by
-//! `tracker/tools/export_core.py` (tests/golden.rs).
+//! Yorishiro's face tracking core: camera (V4L2) or a replayed recording, MediaPipe's face detector and
+//! landmarks (ncnn on Vulkan, or the CPU), the landmark -> ARKit 52 fit, eyes, gaze, head pose, neutral
+//! calibration, smoothing and the VTube Studio style inputs. Hands beside the face, outputs to other apps.
 //!
-//! B1 covers the geometry and math: landmark smoothing, rigid alignment, the ICT expression fit with its
-//! regional solves, eyelids, gaze, head pose and position, neutral calibration, frame smoothing and the
-//! VTS inputs. Inference (landmarks, eye model, MediaPipe's mouth blendshapes) and the camera follow in B2/B3.
-//!
-//! Numbers follow the Python code: f64 math, rounded to f32 where Python stores float32 arrays, so the
-//! two agree to a few 1e-6.
+//! It began as a stage by stage port of the Python tracker (retired, in git history), held to that tracker's
+//! golden outputs (tests/golden.rs and the others, with the private test data). Numbers follow the Python
+//! code: f64 math, rounded to f32 where Python stored float32 arrays, so the two agree to a few 1e-6.
 
 pub mod backend;
 pub mod camera;
@@ -24,6 +21,7 @@ pub mod net;
 pub mod ncnn;
 pub mod pipeline;
 pub mod pose;
+pub mod recording;
 pub mod sinks;
 pub mod smooth;
 pub mod vts;

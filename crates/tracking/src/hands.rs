@@ -1,4 +1,4 @@
-//! Hand tracking (tracker/src/yorishiro_tracker/mediapipe_ncnn/hands.py): MediaPipe's palm detector while fewer
+//! Hand tracking (ported from the retired Python tracker's mediapipe_ncnn/hands.py): MediaPipe's palm detector while fewer
 //! hands are tracked than wanted, a rotated crop around each palm or around the previous landmarks, 21
 //! landmarks with handedness and world points, then finger bends and the Hand* inputs VTube Studio models bind.
 

@@ -1,11 +1,15 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["numpy", "pillow"]
+# ///
 """Render regression over every test model: 13 poses, each expression hotkey and each expression on its own,
 compared to a baseline.
 
-    python3 tools/render_regress.py              run all models, compare, write a report
-    python3 tools/render_regress.py --accept     same, then make this run the new baseline
-    python3 tools/render_regress.py hiyori_free hiyori_pro    only these models (name substring)
-    python3 tools/render_regress.py --compare testdata/render-runs/<time>   compare a finished run again
+    tools/render_regress.py              run all models, compare, write a report
+    tools/render_regress.py --accept     same, then make this run the new baseline
+    tools/render_regress.py hiyori_free hiyori_pro    only these models (name substring)
+    tools/render_regress.py --compare testdata/render-runs/<time>   compare a finished run again
 
 Models are every folder with a .model3.json under testdata/models, plus the Hiyori samples in
 userdata/yorishiro/Live2DModels. Runs use --fixed-clock and --fixed-fps 60 and an empty data folder per model (default settings), so an
@@ -50,7 +54,7 @@ def render(model: Path, out: Path):
     # a fresh data folder per model: default settings, whatever earlier runs or tests saved does not count
     data = out / "userdata"
     shutil.rmtree(data, ignore_errors=True)
-    env = {**os.environ, "YORISHIRO_USERDATA": str(data), "YORISHIRO_TRACKER": str(ROOT / "tools/replay_tracker.sh")}
+    env = {**os.environ, "YORISHIRO_USERDATA": str(data), "YORISHIRO_RECORDING": str(TESTDATA / "recordings/crema-d-60")}
     with open(out / "run.log", "w") as log:
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, timeout=900, env=env).returncode
     shutil.rmtree(data, ignore_errors=True)

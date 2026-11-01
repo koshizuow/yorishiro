@@ -23,12 +23,15 @@ esac
 ## Our Rust addons share one Cargo workspace (the repo root, outputs in its target/). Both are built in one cargo
 ## call: building one alone resolves godot-rust with other features and compiles it again.
 build_workspace () {
-	FEATURES=""
-	if [ -n "$NCNN_DIR" ]; then
-		FEATURES="--features yorishiro-tracking-gd/ncnn"
-	fi
-	cargo build --release -p katashiro-gd -p yorishiro-tracking-gd $FEATURES --manifest-path $PROJ_ROOT/../Cargo.toml
+	cargo build --release -p katashiro-gd -p yorishiro-tracking-gd --features yorishiro-tracking-gd/ncnn --manifest-path $PROJ_ROOT/../Cargo.toml
 }
+
+## ncnn with Vulkan, the tracking core's GPU path: NCNN_DIR (an install prefix), else built once by
+## tools/build_ncnn.sh into target/ncnn-install
+if [ -z "$NCNN_DIR" ]; then
+	export NCNN_DIR=$PROJ_ROOT/../target/ncnn-install
+	[ -f "$NCNN_DIR/lib/libncnn.so.1" ] || $PROJ_ROOT/../tools/build_ncnn.sh "$NCNN_DIR"
+fi
 
 ## Katashiro: our fork of Ayagami's Godot bindings (ayagami-gd), the Live2D renderer
 build_katashiro () {
@@ -58,8 +61,27 @@ build_katashiro () {
 	cd $PROJ_ROOT
 }
 
-## Yorishiro's tracking core as a Godot node (crates/tracking-gd, Phase B4). With NCNN_DIR set (ncnn built with Vulkan and NCNN_SIMPLEOMP, so no libgomp to ship and no spinning workers),
-## the landmark model can also run on ncnn; ONNX Runtime is loaded at run time from the tracker's venv.
+## ONNX Runtime's official CPU build (MIT), which the core loads at run time
+ORT_VERSION=1.31.1
+ORT_SHA256=c849e36a1ef3e22d4ff217b9d1ce4a3cf5b9467b975610913ae959ad5b16bdc9
+
+fetch_onnxruntime () {
+	local lib=$1/libonnxruntime.so.$ORT_VERSION
+	[ -f "$lib" ] && return 0
+	local name=onnxruntime-linux-x64-$ORT_VERSION
+	local dl=$PROJ_ROOT/../target/onnxruntime
+	mkdir -p $dl
+	if [ ! -f $dl/$name.tgz ]; then
+		curl -sSLf -o $dl/$name.tgz.part https://github.com/microsoft/onnxruntime/releases/download/v$ORT_VERSION/$name.tgz || return 1
+		mv $dl/$name.tgz.part $dl/$name.tgz
+	fi
+	echo "$ORT_SHA256  $dl/$name.tgz" | sha256sum -c --quiet || return 1
+	tar xzf $dl/$name.tgz -C $dl $name/lib/libonnxruntime.so.$ORT_VERSION $name/LICENSE $name/ThirdPartyNotices.txt
+	cp $dl/$name/lib/libonnxruntime.so.$ORT_VERSION $lib
+	cat $dl/$name/LICENSE - $dl/$name/ThirdPartyNotices.txt <<< "" > $PROJ_ROOT/license/LICENSE.onnxruntime.md
+}
+
+## Yorishiro's tracking core as a Godot node (crates/tracking-gd), with ncnn (Vulkan) and ONNX Runtime (CPU) beside it
 build_core () {
 	echo -e "\n#### Preparing yorishiro-tracking\n\n"
 
@@ -67,9 +89,9 @@ build_core () {
 	build_workspace || return 1
 	mkdir -p $ADDON/lib
 	cp $PROJ_ROOT/../target/release/libyorishiro_tracking_gd.so $ADDON/lib/libyorishiro_tracking_gd.x86_64.so
-	if [ -n "$NCNN_DIR" ]; then
-		cp -L $NCNN_DIR/lib/libncnn.so.1 $ADDON/lib/  # found through the node library's $ORIGIN rpath
-	fi
+	fetch_onnxruntime $ADDON/lib || return 1
+	cp -L $NCNN_DIR/lib/libncnn.so.1 $ADDON/lib/  # found through the node library's $ORIGIN rpath
+	[ -f $NCNN_DIR/LICENSE.txt ] && cp $NCNN_DIR/LICENSE.txt $PROJ_ROOT/license/LICENSE.ncnn.md
 	cat > $ADDON/yorishiro_tracking.gdextension <<'GDEXT'
 [configuration]
 entry_symbol = "gdext_rust_init"

@@ -1,4 +1,4 @@
-//! ARKit 52 names and the per-frame face values (tracker/src/yorishiro_tracker/frame.py).
+//! ARKit 52 names and the per-frame face values (ported from the retired Python tracker's frame.py).
 
 /// Same order as Live Link Face CSV and Apple's ARFaceAnchor.BlendShapeLocation.
 pub const ARKIT52: [&str; 52] = [

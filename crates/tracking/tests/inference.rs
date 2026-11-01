@@ -1,7 +1,7 @@
 //! The image side against the Python tracker on ONNX Runtime CPU (golden <recording>-inference.npz from
-//! tracker/tools/export_core.py): detector runs, crops, landmarks, MediaPipe's blendshapes, eye crops and
+//! the retired Python tracker's export_core.py): detector runs, crops, landmarks, MediaPipe's blendshapes, eye crops and
 //! openness, frame by frame on the recordings' pictures. Needs the private test data and
-//! ORT_DYLIB_PATH (tools: tracker/.venv's onnxruntime), skipped otherwise.
+//! ORT_DYLIB_PATH (app/addons/yorishiro_tracking/lib/libonnxruntime.so.*), skipped otherwise.
 //!     ORT_DYLIB_PATH=... cargo test --release --test inference -- --nocapture
 
 use std::path::PathBuf;
@@ -25,10 +25,10 @@ fn check(name: &str, png: bool) -> bool {
         eprintln!("skipping {name}: needs {} and ORT_DYLIB_PATH", golden.display());
         return true;
     }
-    let models = root().join("tracker/models/mediapipe");
+    let models = root().join("models/mediapipe");
     let mut mesh = FaceMesh::open(&models, 2).unwrap();
     let mut blend = Blendshapes::open(&models.join("face_blendshapes.onnx")).unwrap();
-    let mut eyes = Eyes::open(&root().join("tracker/src/yorishiro_tracker/assets/eye_openness.onnx")).unwrap();
+    let mut eyes = Eyes::open(&root().join("models/eye_openness.onnx")).unwrap();
     let mut g = Npz::open(&golden).unwrap();
     let found = g.ints("found").unwrap();
     let detected = g.ints("detected").unwrap();

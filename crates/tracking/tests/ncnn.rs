@@ -26,7 +26,7 @@ fn check(name: &str) -> bool {
         eprintln!("skipping {name}");
         return true;
     }
-    let models = root().join("tracker/models/mediapipe");
+    let models = root().join("models/mediapipe");
     let mut inf = Npz::open(&inference).unwrap();
     let roi = inf.f64s("roi").unwrap().0;
     let ort_lm = inf.f64s("landmarks").unwrap().0;
