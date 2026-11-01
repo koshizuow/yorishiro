@@ -1,0 +1,18 @@
+[package]
+name = "yorishiro-pipewire-gd"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Godot node that sends a texture to PipeWire without copying it through the CPU (libfunnel, Vulkan)"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ash = "0.38"
+godot = "0.5.4"
+
+[build-dependencies]
+cc = "1"
+pkg-config = "0.3"

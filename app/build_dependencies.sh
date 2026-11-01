@@ -23,7 +23,7 @@ esac
 ## Our Rust addons share one Cargo workspace (the repo root, outputs in its target/). Both are built in one cargo
 ## call: building one alone resolves godot-rust with other features and compiles it again.
 build_workspace () {
-	cargo build --release -p katashiro-gd -p yorishiro-tracking-gd --features yorishiro-tracking-gd/ncnn --manifest-path $PROJ_ROOT/../Cargo.toml
+	cargo build --release -p katashiro-gd -p yorishiro-tracking-gd -p yorishiro-pipewire-gd --features yorishiro-tracking-gd/ncnn --manifest-path $PROJ_ROOT/../Cargo.toml
 }
 
 ## ncnn with Vulkan, the tracking core's GPU path: NCNN_DIR (an install prefix), else built once by
@@ -108,6 +108,31 @@ GDEXT
 	cd $PROJ_ROOT
 }
 
+## Sending the stage to OBS over PipeWire (crates/pipewire-gd with libfunnel, needs libpipewire-0.3-dev 1.4+,
+## libgbm-dev, libdrm-dev, libvulkan-dev)
+build_pipewire () {
+	echo -e "\n#### Preparing yorishiro-pipewire\n\n"
+
+	ADDON=$PROJ_ROOT/addons/yorishiro_pipewire
+	build_workspace || return 1
+	mkdir -p $ADDON/lib
+	cp $PROJ_ROOT/../target/release/libyorishiro_pipewire_gd.so $ADDON/lib/libyorishiro_pipewire_gd.x86_64.so
+	cat > $ADDON/yorishiro_pipewire.gdextension <<'GDEXT'
+[configuration]
+entry_symbol = "gdext_rust_init"
+compatibility_minimum = 4.7
+reloadable = false
+
+[libraries]
+linux.debug.x86_64 = "res://addons/yorishiro_pipewire/lib/libyorishiro_pipewire_gd.x86_64.so"
+linux.release.x86_64 = "res://addons/yorishiro_pipewire/lib/libyorishiro_pipewire_gd.x86_64.so"
+GDEXT
+	echo "*" > $ADDON/.gitignore
+	find $ADDON -type f
+
+	cd $PROJ_ROOT
+}
+
 build_virtualcamera () {
 	echo -e "\n#### Preparing gd-virtualcamera\n\n"
 
@@ -160,6 +185,7 @@ build_keylogger() {
 
 build_katashiro
 build_core
+build_pipewire
 if [ "$BUILD_VIRTUALCAMERA" = 1 ]; then
 	build_virtualcamera
 fi

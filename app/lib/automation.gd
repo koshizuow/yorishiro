@@ -16,8 +16,6 @@
 ##   --print-params=<a,b>   model parameters printed after each pose (default: angles, eyes, mouth open)
 ##   --fixed-clock          blink, breathing and smoothing count frames instead of wall time, random seed 1.
 ##                          With Godot's --fixed-fps 60 the same run gives the same screenshots
-##   --pipe-frames=<file>   keep writing the rendered stage to a shared file (for example in /dev/shm), for
-##                          the PipeWire test tool (libfunnel's funnel-sender example, built outside the repo)
 ##   --press=<a,b>          after --open-panel, press these buttons (node names) in order, for screenshots of what they open
 ##   --face-preview         show the 3D tracking preview head in the window corner, next to the stage (with
 ##                          --poses and only --screenshot-window: one shot per pose with both)
@@ -38,6 +36,8 @@
 ##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png) switch hand tracking on (restarts
 ##                          the tracker), run with a recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands),
 ##                          check the Hand* inputs
+##   --pipewire-test[=<s>]  send the stage to PipeWire, resize the window twice (s seconds per size, default 2, longer
+##                          to watch it in OBS) and check the output keeps running
 ##   --core-test=<camera>   switch the tracker from the replayed recording to that camera (the development loopback
 ##                          camera is 10), check it runs and moves the model, with the outputs to other apps on;
 ##                          --core-runtime=<vulkan|vulkan-fp32|ncnn-cpu|ort-cpu> picks the runtime (vulkan)
@@ -123,9 +123,6 @@ func _ready() -> void:
 			t.server.client_host = "127.0.0.1"
 			t.server.start()
 		print("[automation] tracker %s" % args["tracker"])
-
-	if args.has("pipe-frames"):
-		_pipe_frames(args["pipe-frames"], stage.capture_viewport if stage else get_viewport())
 
 	if args.has("screenshot") or args.has("screenshot-window"):
 		if args.has("open-panel"):
@@ -241,6 +238,8 @@ func _ready() -> void:
 			await _core_test(int(args["core-test"]), str(args.get("core-runtime", "vulkan")))
 		if args.has("hand-test"):
 			await _hand_test(str(args["hand-test"]))
+		if args.has("pipewire-test"):
+			await _pipewire_test(float(args["pipewire-test"]) if str(args["pipewire-test"]).is_valid_float() else 2.0)
 		if args.has("mic-test"):
 			await _mic_test(str(args["mic-test"]))
 		if args.has("plugin-api-test"):
@@ -275,37 +274,6 @@ func _ready() -> void:
 		get_tree().root.propagate_notification(NOTIFICATION_WM_CLOSE_REQUEST)
 		await get_tree().process_frame
 		get_tree().quit()
-
-## streams the stage until the app quits through a shared file (Godot opens only regular files, no FIFO):
-## uint32 sequence, width, height, 0, then RGBA8 rows top first. The sequence is odd while a frame is
-## being written, the reader keeps a frame only if it read the same even number before and after.
-func _pipe_frames(path: String, viewport: Viewport):
-	var f := FileAccess.open(path, FileAccess.WRITE_READ)
-	if f == null:
-		push_error("[automation] cannot open %s: %s" % [path, error_string(FileAccess.get_open_error())])
-		return
-	var size := Vector2i.ZERO
-	var seq := 0
-	while is_inside_tree():
-		await RenderingServer.frame_post_draw
-		var image := viewport.get_texture().get_image()
-		image.convert(Image.FORMAT_RGBA8)
-		if size == Vector2i.ZERO:
-			size = image.get_size()
-			print("[automation] piping %dx%d frames to %s" % [size.x, size.y, path])
-		elif image.get_size() != size:
-			image.resize(size.x, size.y)
-		f.seek(0)
-		f.store_32(seq + 1)
-		f.flush()
-		f.store_32(size.x)
-		f.store_32(size.y)
-		f.store_32(0)
-		f.store_buffer(image.get_data())
-		seq += 2
-		f.seek(0)
-		f.store_32(seq)
-		f.flush()
 
 ## opens every library model in turn, the way the picker does, and reports how each one went
 func _cycle_models(args: Dictionary):
@@ -513,6 +481,21 @@ func _core_test(cam: int, runtime: String):
 	face.send_vts_iphone = false
 	face.send_ifacialmocap = false
 	face.save_settings()
+
+func _pipewire_test(seconds: float):
+	var check := func (what: String, ok: bool): print("[automation] pipewire %s: %s" % [what, "ok" if ok else "FAILED"])
+	var out = get_tree().get_first_node_in_group("output:pipewire")
+	var window := get_window()
+	var keep_size := window.size
+	out.enabled = true
+	for size in [keep_size, Vector2i(960, 540), keep_size]:
+		window.size = size
+		await get_tree().create_timer(seconds).timeout
+		var stage_size: Vector2i = out._viewport.get_texture().get_size()
+		print("[automation] pipewire %s at %s: %s" % [stage_size, size, out.status])
+		check.call("running at %s" % size, out.status_ok and out._running)
+	out.enabled = false
+	check.call("stopped", not out._running and out.status_ok)
 
 func _hand_test(shots: String):
 	var check := func (what: String, ok: bool): print("[automation] hands %s: %s" % [what, "ok" if ok else "FAILED"])

@@ -43,7 +43,7 @@
 
 - x86_64 的 Linux，以及支援 Vulkan 的顯示卡（AMD 和 Intel 用 Mesa 驅動，NVIDIA 用官方驅動）。
 - 網路攝影機。
-- 想透過 PipeWire 傳到 OBS 的話：編譯時需要 PipeWire 1.4 以上（NVIDIA 執行時需要 1.2 以上），OBS 要 31 以上，
+- 想透過 PipeWire 傳到 OBS 的話：編譯時需要 PipeWire 1.4 以上，執行時需要 1.2 以上，並使用 Vulkan 渲染器（預設就是），OBS 要 31 以上，
   並裝好 [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) 外掛。
 
 ## 編譯
@@ -52,7 +52,7 @@
    （x86_64，標準版，不是 .NET 版），解壓到 repo 旁邊的 `../tools/godot/`（`run.sh` 預設會到這裡找），
    也可以用 `GODOT=/path/to/godot` 指定位置。
 2. **系統套件**（以 Debian / Ubuntu 的套件名稱為例）：
-   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
+   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libvulkan-dev`
 3. **Rust** 1.94 以上。建議用 [rustup](https://rustup.rs) 安裝，發行版內建的版本通常太舊。
 4. **原生擴充：**
    ```sh
@@ -71,8 +71,7 @@
    uv run python tools/export_fit.py         # ARKit 表情換算資料
    cd ..
    ```
-6. **PipeWire 輸出程式：** `native/funnel_out/build.sh`
-7. **第一次使用前先匯入專案：** `./run.sh --headless --import`
+6. **第一次使用前先匯入專案：** `./run.sh --headless --import`
 
 ## 使用方式
 
@@ -95,7 +94,7 @@
 | `app/` | Yorishiro app（Godot）。最早是從 erodozer 的 [OpenVT](https://github.com/erodozer/open-vt) fork 出來的 | MIT，見 `app/LICENSE.txt` |
 | `crates/tracking`、`crates/tracking-gd` | Rust 寫的臉部追蹤核心，以及給 Godot 用的節點 | Apache-2.0，見 `crates/tracking/LICENSE` |
 | `crates/katashiro`、`crates/katashiro-gd` | Live2D 渲染器 Katashiro：我們從 [Ayagami](https://github.com/AyagamiDev/ayagami) 和它的 Godot 擴充分支出來的版本 | 核心是 MIT 或 Apache-2.0，Godot 部分是 MIT |
-| `native/` | 把舞台透過 PipeWire 傳到 OBS 的小程式 | MIT |
+| `crates/pipewire-gd` | 在顯示卡上直接把舞台透過 PipeWire 傳到 OBS（使用 libfunnel） | Apache-2.0，見 `crates/pipewire-gd/LICENSE` |
 | `thirdparty/` | 我們一起編譯的上游程式：[libfunnel](https://github.com/hoshinolina/libfunnel)、godot-keylogger、gd-virtualcamera | 依各自的授權 |
 | `models/` | 追蹤用的模型（自己產生或下載，git 裡只有眼睛模型） | 見 `models/README.md` |
 | `research/` | 產生追蹤模型的 Python 工具，以及眼睛模型的訓練 | Apache-2.0，見 `research/LICENSE` |

@@ -48,8 +48,8 @@
 
 - Linux on x86_64 with a Vulkan capable GPU (AMD and Intel through Mesa, NVIDIA with its driver).
 - A webcam.
-- For the PipeWire output to OBS: PipeWire 1.4 or newer for building (1.2 or newer at run time on NVIDIA),
-  OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin.
+- For the PipeWire output to OBS: PipeWire 1.4 or newer for building, 1.2 or newer at run time, the Vulkan
+  renderer (the default), OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin.
 
 ## Build
 
@@ -57,7 +57,7 @@
    Linux (x86_64, standard, not .NET). Unzip it into `../tools/godot/` next to the repository, where `run.sh` looks
    for it, or set `GODOT=/path/to/godot`.
 2. **System packages** (Debian / Ubuntu names):
-   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
+   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libvulkan-dev`
 3. **Rust** 1.94 or newer through [rustup](https://rustup.rs) (distribution packages are often older).
 4. **Native addons:**
    ```sh
@@ -76,8 +76,7 @@
    uv run python tools/export_fit.py         # the ARKit expression fit
    cd ..
    ```
-6. **PipeWire output helper:** `native/funnel_out/build.sh`
-7. **Import the project once:** `./run.sh --headless --import`
+6. **Import the project once:** `./run.sh --headless --import`
 
 ## Usage
 
@@ -104,8 +103,8 @@
 |-----------|------|---------|
 | `app/` | The Yorishiro app (Godot). Started as a fork of [OpenVT](https://github.com/erodozer/open-vt) by erodozer | MIT, see `app/LICENSE.txt` |
 | `crates/tracking`, `crates/tracking-gd` | The face tracking core in Rust and its Godot node | Apache-2.0, see `crates/tracking/LICENSE` |
+| `crates/pipewire-gd` | Sends the stage to OBS over PipeWire on the graphics card, with libfunnel | Apache-2.0, see `crates/pipewire-gd/LICENSE` |
 | `crates/katashiro`, `crates/katashiro-gd` | Katashiro, the Live2D renderer: our fork of [Ayagami](https://github.com/AyagamiDev/ayagami) and its Godot bindings | MIT or Apache-2.0 (core), MIT (Godot part) |
-| `native/` | The helper that sends the stage to OBS over PipeWire | MIT |
 | `thirdparty/` | Upstream code we build: [libfunnel](https://github.com/hoshinolina/libfunnel), godot-keylogger, gd-virtualcamera | Their own |
 | `models/` | The tracking models (made or downloaded, only the eye model is in git) | See `models/README.md` |
 | `research/` | Python tools that make the tracking models, and the eye model's training | Apache-2.0, see `research/LICENSE` |

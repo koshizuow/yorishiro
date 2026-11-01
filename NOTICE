@@ -17,12 +17,14 @@ Licensing by directory
             Apache-2.0, see crates/tracking/LICENSE. The face tracking core in
             Rust and its Godot node, built into the app as
             addons/yorishiro_tracking.
+  crates/pipewire-gd
+            Apache-2.0, see crates/pipewire-gd/LICENSE. Sends the stage to
+            OBS over PipeWire, built into the app as addons/yorishiro_pipewire.
   crates/katashiro-gd
             MIT, see crates/katashiro-gd/LICENSE.md. Katashiro, below.
   crates/katashiro
             MIT or Apache-2.0, see crates/katashiro/COPYRIGHT. Katashiro's
             core, below.
-  native/   MIT, like app/. The PipeWire output helper.
   thirdparty/
             Upstream code we build, each under its own license, below.
   research/ Apache-2.0, see research/LICENSE. Tools that make the tracking
@@ -49,8 +51,8 @@ Third-party components used by app/
   libfunnel             https://github.com/hoshinolina/libfunnel
                         MIT, Copyright the libfunnel contributors. Included
                         as thirdparty/libfunnel, compiled into
-                        native/funnel_out/yorishiro-funnel together with
-                        PipeWire's client library (MIT).
+                        addons/yorishiro_pipewire (crates/pipewire-gd),
+                        linked to PipeWire's client library (MIT).
   gd-virtualcamera      https://github.com/erodozer/gd-virtualcamera
                         The Unlicense (public domain), thirdparty/gd-virtualcamera
   godot-keylogger       https://github.com/erodozer/godot-keylogger

@@ -5,6 +5,7 @@ resolver = "3"
 members = [
 	"crates/tracking",
 	"crates/tracking-gd",
+	"crates/pipewire-gd",
 	"crates/katashiro",
 	"crates/katashiro-gd",
 	"tools/moc3",

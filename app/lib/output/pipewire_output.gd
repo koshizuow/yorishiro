@@ -1,7 +1,7 @@
 ## Sends the stage to OBS as a PipeWire video stream with alpha (D34, the Linux counterpart of Spout2).
-## The stage is copied into a frame file in /dev/shm every frame and the helper yorishiro-funnel
-## (native/funnel_out, libfunnel) publishes it; OBS receives it with a PipeWire video source (the
-## obs-pwvideo plugin). Only the stage goes out, not the settings or buttons.
+## The PipeWireStageOut node (addons/yorishiro_pipewire, crates/pipewire-gd, libfunnel) copies the stage on
+## the graphics card into the stream every frame, no pixels go through the CPU. OBS receives it with a
+## PipeWire video source (the obs-pwvideo plugin). Only the stage goes out, not the settings or buttons.
 ## Saved in the profile as window.pipewire_out.
 extends Node
 
@@ -22,12 +22,10 @@ var status := ""
 var status_ok := true
 
 var _viewport: Viewport
-var _file: FileAccess
-var _path := ""
-var _proc := {}
-var _seq := 0
-var _size := Vector2i.ZERO
-var _partial := ""
+## one PipeWireStageOut for the app's lifetime: it frees the GPU images of a stopped stream frames later
+var _out: RefCounted
+var _running := false
+var _state := ""
 
 func _init() -> void:
 	name = "PipeWireOutput"
@@ -35,109 +33,64 @@ func _init() -> void:
 	add_to_group("output:pipewire")
 
 func _ready() -> void:
-	RenderingServer.frame_post_draw.connect(_write_frame)
-
-func helper_path() -> String:
-	var override = OS.get_environment("YORISHIRO_FUNNEL")
-	if override:
-		return override
-	var app_dir = ProjectSettings.globalize_path("res://").trim_suffix("/")
-	return app_dir.get_base_dir().path_join("native/funnel_out/build/yorishiro-funnel")
+	RenderingServer.frame_post_draw.connect(_send_frame)
 
 func _start() -> void:
 	var stage = get_tree().get_first_node_in_group("system:stage")
 	_viewport = stage.capture_viewport if stage else get_viewport()
-	var helper := helper_path()
-	if not FileAccess.file_exists(helper):
-		_set_status(tr("The PipeWire helper is not built (%s).") % helper, false)
+	if not ClassDB.class_exists(&"PipeWireStageOut"):
+		_set_status(tr("The PipeWire output is not built (addons/yorishiro_pipewire). Run app/build_dependencies.sh."), false)
 		return
-	_path = "/dev/shm/yorishiro-stage-%d.rgba" % OS.get_process_id()
-	_file = FileAccess.open(_path, FileAccess.WRITE_READ)
-	if _file == null:
-		_set_status(tr("Cannot write %s.") % _path, false)
+	if _out == null:
+		_out = ClassDB.instantiate(&"PipeWireStageOut")
+	var err: String = _out.start(STREAM_NAME)
+	if err:
+		_set_status(_explain(err), false)
 		return
-	_seq = 0
-	_size = Vector2i.ZERO
-	_launch(helper)
-
-func _launch(helper: String) -> void:
-	_proc = OS.execute_with_pipe(helper, [_path, STREAM_NAME, "--parent-pid", str(OS.get_process_id())], false)
-	if _proc.is_empty():
-		_set_status(tr("Could not start the PipeWire helper."), false)
-		return
+	_running = true
+	_state = ""
 	_set_status(tr("Starting..."), true)
 
 func _stop() -> void:
-	if not _proc.is_empty() and OS.is_process_running(_proc["pid"]):
-		OS.kill(_proc["pid"])
-	_proc = {}
-	_file = null
-	if _path:
-		DirAccess.remove_absolute(_path)
-	_path = ""
+	if _out:
+		_out.stop()
+	_running = false
 	_set_status("", true)
 
 func _exit_tree() -> void:
 	_stop()
 
-func _write_frame() -> void:
-	if not enabled or _file == null:
+func _send_frame() -> void:
+	if not _running:
+		if _out:
+			_out.collect()
 		return
-	var image := _viewport.get_texture().get_image()
-	if image == null:
-		return
-	image.convert(Image.FORMAT_RGBA8)
-	var size := image.get_size()
-	if size != _size:
-		_size = size  # the helper sees the new size and exits with 3, _process starts it again
-	_file.seek(0)
-	_file.store_32(_seq + 1)  # odd while writing
-	_file.flush()
-	_file.store_32(size.x)
-	_file.store_32(size.y)
-	_file.store_32(0)
-	_file.store_buffer(image.get_data())
-	_seq += 2
-	_file.seek(0)
-	_file.store_32(_seq)
-	_file.flush()
+	var err: String = _out.send(_viewport.get_texture().get_rid())
+	if err:
+		_running = false
+		_set_status(_explain(err), false)
 
 func _process(_delta: float) -> void:
-	if _proc.is_empty():
+	if not _running:
 		return
-	var err: FileAccess = _proc["stderr"]
-	var chunk := err.get_buffer(4096)
-	if not chunk.is_empty():
-		var lines := (_partial + chunk.get_string_from_utf8()).split("\n")
-		_partial = lines[-1]
-		for i in lines.size() - 1:
-			var line: String = lines[i]
-			if line.begins_with("status: error: "):
-				_set_status(_explain(line.trim_prefix("status: error: ")), false)
-			elif line.begins_with("status: "):
-				_set_status(_translate(line.trim_prefix("status: ")), true)
-	if not OS.is_process_running(_proc["pid"]):
-		var code := OS.get_process_exit_code(_proc["pid"])
-		_proc = {}
-		if enabled and (code == 3 or code == 0):  # new frame size, or it stopped while we kept writing
-			_launch(helper_path())
-		elif enabled and status_ok:
-			_set_status(tr("The PipeWire helper stopped (exit code %d).") % code, false)
-
-func _translate(text: String) -> String:
-	var m := RegEx.create_from_string("^streaming (\\d+)x(\\d+)").search(text)
-	if m:
-		return tr("Sending %sx%s, waiting for OBS") % [m.get_string(1), m.get_string(2)]
-	if text.begins_with("OBS"):
-		return tr("Sending to OBS")
-	return text
+	var size := Vector2i(_viewport.get_texture().get_size())
+	var state: String = "%s %s" % [_out.state(), size]
+	if state == _state:
+		return
+	_state = state
+	if state.begins_with("streaming"):
+		_set_status(tr("Sending to OBS"), true)
+	else:
+		_set_status(tr("Sending %sx%s, waiting for OBS") % [size.x, size.y], true)
 
 ## the failures users can act on, with what to do
 func _explain(error: String) -> String:
 	if error.begins_with("connecting to PipeWire"):
 		return tr("PipeWire is not running or not reachable.")
 	if error.begins_with("setting up the PipeWire stream"):
-		return tr("PipeWire refused the stream. NVIDIA drivers need PipeWire 1.2 or newer and OBS 31 or newer.") + " (%s)" % error
+		return tr("PipeWire refused the stream. It needs PipeWire 1.2 or newer, and OBS 31 or newer on NVIDIA.") + " (%s)" % error
+	if error.begins_with("needs the Vulkan renderer"):
+		return tr("Sending to OBS needs the Vulkan renderer (Forward+ or Mobile).")
 	return error
 
 func _set_status(text: String, ok: bool) -> void:
