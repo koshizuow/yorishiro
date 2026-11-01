@@ -1,0 +1,17 @@
+[package]
+name = "yorishiro-tracking-gd"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Godot node for Yorishiro's tracking core (Phase B4)"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+ncnn = ["yorishiro-tracking/ncnn"]
+
+[dependencies]
+godot = "0.5.4"
+yorishiro-tracking = { path = "../tracking" }

@@ -7,8 +7,11 @@
       "branch": "main",
       "pin": {
         "kind": "subtree",
-        "prefix": "app/thirdparty/katashiro",
-        "imported_at": "app/thirdparty/ayagami"
+        "prefix": "crates/katashiro-gd",
+        "moved_from": [
+          "app/thirdparty/katashiro",
+          "app/thirdparty/ayagami"
+        ]
       },
       "policy": "watch",
       "note": "Forked as Katashiro (D37, D38), no engine patch. Read new commits for ideas and fixes. Check every commit's source: nothing written from the Cubism SDK or Framework (D26)."
@@ -19,7 +22,10 @@
       "branch": "main",
       "pin": {
         "kind": "subtree",
-        "prefix": "app/thirdparty/libfunnel"
+        "prefix": "thirdparty/libfunnel",
+        "moved_from": [
+          "app/thirdparty/libfunnel"
+        ]
       },
       "policy": "cherry-pick",
       "note": "PipeWire video out (D34). Maintained best-effort by its author, who asks to fork for new features: our copy is a fork, we fix what we need."
@@ -29,8 +35,10 @@
       "url": "https://github.com/AyagamiDev/ayagami.git",
       "branch": "main",
       "pin": {
-        "kind": "subtree",
-        "prefix": "app/thirdparty/katashiro/core"
+        "kind": "vendored",
+        "prefix": "crates/katashiro",
+        "path": "ayagami",
+        "commit": "0d1d7aa3efe57b1b363b72e672e353c52a9c15d6"
       },
       "policy": "watch",
       "note": "Vendored into Katashiro as katashiro-core (D38). Read new commits for ideas and fixes, same source check (D26)."
@@ -41,7 +49,7 @@
       "branch": "master",
       "pin": {
         "kind": "cargo-lock-version",
-        "lock": "app/thirdparty/katashiro/Cargo.lock",
+        "lock": "Cargo.lock",
         "package": "godot"
       },
       "policy": "bump",
@@ -53,7 +61,7 @@
       "branch": "main",
       "pin": {
         "kind": "submodule",
-        "path": "app/thirdparty/godot-keylogger"
+        "path": "thirdparty/godot-keylogger"
       },
       "policy": "bump"
     },
@@ -63,7 +71,7 @@
       "branch": "main",
       "pin": {
         "kind": "submodule",
-        "path": "app/thirdparty/gd-virtualcamera"
+        "path": "thirdparty/gd-virtualcamera"
       },
       "policy": "bump"
     }

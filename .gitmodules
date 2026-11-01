@@ -1,6 +1,6 @@
 [submodule "app/thirdparty/godot-keylogger"]
-	path = app/thirdparty/godot-keylogger
+	path = thirdparty/godot-keylogger
 	url = https://github.com/erodozer/godot-keylogger
 [submodule "app/thirdparty/gd-virtualcamera"]
-	path = app/thirdparty/gd-virtualcamera
+	path = thirdparty/gd-virtualcamera
 	url = https://github.com/erodozer/gd-virtualcamera.git

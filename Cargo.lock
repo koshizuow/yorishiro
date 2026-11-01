@@ -1527,7 +1527,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
-name = "yorishiro-core"
+name = "yorishiro-tracking"
 version = "0.1.0"
 dependencies = [
  "cc",
@@ -1541,11 +1541,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "yorishiro-core-gd"
+name = "yorishiro-tracking-gd"
 version = "0.1.0"
 dependencies = [
  "godot",
- "yorishiro-core",
+ "yorishiro-tracking",
 ]
 
 [[package]]

@@ -65,9 +65,9 @@ def our_changes(prefix: str, since: str) -> set[str]:
     return {f[len(prefix) + 1:] for f in out.splitlines() if f.startswith(prefix + "/")}
 
 
-def upstream_commits(mpath: Path, base: str, branch: str) -> list[dict]:
+def upstream_commits(mpath: Path, base: str, branch: str, path: str | None = None) -> list[dict]:
     fmt = "--format=@@%H%x09%ad%x09%an%x09%s"
-    out = git("log", fmt, "--date=short", "--name-only", f"{base}..{branch}", cwd=mpath)
+    out = git("log", fmt, "--date=short", "--name-only", f"{base}..{branch}", *(["--", path] if path else []), cwd=mpath)
     commits = []
     for block in out.split("@@")[1:]:
         head, *files = block.strip().splitlines()
@@ -94,17 +94,23 @@ def report_upstream(up: dict, mirrors: Path, fetch: bool) -> list[str]:
     pin = up["pin"]
     changed: set[str] = set()
     if pin["kind"] == "subtree":
-        # a subtree moved since its import (ayagami -> katashiro) is found by the path it was imported at
-        split, added = subtree_pin(pin.get("imported_at", pin["prefix"]))
+        # a subtree moved since its import is found by the path it was imported at (the last of moved_from)
+        prefixes = [pin["prefix"], *pin.get("moved_from", [])]
+        split, added = subtree_pin(prefixes[-1])
         if subprocess.run(["git", "-C", str(mpath), "cat-file", "-e", split + "^{commit}"]).returncode != 0:
             # our own fork commit (OpenVT): bring it over to find where it left upstream
             subprocess.run(["git", "-C", str(mpath), "fetch", "-q", str(ROOT), split], check=True)
         base = git("merge-base", split, up["branch"], cwd=mpath)
-        changed = our_changes(pin["prefix"], added) | our_changes(pin.get("imported_at", pin["prefix"]), added)
+        changed = set().union(*(our_changes(p, added) for p in prefixes))
         ours = git("rev-list", "--count", f"{base}..{split}", cwd=mpath)
         lines.append(f"- we use: upstream {base[:9]} ({git('log', '-1', '--format=%ad', '--date=short', base, cwd=mpath)})"
                      f" + {ours} commits of our fork before the import + our commits since, "
                      f"{len(changed)} files changed by us under {pin['prefix']}")
+    elif pin["kind"] == "vendored":
+        # copied from one upstream commit (only the files under pin["path"] there), changed freely since
+        base = pin["commit"]
+        lines.append(f"- we use: a copy of {pin['path']}/ at {base[:9]} "
+                     f"({git('log', '-1', '--format=%ad', '--date=short', base, cwd=mpath)}), ours since")
     elif pin["kind"] == "cargo-lock":
         version, source = lock_source(pin["lock"], pin["package"])
         base = source.rsplit("#", 1)[-1]
@@ -121,7 +127,7 @@ def report_upstream(up: dict, mirrors: Path, fetch: bool) -> list[str]:
     else:
         raise SystemExit(f"unknown pin kind {pin['kind']}")
 
-    commits = upstream_commits(mpath, base, up["branch"])
+    commits = upstream_commits(mpath, base, up["branch"], pin.get("path") if pin["kind"] == "vendored" else None)
     lines.append(f"- upstream {up['branch']} has {len(commits)} newer commits")
     if not commits:
         return lines + [""]

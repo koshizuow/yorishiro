@@ -73,7 +73,7 @@
    UV_PROJECT_ENVIRONMENT=.venv-nvidia uv sync --no-group ort-cpu --group ort-nvidia
    cd ..
    ```
-6. **PipeWire output helper:** `app/native/funnel_out/build.sh`
+6. **PipeWire output helper:** `native/funnel_out/build.sh`
 7. **Import the project once:** `./run.sh --headless --import`
 
 ## Usage
@@ -99,7 +99,11 @@
 
 | Directory | What | License |
 |-----------|------|---------|
-| `app/` | The Yorishiro app (Godot). Started as a fork of [OpenVT](https://github.com/erodozer/open-vt) by erodozer. Includes Katashiro (our fork of [ayagami-gd](https://github.com/AyagamiDev/ayagami-gd)) and [libfunnel](https://github.com/hoshinolina/libfunnel) | MIT, see `app/LICENSE.txt` |
+| `app/` | The Yorishiro app (Godot). Started as a fork of [OpenVT](https://github.com/erodozer/open-vt) by erodozer | MIT, see `app/LICENSE.txt` |
+| `crates/tracking`, `crates/tracking-gd` | The face tracking core in Rust and its Godot node | Apache-2.0, see `crates/tracking/LICENSE` |
+| `crates/katashiro`, `crates/katashiro-gd` | Katashiro, the Live2D renderer: our fork of [Ayagami](https://github.com/AyagamiDev/ayagami) and its Godot bindings | MIT or Apache-2.0 (core), MIT (Godot part) |
+| `native/` | The helper that sends the stage to OBS over PipeWire | MIT |
+| `thirdparty/` | Upstream code we build: [libfunnel](https://github.com/hoshinolina/libfunnel), godot-keylogger, gd-virtualcamera | Their own |
 | `tracker/` | `yorishiro-tracker`, the face tracking engine (ARKit 52 out, pluggable models, Vulkan / CPU / CUDA / TensorRT) | Apache-2.0, see `tracker/LICENSE` |
 | `tools/` | Development and test tools | Same as the part they belong to |
 

@@ -13,11 +13,21 @@ Licensing by directory
             upstream commit 8ca92ac, later Yorishiro changes are listed in the
             git history. Some changes were adapted from upstream pull requests
             and keep their original authors in git.
+  crates/tracking, crates/tracking-gd
+            Apache-2.0, see crates/tracking/LICENSE. The face tracking core in
+            Rust and its Godot node, built into the app as
+            addons/yorishiro_tracking.
+  crates/katashiro-gd
+            MIT, see crates/katashiro-gd/LICENSE.md. Katashiro, below.
+  crates/katashiro
+            MIT or Apache-2.0, see crates/katashiro/COPYRIGHT. Katashiro's
+            core, below.
+  native/   MIT, like app/. The PipeWire output helper.
+  thirdparty/
+            Upstream code we build, each under its own license, below.
   tracker/  Apache-2.0, see tracker/LICENSE.
-  core/     Apache-2.0, see core/LICENSE. The tracker's runtime path in Rust
-            (Phase B), built into the app as addons/yorishiro_core.
-  tools/    Same license as the component they belong to (app MIT, tracker
-            Apache-2.0).
+  tools/    Same license as the component they belong to (app MIT, tracking
+            and tracker Apache-2.0).
 
 Third-party components used by app/
 
@@ -25,24 +35,25 @@ Third-party components used by app/
                         (ayagami-gd, https://github.com/AyagamiDev/ayagami-gd),
                         MIT, Copyright (c) The Ayagami Project Contributors,
                         changes since the fork Copyright (c) 2026 The
-                        Katashiro contributors. In app/thirdparty/katashiro,
+                        Katashiro contributors. In crates/katashiro-gd,
                         built into app/addons/katashiro. Renamed in 2026-11
                         so it is not mistaken for the upstream project; it is
                         not endorsed by the Ayagami authors.
                         Its core library katashiro-core
-                        (app/thirdparty/katashiro/core) is the ayagami crate
+                        (crates/katashiro) is the ayagami crate
                         (https://github.com/AyagamiDev/ayagami, commit
                         0d1d7aa) with our changes, MIT or Apache-2.0,
                         Copyright (c) The Ayagami Project Contributors.
   libfunnel             https://github.com/hoshinolina/libfunnel
                         MIT, Copyright the libfunnel contributors. Included
-                        as app/thirdparty/libfunnel, compiled into
-                        app/native/funnel_out/yorishiro-funnel together with
+                        as thirdparty/libfunnel, compiled into
+                        native/funnel_out/yorishiro-funnel together with
                         PipeWire's client library (MIT).
   gd-virtualcamera      https://github.com/erodozer/gd-virtualcamera
-                        The Unlicense (public domain)
+                        The Unlicense (public domain), thirdparty/gd-virtualcamera
   godot-keylogger       https://github.com/erodozer/godot-keylogger
-                        MIT, Copyright (c) 2025-present erodozer
+                        MIT, Copyright (c) 2025-present erodozer,
+                        thirdparty/godot-keylogger
   Godot Engine          https://godotengine.org, MIT. Yorishiro runs on the
                         official builds.
 
@@ -52,7 +63,7 @@ Fonts shipped in app/ui/fonts/
                         SIL Open Font License 1.1, see app/ui/fonts/OFL.txt.
                         Copyright 2025 The Huninn Project Authors.
 
-Third-party components used by core/
+Third-party components used by crates/tracking
 
   ONNX Runtime          https://github.com/microsoft/onnxruntime, MIT,
                         Copyright (c) Microsoft Corporation. Not linked: the
@@ -67,8 +78,8 @@ Third-party components used by core/
 Copies of these licenses are placed in app/license/ by app/build_dependencies.sh.
 The native addons also statically link Rust crates from crates.io, for example
 godot-rust (MPL-2.0, file-level: their published sources are used unchanged).
-tools/crate_licenses.py lists them with their licenses; the core's list is in
-core/THIRD_PARTY.md and is regenerated for any binary release.
+tools/crate_licenses.py lists them with their licenses; the tracking node's list is in
+crates/tracking/THIRD_PARTY.md and is regenerated for any binary release.
 
 Data that is not part of this repository
 
@@ -118,7 +129,7 @@ Code adapted from MediaPipe (Apache-2.0)
   copies the landmark subset and output order of face_blendshapes_graph.cc.
   mediapipe_ncnn/ reimplements MediaPipe's face detector decoding and
   landmark ROI handling, mediapipe_ncnn/hands.py its palm detector decoding
-  and hand crops. core/src/inference.rs and core/src/hands.rs port the same
+  and hand crops. crates/tracking/src/inference.rs and crates/tracking/src/hands.rs port the same
   to Rust. Copyright Google LLC, Apache-2.0.
 
 Evaluation only, not used by the tracker and not distributed

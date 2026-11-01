@@ -1,6 +1,6 @@
 ## Sends the stage to OBS as a PipeWire video stream with alpha (D34, the Linux counterpart of Spout2).
 ## The stage is copied into a frame file in /dev/shm every frame and the helper yorishiro-funnel
-## (app/native/funnel_out, libfunnel) publishes it; OBS receives it with a PipeWire video source (the
+## (native/funnel_out, libfunnel) publishes it; OBS receives it with a PipeWire video source (the
 ## obs-pwvideo plugin). Only the stage goes out, not the settings or buttons.
 ## Saved in the profile as window.pipewire_out.
 extends Node
@@ -42,7 +42,7 @@ func helper_path() -> String:
 	if override:
 		return override
 	var app_dir = ProjectSettings.globalize_path("res://").trim_suffix("/")
-	return app_dir.path_join("native/funnel_out/build/yorishiro-funnel")
+	return app_dir.get_base_dir().path_join("native/funnel_out/build/yorishiro-funnel")
 
 func _start() -> void:
 	var stage = get_tree().get_first_node_in_group("system:stage")

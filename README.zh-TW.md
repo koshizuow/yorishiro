@@ -68,7 +68,7 @@
    UV_PROJECT_ENVIRONMENT=.venv-nvidia uv sync --no-group ort-cpu --group ort-nvidia
    cd ..
    ```
-6. **PipeWire 輸出程式：** `app/native/funnel_out/build.sh`
+6. **PipeWire 輸出程式：** `native/funnel_out/build.sh`
 7. **第一次使用前先匯入專案：** `./run.sh --headless --import`
 
 ## 使用方式
@@ -89,7 +89,11 @@
 
 | 資料夾 | 內容 | 授權 |
 |--------|------|------|
-| `app/` | Yorishiro app（Godot）。最早是從 erodozer 的 [OpenVT](https://github.com/erodozer/open-vt) fork 出來的，裡面包含 Katashiro（我們從 [ayagami-gd](https://github.com/AyagamiDev/ayagami-gd) 分支出來的版本）和 [libfunnel](https://github.com/hoshinolina/libfunnel) | MIT，見 `app/LICENSE.txt` |
+| `app/` | Yorishiro app（Godot）。最早是從 erodozer 的 [OpenVT](https://github.com/erodozer/open-vt) fork 出來的 | MIT，見 `app/LICENSE.txt` |
+| `crates/tracking`、`crates/tracking-gd` | Rust 寫的臉部追蹤核心，以及給 Godot 用的節點 | Apache-2.0，見 `crates/tracking/LICENSE` |
+| `crates/katashiro`、`crates/katashiro-gd` | Live2D 渲染器 Katashiro：我們從 [Ayagami](https://github.com/AyagamiDev/ayagami) 和它的 Godot 擴充分支出來的版本 | 核心是 MIT 或 Apache-2.0，Godot 部分是 MIT |
+| `native/` | 把舞台透過 PipeWire 傳到 OBS 的小程式 | MIT |
+| `thirdparty/` | 我們一起編譯的上游程式：[libfunnel](https://github.com/hoshinolina/libfunnel)、godot-keylogger、gd-virtualcamera | 依各自的授權 |
 | `tracker/` | 臉部追蹤引擎 `yorishiro-tracker`（輸出 ARKit 52 種表情，模型可替換，支援 Vulkan / CPU / CUDA / TensorRT） | Apache-2.0，見 `tracker/LICENSE` |
 | `tools/` | 開發和測試用的工具 | 依所屬的部分而定 |
 

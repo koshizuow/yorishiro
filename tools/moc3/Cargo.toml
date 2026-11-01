@@ -7,7 +7,7 @@ description = "moc3 inspection tools on Katashiro's core"
 publish = false
 
 [dependencies]
-katashiro-core = { path = "../../app/thirdparty/katashiro/core" }
+katashiro-core = { path = "../../crates/katashiro" }
 
 [[bin]]
 name = "load-model"

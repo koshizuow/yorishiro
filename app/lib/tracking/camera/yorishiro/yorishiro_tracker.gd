@@ -1,7 +1,7 @@
 ## Yorishiro tracker input. Starts yorishiro-tracker in the background (unless one is already
 ## sending), receives frames, status and camera previews over the local link, and controls it.
 ## Protocol: yorishiro_tracker/sinks/link.py.
-## With engine "core" and the yorishiro_core extension built (core/gd, Phase B4) the tracking runs inside
+## With engine "core" and the yorishiro_tracking extension built (crates/tracking-gd, Phase B4) the tracking runs inside
 ## the app instead: the YorishiroCore node returns the same messages from poll().
 extends "../camera_tracker.gd"
 
@@ -104,7 +104,7 @@ func tracker_command() -> String:
 		return nvidia
 	return tracker_dir.path_join(".venv/bin/yorishiro-tracker")
 
-## the tracking core is built into this app (addons/yorishiro_core)
+## the tracking core is built into this app (addons/yorishiro_tracking)
 static func core_available() -> bool:
 	return ClassDB.class_exists(&"YorishiroCore")
 

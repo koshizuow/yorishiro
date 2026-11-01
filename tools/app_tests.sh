@@ -44,7 +44,7 @@ if [ -f "$HANDS_REC/meta.json" ]; then
   YORISHIRO_RECORDING=$HANDS_REC run hands "$HIYORI" --hand-test --screenshot-window="$OUT/hands.png"
 fi
 # the built-in Rust core on the development loopback camera, when both are there
-if [ -f "$ROOT/app/addons/yorishiro_core/lib/libyorishiro_core_gd.x86_64.so" ] && [ -e /dev/video10 ] && pgrep -x ffmpeg > /dev/null; then
+if [ -f "$ROOT/app/addons/yorishiro_tracking/lib/libyorishiro_tracking_gd.x86_64.so" ] && [ -e /dev/video10 ] && pgrep -x ffmpeg > /dev/null; then
   run core "$HIYORI" --core-test=10 --screenshot-window="$OUT/core.png"
 fi
 run sensitivity "$HIYORI" --open-panel=sensitivity --sensitivity-test=ParamAngleX --screenshot-window="$OUT/sens.png"

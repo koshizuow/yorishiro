@@ -38,7 +38,7 @@
 ##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png; --hand-core=<camera> runs it on the
 ##                          built-in core and that camera) switch hand tracking on (restarts the Yorishiro tracker with --hands), run with a
 ##                          recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands), check the Hand* inputs
-##   --core-test=<camera>   switch the Yorishiro tracker to the built-in Rust core (addons/yorishiro_core) on that
+##   --core-test=<camera>   switch the Yorishiro tracker to the built-in Rust core (addons/yorishiro_tracking) on that
 ##                          camera (the development loopback camera is 10), check it runs and moves the model;
 ##                          --core-runtime=<vulkan|tensorrt|cuda|...> picks the landmark runtime (ort-cpu)
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action

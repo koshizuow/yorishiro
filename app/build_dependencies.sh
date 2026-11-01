@@ -25,16 +25,16 @@ esac
 build_workspace () {
 	FEATURES=""
 	if [ -n "$NCNN_DIR" ]; then
-		FEATURES="--features yorishiro-core-gd/ncnn"
+		FEATURES="--features yorishiro-tracking-gd/ncnn"
 	fi
-	cargo build --release -p katashiro-gd -p yorishiro-core-gd $FEATURES --manifest-path $PROJ_ROOT/../Cargo.toml
+	cargo build --release -p katashiro-gd -p yorishiro-tracking-gd $FEATURES --manifest-path $PROJ_ROOT/../Cargo.toml
 }
 
 ## Katashiro: our fork of Ayagami's Godot bindings (ayagami-gd), the Live2D renderer
 build_katashiro () {
 	echo -e "\n#### Preparing katashiro-gd\n\n"
 
-	WORKDIR=$PROJ_ROOT/thirdparty/katashiro
+	WORKDIR=$PROJ_ROOT/../crates/katashiro-gd
 	ADDONDIR=$PROJ_ROOT/addons
 
 	mkdir -p $ADDONDIR
@@ -47,7 +47,7 @@ build_katashiro () {
 	# MIT: Ayagami's copyright notice stays in the license with ours
 	cp $WORKDIR/LICENSE.md $PROJ_ROOT/license/LICENSE.katashiro.md
 	# the core crate, from ayagami: MIT or Apache-2.0, its copyright file and the MIT text
-	cat $WORKDIR/core/COPYRIGHT - $WORKDIR/core/LICENSE-MIT <<< "" > $PROJ_ROOT/license/LICENSE.katashiro-core.md
+	cat $WORKDIR/../katashiro/COPYRIGHT - $WORKDIR/../katashiro/LICENSE-MIT <<< "" > $PROJ_ROOT/license/LICENSE.katashiro-core.md
 	cp $WORKDIR/README.md $ADDONDIR/katashiro/README.md
 	
 	echo "*" > $ADDONDIR/katashiro/.gitignore
@@ -58,27 +58,27 @@ build_katashiro () {
 	cd $PROJ_ROOT
 }
 
-## Yorishiro's tracking core as a Godot node (core/gd, Phase B4). With NCNN_DIR set (ncnn built with Vulkan and NCNN_SIMPLEOMP, so no libgomp to ship and no spinning workers),
+## Yorishiro's tracking core as a Godot node (crates/tracking-gd, Phase B4). With NCNN_DIR set (ncnn built with Vulkan and NCNN_SIMPLEOMP, so no libgomp to ship and no spinning workers),
 ## the landmark model can also run on ncnn; ONNX Runtime is loaded at run time from the tracker's venv.
 build_core () {
-	echo -e "\n#### Preparing yorishiro-core\n\n"
+	echo -e "\n#### Preparing yorishiro-tracking\n\n"
 
-	ADDON=$PROJ_ROOT/addons/yorishiro_core
+	ADDON=$PROJ_ROOT/addons/yorishiro_tracking
 	build_workspace || return 1
 	mkdir -p $ADDON/lib
-	cp $PROJ_ROOT/../target/release/libyorishiro_core_gd.so $ADDON/lib/libyorishiro_core_gd.x86_64.so
+	cp $PROJ_ROOT/../target/release/libyorishiro_tracking_gd.so $ADDON/lib/libyorishiro_tracking_gd.x86_64.so
 	if [ -n "$NCNN_DIR" ]; then
 		cp -L $NCNN_DIR/lib/libncnn.so.1 $ADDON/lib/  # found through the node library's $ORIGIN rpath
 	fi
-	cat > $ADDON/yorishiro_core.gdextension <<'GDEXT'
+	cat > $ADDON/yorishiro_tracking.gdextension <<'GDEXT'
 [configuration]
 entry_symbol = "gdext_rust_init"
 compatibility_minimum = 4.7
 reloadable = false
 
 [libraries]
-linux.debug.x86_64 = "res://addons/yorishiro_core/lib/libyorishiro_core_gd.x86_64.so"
-linux.release.x86_64 = "res://addons/yorishiro_core/lib/libyorishiro_core_gd.x86_64.so"
+linux.debug.x86_64 = "res://addons/yorishiro_tracking/lib/libyorishiro_tracking_gd.x86_64.so"
+linux.release.x86_64 = "res://addons/yorishiro_tracking/lib/libyorishiro_tracking_gd.x86_64.so"
 GDEXT
 	echo "*" > $ADDON/.gitignore
 	find $ADDON -type f
@@ -89,7 +89,7 @@ GDEXT
 build_virtualcamera () {
 	echo -e "\n#### Preparing gd-virtualcamera\n\n"
 
-	WORKDIR=$PROJ_ROOT/thirdparty/gd-virtualcamera
+	WORKDIR=$PROJ_ROOT/../thirdparty/gd-virtualcamera
 	ADDONDIR=$PROJ_ROOT/addons
 
 	mkdir -p $ADDONDIR
@@ -112,7 +112,7 @@ build_virtualcamera () {
 build_keylogger() {
 	echo -e "\n#### Preparing godot-keylogger\n\n"
 
-	WORKDIR=$PROJ_ROOT/thirdparty/godot-keylogger
+	WORKDIR=$PROJ_ROOT/../thirdparty/godot-keylogger
 	ADDONDIR=$PROJ_ROOT/addons
 
 	mkdir -p $ADDONDIR

@@ -1,14 +1,16 @@
-# One Cargo workspace for our Rust code, so the native addons share one build of godot-rust and the other crates
+# One Cargo workspace for our Rust code (crates/), so the native addons share one build of godot-rust and the other crates
 # (D40). The addons are built and copied by app/build_dependencies.sh; outputs go to target/ here.
 [workspace]
 resolver = "3"
 members = [
-	"core",
-	"core/gd",
-	"app/thirdparty/katashiro",
-	"app/thirdparty/katashiro/core",
+	"crates/tracking",
+	"crates/tracking-gd",
+	"crates/katashiro",
+	"crates/katashiro-gd",
 	"tools/moc3",
 ]
+# upstream submodules with their own lock files and builds
+exclude = ["thirdparty/godot-keylogger", "thirdparty/gd-virtualcamera"]
 
 # debug builds (cargo test) fast enough for the tracking math and model files
 [profile.dev]

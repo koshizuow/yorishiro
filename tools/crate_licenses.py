@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """License list of the Rust crates a build links (B6, D9: no GPL in what we ship), from `cargo metadata`.
 
-    python3 tools/crate_licenses.py core/gd [--features ncnn] [--out NOTICE-crates.md]
+    python3 tools/crate_licenses.py crates/tracking-gd [--features ncnn] [--out NOTICE-crates.md]
 
 Prints crates grouped by license and flags any GPL, LGPL, AGPL or unknown license. Only crates the build
 actually links count: normal dependencies of the package for Linux x86_64, not dev or build-only ones.
