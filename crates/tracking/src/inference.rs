@@ -142,6 +142,8 @@ pub struct FaceMesh {
     adaptive: Option<Vec<usize>>,
     /// single pass times (ms) since the last decision
     pass_times: Vec<f64>,
+    /// passes still ignored after the start (the first frames are slow while the GPU and caches warm up)
+    warmup: usize,
     /// the median pass time (ms) over the last 30 passes while tracking (adaptive only)
     pub tracking_pass_ms: f64,
 }
@@ -178,12 +180,13 @@ impl FaceMesh {
             flip_mirror: None,
             adaptive: None,
             pass_times: Vec::new(),
+            warmup: 60,
             tracking_pass_ms: 0.0,
         })
     }
 
-    /// Lets flip averaging follow the pass times while tracking: off when the median of 30 passes is over
-    /// FLIP_MAX_PASS_MS by a quarter, on again when it is under by a quarter. The one measurement at open runs
+    /// Lets flip averaging follow the pass times while tracking (after 60 warm-up passes): off when the median
+    /// of 30 passes is over FLIP_MAX_PASS_MS by a quarter, on again when it is under by a quarter. The one measurement at open runs
     /// passes back to back on a warm GPU; tracking at 30 fps leaves the GPU idle between frames, and a slow
     /// GPU then stays at low clocks (the low-end reference: 5.2 ms at open, 11.4 ms while tracking).
     pub fn adapt_flip(&mut self, mirror: Vec<usize>) {
@@ -192,6 +195,10 @@ impl FaceMesh {
 
     fn note_pass(&mut self, ms: f64) {
         let Some(mirror) = self.adaptive.as_ref() else { return };
+        if self.warmup > 0 {
+            self.warmup -= 1;
+            return;
+        }
         self.pass_times.push(ms);
         if self.pass_times.len() < 30 {
             return;
