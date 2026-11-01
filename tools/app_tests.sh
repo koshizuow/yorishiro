@@ -24,7 +24,7 @@ run() {  # name, model, app options...
   timeout 400 "$ROOT/run.sh" --disable-vsync -- --model="$model" "$@" --wait-frames=90 --quit > "$OUT/$name.log" 2>&1
   local code=$?
   local lines
-  lines=$(grep -E "^\[automation\] (.*: ok|.*FAILED|eye test|cycle |gesture|hotkey|expression|playing|app action|plugin api|expression editor|lip sync|hands|core|pipewire)" "$OUT/$name.log" | grep -v "window screenshot")
+  lines=$(grep -E "^\[automation\] (.*: ok|.*FAILED|eye test|cycle |gesture|hotkey|expression|playing|app action|plugin api|expression editor|lip sync|hands|core|pin|pipewire)" "$OUT/$name.log" | grep -v "window screenshot")
   echo "== $name (exit $code)"
   echo "$lines" | sed 's/^\[automation\] /   /' | head -40
   grep -E "SCRIPT ERROR" -A2 "$OUT/$name.log" | head -6
@@ -56,6 +56,7 @@ run cycle "$HIYORI" --cycle-models="$OUT/cycle" --pose-frames=40 --screenshot-wi
 run pose3 "$PRO" --play-motion=hiyori_m06.motion3.json --screenshot="$OUT/pose3.png"
 run subpage "$HIYORI" --open-panel=model --press=Settings --screenshot-window="$OUT/subpage.png"
 run background "$HIYORI" --open-panel=settings --press=Bg_3 --screenshot-window="$OUT/background.png"
+run pin "$HIYORI" --pin-test --screenshot-window="$OUT/pin.png"
 run pipewire "$HIYORI" --open-panel=settings --show=PipeWireToggle --pipewire-test --screenshot-window="$OUT/pipewire.png"
 echo "== $fail failing, shots and logs in $OUT"
 exit $((fail > 0))

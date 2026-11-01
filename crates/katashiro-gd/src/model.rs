@@ -317,15 +317,51 @@ impl KatashiroModel {
         }
     }
 
-    /// An art mesh's current vertices in the model's local pixels (what its mesh node held), for pinning
+    /// An art mesh's current vertices in the model's local pixels (what its mesh node held), for pinning.
+    /// Deformed on the GPU they are read back, a frame or two old (the loaded shape until the first arrives).
     #[func]
-    pub fn mesh_vertices(&self, name: StringName) -> PackedVector2Array {
-        let (Some(md), Some(uid)) = (self.model.as_ref(), self.mesh_uids.get(&name)) else {
-            return PackedVector2Array::new();
-        };
+    pub fn mesh_vertices(&mut self, name: StringName) -> PackedVector2Array {
+        let Some(uid) = self.mesh_uids.get(&name).copied() else { return PackedVector2Array::new() };
+        if let Some(r) = self.renderer.as_mut() {
+            if let Some(v) = r.vertices(uid) {
+                return v;
+            }
+            let node = &self.meshes[&uid];
+            return node.get_mesh().map(|m| m.surface_get_arrays(0).at(godot::classes::mesh::ArrayType::VERTEX.ord() as usize).to()).unwrap_or_default();
+        }
+        let Some(md) = self.model.as_ref() else { return PackedVector2Array::new() };
+        let uid = &uid;
         let px = md.model.canvas_properties().scale;
         md.driver
             .artmesh_state(*uid)
+            .map(|st| st.vertices.iter().map(|v| Vector2::new(v.x * px, v.y * px)).collect())
+            .unwrap_or_default()
+    }
+
+    /// Checks the GPU deformation against the CPU path in the current pose (a report line; waits for the GPU)
+    #[func]
+    pub fn gpu_check(&mut self) -> GString {
+        let (Some(md), Some(r), Some(pose)) = (self.model.as_ref(), self.renderer.as_mut(), self.last_pose.as_ref()) else {
+            return GString::from("not drawn on the GPU");
+        };
+        let mut cpu = Driver::new(md.model.as_ref());
+        cpu.apply_pose(pose);
+        cpu.drive(md.model.as_ref());
+        GString::from(&r.check_against(&md.model, &md.driver, &cpu))
+    }
+
+    /// An art mesh's vertices computed on the CPU in the current pose (local pixels), to check what the GPU
+    /// returns
+    #[func]
+    pub fn cpu_mesh_vertices(&self, name: StringName) -> PackedVector2Array {
+        let (Some(md), Some(pose), Some(uid)) = (self.model.as_ref(), self.last_pose.as_ref(), self.mesh_uids.get(&name)) else {
+            return PackedVector2Array::new();
+        };
+        let mut cpu = Driver::new(md.model.as_ref());
+        cpu.apply_pose(pose);
+        cpu.drive(md.model.as_ref());
+        let px = md.model.canvas_properties().scale;
+        cpu.artmesh_state(*uid)
             .map(|st| st.vertices.iter().map(|v| Vector2::new(v.x * px, v.y * px)).collect())
             .unwrap_or_default()
     }
@@ -334,7 +370,7 @@ impl KatashiroModel {
     #[func]
     pub fn mesh_visible(&self, name: StringName) -> bool {
         let (Some(md), Some(uid)) = (self.model.as_ref(), self.mesh_uids.get(&name)) else { return false };
-        md.driver.artmesh_state(*uid).is_some_and(|st| st.visual.visible && !st.vertices.is_empty())
+        md.driver.artmesh_state(*uid).is_some_and(|st| st.visual.visible && !(st.vertices.is_empty() && st.forms.is_empty()))
     }
 
     /// The app's own multiply and screen colors for an art mesh instead of the model's (enabled false: the
@@ -396,6 +432,8 @@ impl KatashiroModel {
         }
         self.view = Some(view);
         self.renderer = Some(renderer);
+        // the GPU deforms from here on, the driver only weighs forms
+        self.model.as_mut().unwrap().driver.set_gpu_geometry(true);
     }
 
     fn render_rd(&mut self) {

@@ -11,6 +11,7 @@ pub mod motion;
 pub mod mutator;
 pub mod physics;
 pub mod plugin;
+pub mod gpu_deform;
 pub mod rd_renderer;
 
 struct KatashiroExtension;

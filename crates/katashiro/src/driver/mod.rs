@@ -129,6 +129,8 @@ struct ArtMeshState {
         vertices.len()
     )]
     vertices: Vec<Coord>,
+    /// with GPU geometry: the forms (uid) and weights the vertices blend, instead of vertices
+    forms: Vec<(u64, f32)>,
     #[debug("glued_vertices: [{:?}..{:?}, {:?} verts]",
         glued_vertices.as_ref().map(|a| a.iter().copied().reduce(Vec2::min).unwrap_or(Default::default())),
         glued_vertices.as_ref().map(|a| a.iter().copied().reduce(Vec2::max).unwrap_or(Default::default())),
@@ -150,6 +152,8 @@ struct WarpState {
     vertices: Vec<Coord>,
     scale: f32,
     affine: Cell<Option<Affine2>>,
+    /// with GPU geometry: the forms (uid) and weights the grid blends, instead of vertices
+    forms: Vec<(u64, f32)>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -157,6 +161,9 @@ struct RotState {
     visual: Visual,
     affine: Affine2,
     scale: f32,
+    /// with GPU geometry: the transform before the parent's, and a warp parent's scale
+    local: Affine2,
+    parent_warp_scale: f32,
 }
 
 #[derive(Debug)]
@@ -269,6 +276,11 @@ impl WarpState {
         );
         assert!(self.size.x >= 1 && self.size.y >= 1);
 
+        if coords.is_empty() {
+            // only the visual (the GPU deforms, or a rotation deformer's parent)
+            self.visual.apply(visual);
+            return;
+        }
         let fsize = self.size.as_vec2();
         // in-range points read the grid directly: one bounds check here instead of four per point
         let (row, max_x, max_y) = (self.size.x + 1, self.size.x - 1, self.size.y - 1);
@@ -426,6 +438,13 @@ pub struct Driver<T: Model> {
     part: ItemState<T, PartState>,
     order_changed: bool,
     perftest_mode: bool,
+    /// false: vertices are blended and deformed elsewhere (on the GPU); the driver keeps form weights,
+    /// visibility, colors and order
+    geometry: bool,
+    /// the next drive computes everything (after a mode change)
+    recompute_all: bool,
+    /// per glue (index order): its compatibility, NaN when out of range (with GPU geometry)
+    glue_compatibility: Vec<f32>,
 }
 
 #[derive(Default, Debug)]
@@ -434,6 +453,18 @@ pub struct DrivenArtMesh<'a> {
     pub visual: Visual,
     pub vertices: &'a [Coord],
     pub depth: i32,
+    /// with GPU geometry: (form uid, weight) to blend, empty when the mesh has no geometry this frame
+    pub forms: &'a [(u64, f32)],
+}
+
+/// A deformer's state with GPU geometry
+pub enum DeformerPlan<'a> {
+    /// invisible or out of range: nothing under it is drawn
+    None,
+    /// grid = sum of weight * form (uid)
+    Warp { forms: &'a [(u64, f32)] },
+    /// local transform, composed with the parent's on the GPU; a warp parent's scale
+    Rotation { local: Affine2, parent_warp_scale: f32 },
 }
 
 #[derive(Default, Debug)]
@@ -506,6 +537,9 @@ impl<T: Model> Driver<T> {
             root_drawnodes: Default::default(),
             order_changed: true,
             perftest_mode: false,
+            geometry: true,
+            recompute_all: false,
+            glue_compatibility: Vec::new(),
         }
     }
 
@@ -693,14 +727,17 @@ impl<T: Model> Driver<T> {
             weights.len(),
         );
 
+        let local = Affine2::from_scale_angle_translation(
+            flip_v * form.scale,
+            (form.angle + rot.angle_offset()).to_radians(),
+            form.pos,
+        );
         let mut st = RotState {
-            affine: Affine2::from_scale_angle_translation(
-                flip_v * form.scale,
-                (form.angle + rot.angle_offset()).to_radians(),
-                form.pos,
-            ),
+            affine: local,
             visual: form.visual.into(),
             scale: form.scale,
+            local,
+            parent_warp_scale: 0.0,
         };
         st.visual.visible = deformer.visible() && visible;
 
@@ -714,6 +751,12 @@ impl<T: Model> Driver<T> {
             match pst.sub.as_ref().unwrap() {
                 DeformerSubState::Rot(r) => {
                     st.affine = r.affine * st.affine;
+                }
+                DeformerSubState::Warp(w) if !self.geometry => {
+                    // the composition happens with the warp's grid, on the GPU; the visual is applied
+                    // twice here as on the CPU path
+                    pst.apply(&mut [], &mut st.visual);
+                    st.parent_warp_scale = w.scale;
                 }
                 DeformerSubState::Warp(w) => {
                     let mut p = vec![
@@ -755,14 +798,19 @@ impl<T: Model> Driver<T> {
         };
 
         let values: Vec<WarpFormVals> = forms.iter().map(|f| WarpFormVals::new(&**f)).collect();
+        let forms_uids: Vec<u64> = forms.iter().map(|f| f.uid().into()).collect();
 
         let arrays: Vec<&[Coord]> = forms.into_iter().map(|f| f.vertices()).collect();
 
         let form = blend(&values, &weights);
         let mut vertices = Vec::new();
-        vertices.resize(warp.vertex_count(), Vec2::ZERO);
-
-        blend_arrays(&arrays, &mut vertices, &weights);
+        let mut form_weights = Vec::new();
+        if self.geometry {
+            vertices.resize(warp.vertex_count(), Vec2::ZERO);
+            blend_arrays(&arrays, &mut vertices, &weights);
+        } else {
+            form_weights = forms_uids.into_iter().zip(weights.iter().copied()).collect();
+        }
 
         let mut st = WarpState {
             vertices,
@@ -771,6 +819,7 @@ impl<T: Model> Driver<T> {
             scale: 1.0,
             visual: form.visual.into(),
             affine: None.into(),
+            forms: form_weights,
         };
         st.visual.visible = deformer.visible() && visible;
 
@@ -1029,6 +1078,13 @@ impl<T: Model> Driver<T> {
     }
 
     pub fn drive(&mut self, model: &T) {
+        let perftest_mode = self.perftest_mode;
+        self.perftest_mode |= std::mem::take(&mut self.recompute_all);
+        self.drive_all(model);
+        self.perftest_mode = perftest_mode;
+    }
+
+    fn drive_all(&mut self, model: &T) {
         self.order_changed = false;
 
         for param in model.params() {
@@ -1257,6 +1313,11 @@ impl<T: Model> Driver<T> {
 
             let values: Vec<ArtMeshFormVals> =
                 forms.iter().map(|f| ArtMeshFormVals::new(&**f)).collect();
+            let form_weights: Vec<(u64, f32)> = if self.geometry {
+                Vec::new()
+            } else {
+                forms.iter().map(|f| f.uid().into()).zip(weights.iter().copied()).collect()
+            };
 
             let arrays: Vec<&[Coord]> = forms.into_iter().map(|f| f.vertices()).collect();
 
@@ -1264,9 +1325,10 @@ impl<T: Model> Driver<T> {
             // the previous frame's buffer, no allocation per mesh and frame
             let mut vertices = std::mem::take(&mut self.artmesh.get_mut(artmesh.uid()).vertices);
             vertices.clear();
-            vertices.resize(artmesh.vertex_count() as usize, Vec2::ZERO);
-
-            blend_arrays(&arrays, &mut vertices, &weights);
+            if self.geometry {
+                vertices.resize(artmesh.vertex_count() as usize, Vec2::ZERO);
+                blend_arrays(&arrays, &mut vertices, &weights);
+            }
 
             let mut visual: Visual = form.visual.into();
             visual.visible = artmesh.visible();
@@ -1290,14 +1352,30 @@ impl<T: Model> Driver<T> {
                 visual,
                 depth,
                 vertices,
+                forms: form_weights,
                 glued_vertices: None,
             };
             self.artmesh.insert(artmesh.uid(), st);
         }
 
+        if !self.geometry {
+            // glue moves vertices: only its compatibility here
+            self.glue_compatibility.clear();
+            for glue in model.glues() {
+                let c = self
+                    .get_form_set(model, glue.param_maps(), glue.forms(), glue.blend_form_maps())
+                    .map(|(forms, weights)| {
+                        let values: Vec<f32> = forms.into_iter().map(|f| f.compatibility()).collect();
+                        blend(&values, &weights)
+                    })
+                    .unwrap_or(f32::NAN);
+                self.glue_compatibility.push(c);
+            }
+        }
+
         // Propagate glue invalidation forwards and backwards
         // Until no more glues left to invalidate
-        let r = 0..model.glues().count();
+        let r = 0..if self.geometry { model.glues().count() } else { 0 };
         loop {
             let mut progress = false;
             for i in r.clone().chain(r.clone().rev()) {
@@ -1327,7 +1405,7 @@ impl<T: Model> Driver<T> {
         }
 
         // Apply Glue
-        'glue: for glue in model.glues() {
+        'glue: for glue in model.glues().into_iter().take(if self.geometry { usize::MAX } else { 0 }) {
             let uid_1 = glue.artmesh_1().uid();
             let uid_2 = glue.artmesh_2().uid();
 
@@ -1446,7 +1524,31 @@ impl<T: Model> Driver<T> {
             visual: st.visual.clone(),
             depth: st.depth,
             vertices: st.glued_vertices.as_ref().unwrap_or(&st.vertices),
+            forms: &st.forms,
         })
+    }
+
+    /// Leave vertices to the caller (the GPU): see DeformerPlan, DrivenArtMesh::forms, glue_compatibility
+    pub fn set_gpu_geometry(&mut self, on: bool) {
+        if self.geometry != on {
+            return;
+        }
+        self.geometry = !on;
+        // every deformer and mesh is computed again in the new mode on the next drive
+        self.recompute_all = true;
+    }
+
+    pub fn deformer_plan(&self, uid: T::Uid) -> DeformerPlan<'_> {
+        let Some(st) = self.deformer.get(uid) else { return DeformerPlan::None };
+        match &st.sub {
+            Some(DeformerSubState::Warp(w)) if w.size.x >= 1 && w.size.y >= 1 => DeformerPlan::Warp { forms: &w.forms },
+            Some(DeformerSubState::Rot(r)) => DeformerPlan::Rotation { local: r.local, parent_warp_scale: r.parent_warp_scale },
+            _ => DeformerPlan::None,
+        }
+    }
+
+    pub fn glue_compatibility(&self) -> &[f32] {
+        &self.glue_compatibility
     }
 
     pub fn part_state(&self, uid: T::Uid) -> Option<DrivenPart> {

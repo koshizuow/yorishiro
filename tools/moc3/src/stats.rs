@@ -32,7 +32,7 @@ fn main() {
         }
         let parts = model.parts();
         let offscreen = (0..parts.count()).filter(|&i| parts.index(i).unwrap().offscreen()).count();
-        println!("{path}\n  meshes {}, masked {masked} ({inverted} inverted), mask sets {}, meshes drawn into masks {}, offscreen parts {offscreen}\n  blends {blends:?}",
-            meshes.count(), masks.len(), mask_meshes.len());
+        println!("{path}\n  glues {}, meshes {}, masked {masked} ({inverted} inverted), mask sets {}, meshes drawn into masks {}, offscreen parts {offscreen}\n  blends {blends:?}",
+            model.glues().count(), meshes.count(), masks.len(), mask_meshes.len());
     }
 }

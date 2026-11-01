@@ -1,4 +1,4 @@
-// bench MODEL.moc3 [frames]: drives the model through a fixed head, eye, mouth and body animation (ALL=1: every
+// bench MODEL.moc3 [frames] (GPU=1: time only what stays on the CPU with GPU geometry): drives the model through a fixed head, eye, mouth and body animation (ALL=1: every
 // parameter, as physics moves hair and clothes in the app) and prints the
 // time per frame of Driver::drive and a checksum of every vertex, opacity and depth (equal before and after a
 // change to the driver means the same output)
@@ -23,6 +23,8 @@ fn main() {
         .map(|p| (p.id().to_string(), p.min(), p.max()))
         .collect();
     let mut driver = Driver::new(&model);
+    // GPU=1: the driver without geometry, the CPU part of a GPU-deformed model
+    driver.set_gpu_geometry(env::var("GPU").is_ok());
     driver.drive(&model);
     let mut times = vec![];
     let mut sum = 0f64;
@@ -42,6 +44,16 @@ fn main() {
                 sum += st.visual.opacity as f64 + st.depth as f64 * 0.001;
             }
         }
+    }
+    if env::var("GPU").is_ok() {
+        let (mut vis, mut forms) = (0, 0);
+        for a in model.artmeshes() {
+            if let Some(st) = driver.artmesh_state(a.uid()) {
+                vis += st.visual.visible as u32;
+                forms += !st.forms.is_empty() as u32;
+            }
+        }
+        println!("GPU geometry: {vis} visible, {forms} with forms");
     }
     times.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let verts: u32 = model.artmeshes().into_iter().map(|a| a.vertex_count()).sum();

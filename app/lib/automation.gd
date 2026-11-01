@@ -36,6 +36,8 @@
 ##   --hand-test[=<prefix>] (prefix: a window shot every 2 s as <prefix>_N.png) switch hand tracking on (restarts
 ##                          the tracker), run with a recording that shows hands (YORISHIRO_RECORDING=.../hagrid-hands),
 ##                          check the Hand* inputs
+##   --pin-test             add an item over the model, pin it to the art mesh under it (as dropping it does), move
+##                          the model and check the item follows the mesh (vertices read back from the GPU)
 ##   --pipewire-test[=<s>]  send the stage to PipeWire, resize the window twice (s seconds per size, default 2, longer
 ##                          to watch it in OBS) and check the output keeps running
 ##   --core-test=<camera>   switch the tracker from the replayed recording to that camera (the development loopback
@@ -64,6 +66,7 @@
 ##                          the stage not rendered, each autoload and tracking input stopped, to see which part
 ##                          costs what, and each script's nodes with _process off; --perf-rounds=<n> repeats them in turn and prints medians,
 ##                          --perf-only=<a,b> keeps only the phases whose names contain one of these
+##   --gpu-check            after the screenshot, compare the model's GPU-deformed vertices with the CPU path
 ##   --render-stats=<s>     after the screenshot, measure that long: GPU and CPU render time summed over every viewport
 ##                          (the stage, each mask viewport), draw calls and objects per frame, the number of viewports
 ##   --quit                 exit after the screenshot
@@ -240,6 +243,8 @@ func _ready() -> void:
 			await _core_test(int(args["core-test"]), str(args.get("core-runtime", "vulkan")))
 		if args.has("hand-test"):
 			await _hand_test(str(args["hand-test"]))
+		if args.has("pin-test"):
+			await _pin_test()
 		if args.has("pipewire-test"):
 			await _pipewire_test(float(args["pipewire-test"]) if str(args["pipewire-test"]).is_valid_float() else 2.0)
 		if args.has("mic-test"):
@@ -254,6 +259,9 @@ func _ready() -> void:
 			await _calibration_test(args)
 		if args.has("record"):
 			await _record(args)
+		if args.has("gpu-check"):
+			var km = get_tree().get_first_node_in_group("system:stage").active_model.model
+			print("[automation] gpu check: %s" % km.gpu_check())
 		if args.has("render-stats"):
 			await _render_stats(float(args["render-stats"]))
 		if args.has("perf-report"):
@@ -518,6 +526,52 @@ func _core_test(cam: int, runtime: String):
 	face.send_vts_iphone = false
 	face.send_ifacialmocap = false
 	face.save_settings()
+
+func _pin_test():
+	var check := func (what: String, ok: bool): print("[automation] pin %s: %s" % [what, "ok" if ok else "FAILED"])
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	var model = stage.active_model
+	var item = await ItemManager.create_item(PackedStringArray([ProjectSettings.globalize_path("res://branding/splash.png")]))
+	stage.spawn_item(item, false, true)
+	item.pinnable = true
+	item.scale *= 0.1
+	item.global_position = model.global_position - item.scale * item.center
+	for i in 10:
+		await get_tree().process_frame
+	item._on_drag_released()
+	check.call("pinned to %s" % (item.pinned_to.name if item.pinned_to else "nothing"), item.pinned_to != null and item.pin_mode == item.PinMode.VERTICES)
+	if item.pinned_to == null:
+		return
+	# a pose that deforms the body, so the mesh's vertices differ from its loaded shape
+	model.model.set("parameters/ParamBodyAngleX", 10.0)
+	model.model.set("parameters/ParamAngleX", 30.0)
+	for i in 10:
+		await get_tree().process_frame
+	var before: Vector2 = item.global_position
+	model.position += Vector2(80, 0)
+	for i in 20:
+		await get_tree().process_frame
+	var moved: Vector2 = item.global_position - before
+	print("[automation] pin item moved %s with the model moved (80, 0)" % moved)
+	check.call("follows the mesh", absf(moved.x - 80.0) < 6.0 and absf(moved.y) < 6.0)
+	model.position -= Vector2(80, 0)
+	# the vertices pinning reads (read back from the GPU when it deforms) against the mesh's own shape
+	var km = model.model
+	var mesh: MeshInstance2D = item.pinned_to
+	var now: PackedVector2Array = km.mesh_vertices(mesh.name)
+	var count: int = RenderingServer.mesh_surface_get_arrays(mesh.mesh, 0)[Mesh.ARRAY_VERTEX].size()
+	check.call("vertices read for %s (%d of %d)" % [mesh.name, now.size(), count], now.size() == count)
+	# what the CPU computes in this pose (a wrong read would be far off, an old one a little)
+	var cpu: PackedVector2Array = km.cpu_mesh_vertices(mesh.name)
+	var off := 0.0
+	for i in mini(now.size(), cpu.size()):
+		off = maxf(off, now[i].distance_to(cpu[i]))
+	var loaded: PackedVector2Array = RenderingServer.mesh_surface_get_arrays(mesh.mesh, 0)[Mesh.ARRAY_VERTEX]
+	var deformed := 0.0
+	for i in mini(cpu.size(), loaded.size()):
+		deformed = maxf(deformed, cpu[i].distance_to(loaded[i]))
+	check.call("read vertices match the CPU (%.3f px off, the mesh moved %.1f px from its loaded shape)" % [off, deformed], cpu.size() == now.size() and off < 0.5)
+	stage.remove_item(item)
 
 func _pipewire_test(seconds: float):
 	var check := func (what: String, ok: bool): print("[automation] pipewire %s: %s" % [what, "ok" if ok else "FAILED"])
