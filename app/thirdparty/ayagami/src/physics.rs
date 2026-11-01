@@ -192,9 +192,10 @@ impl AyagamiPhysicsMutator {
         self.reload_physics();
     }
 
-    /// physics settings of the model as [{id, name}], in file order
+    /// physics settings of the model as [{id, name}], in file order (not get_groups: that is Node's scene
+    /// tree groups, which Godot 4.8 refuses to let an extension class shadow)
     #[func]
-    pub fn get_groups(&self) -> VarArray {
+    pub fn get_physics_groups(&self) -> VarArray {
         let mut out = VarArray::new();
         for (id, name, _) in self.groups.iter() {
             let mut d = VarDictionary::new();

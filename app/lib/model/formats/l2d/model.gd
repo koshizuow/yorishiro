@@ -37,7 +37,7 @@ func get_physics() -> Node:
 ## the model's physics settings as [{id, name}], empty without a physics3.json
 func physics_group_list() -> Array:
 	var physics = get_physics()
-	return physics.get_groups() if physics and physics.definition else []
+	return physics.get_physics_groups() if physics and physics.definition else []
 
 func set_physics_group(id: String, value: float) -> void:
 	physics_groups[id] = value
