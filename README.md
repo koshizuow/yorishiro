@@ -17,7 +17,7 @@
   [Ayagami](https://github.com/AyagamiDev/ayagami), an independent Live2D renderer: no Live2D Cubism SDK inside.
 - **Face tracking built in.** The app starts its own tracker: MediaPipe FaceMesh landmarks fitted to the 52
   ARKit expressions, an eye model trained on synthetic eyes (holds up behind glasses that reflect the
-  screen), gaze, head position. Runs on any GPU through Vulkan, on NVIDIA through CUDA or TensorRT, or on the CPU.
+  screen), gaze, head position. Runs on any GPU through Vulkan, or on the CPU.
 - **Hand tracking.** Optional, beside the face on the same GPU runtime: hand position, angle, openness
   and each finger, as the hand inputs Live2D models with hand rigs use.
 - **No camera picture on screen.** A 3D head shows what the tracker sees, so a slip of the settings window
@@ -57,20 +57,23 @@
    Linux (x86_64, standard, not .NET). Unzip it into `../tools/godot/` next to the repository, where `run.sh` looks
    for it, or set `GODOT=/path/to/godot`.
 2. **System packages** (Debian / Ubuntu names):
-   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
+   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
 3. **Rust** 1.94 or newer through [rustup](https://rustup.rs) (distribution packages are often older).
 4. **Native addons:**
    ```sh
    git submodule update --init
    cd app && ./build_dependencies.sh && cd ..
    ```
-5. **Tracker** ([uv](https://docs.astral.sh/uv/) manages its Python 3.12 environment):
+   The first build also builds [ncnn](https://github.com/Tencent/ncnn) (the GPU runtime, about 5 minutes) and
+   downloads [ONNX Runtime](https://github.com/microsoft/onnxruntime)'s CPU build.
+5. **Tracking models** into `models/` (see `models/README.md`). Until releases carry them, the research tools
+   make them from the upstream files ([uv](https://docs.astral.sh/uv/) manages their Python 3.12 environment):
    ```sh
-   cd tracker
-   uv sync                                   # CPU and Vulkan runtimes
-   uv run python tools/export_mediapipe.py   # downloads and converts the face models
-   # NVIDIA only, CUDA and TensorRT runtimes in a second environment the app prefers:
-   UV_PROJECT_ENVIRONMENT=.venv-nvidia uv sync --no-group ort-cpu --group ort-nvidia
+   cd research
+   uv sync
+   uv run python tools/export_mediapipe.py   # face models
+   uv run python tools/export_hands.py       # hand models
+   uv run python tools/export_fit.py         # the ARKit expression fit
    cd ..
    ```
 6. **PipeWire output helper:** `native/funnel_out/build.sh`
@@ -104,7 +107,8 @@
 | `crates/katashiro`, `crates/katashiro-gd` | Katashiro, the Live2D renderer: our fork of [Ayagami](https://github.com/AyagamiDev/ayagami) and its Godot bindings | MIT or Apache-2.0 (core), MIT (Godot part) |
 | `native/` | The helper that sends the stage to OBS over PipeWire | MIT |
 | `thirdparty/` | Upstream code we build: [libfunnel](https://github.com/hoshinolina/libfunnel), godot-keylogger, gd-virtualcamera | Their own |
-| `tracker/` | `yorishiro-tracker`, the face tracking engine (ARKit 52 out, pluggable models, Vulkan / CPU / CUDA / TensorRT) | Apache-2.0, see `tracker/LICENSE` |
+| `models/` | The tracking models (made or downloaded, only the eye model is in git) | See `models/README.md` |
+| `research/` | Python tools that make the tracking models, and the eye model's training | Apache-2.0, see `research/LICENSE` |
 | `tools/` | Development and test tools | Same as the part they belong to |
 
 Face recordings and models used for testing are kept outside the repository and never committed.

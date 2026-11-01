@@ -16,7 +16,7 @@
   它是我們從獨立開發的 Live2D 渲染器 [Ayagami](https://github.com/AyagamiDev/ayagami) 的 Godot 擴充分支出來的版本，沒有用到 Live2D Cubism SDK。
 - **內建臉部追蹤。** 打開 app 就會自動啟動追蹤器。它用 MediaPipe FaceMesh 抓臉部特徵點，換算成 ARKit 的 52 種表情，
   也會追蹤視線和頭部位置。眨眼由一個用合成眼睛圖片訓練的模型判斷，就算眼鏡反射螢幕光也抓得到。各家顯示卡都能透過
-  Vulkan 執行，NVIDIA 也可以用 CUDA 或 TensorRT，沒有顯示卡的話用 CPU 也行。
+  Vulkan 執行，沒有顯示卡的話用 CPU 也行。
 - **手部追蹤。** 可以選擇打開，和臉部在同一張顯示卡上一起跑。會追蹤手的位置、角度、張開程度和每根手指，
   給有手部骨架的 Live2D 模型使用。
 - **不會出現攝影機畫面。** 追蹤狀態是用一顆 3D 光頭來顯示，就算直播時不小心打開設定，也不會讓觀眾看到你的房間。
@@ -52,20 +52,23 @@
    （x86_64，標準版，不是 .NET 版），解壓到 repo 旁邊的 `../tools/godot/`（`run.sh` 預設會到這裡找），
    也可以用 `GODOT=/path/to/godot` 指定位置。
 2. **系統套件**（以 Debian / Ubuntu 的套件名稱為例）：
-   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
+   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake meson ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libegl-dev libgl-dev libx11-dev`
 3. **Rust** 1.94 以上。建議用 [rustup](https://rustup.rs) 安裝，發行版內建的版本通常太舊。
 4. **原生擴充：**
    ```sh
    git submodule update --init
    cd app && ./build_dependencies.sh && cd ..
    ```
-5. **追蹤器**（Python 3.12 環境由 [uv](https://docs.astral.sh/uv/) 管理）：
+   第一次建置時也會順便建置 [ncnn](https://github.com/Tencent/ncnn)（顯示卡運算用，大約 5 分鐘），並下載
+   [ONNX Runtime](https://github.com/microsoft/onnxruntime) 的 CPU 版。
+5. **追蹤模型**放在 `models/`（說明見 `models/README.md`）。在正式版附上模型之前，先用研究工具從原始檔案產生
+   （Python 3.12 環境由 [uv](https://docs.astral.sh/uv/) 管理）：
    ```sh
-   cd tracker
-   uv sync                                   # CPU 與 Vulkan
-   uv run python tools/export_mediapipe.py   # 下載並轉換臉部模型
-   # 只有 NVIDIA 需要：CUDA 和 TensorRT 裝在另一個環境，app 會優先使用它
-   UV_PROJECT_ENVIRONMENT=.venv-nvidia uv sync --no-group ort-cpu --group ort-nvidia
+   cd research
+   uv sync
+   uv run python tools/export_mediapipe.py   # 臉部模型
+   uv run python tools/export_hands.py       # 手部模型
+   uv run python tools/export_fit.py         # ARKit 表情換算資料
    cd ..
    ```
 6. **PipeWire 輸出程式：** `native/funnel_out/build.sh`
@@ -94,7 +97,8 @@
 | `crates/katashiro`、`crates/katashiro-gd` | Live2D 渲染器 Katashiro：我們從 [Ayagami](https://github.com/AyagamiDev/ayagami) 和它的 Godot 擴充分支出來的版本 | 核心是 MIT 或 Apache-2.0，Godot 部分是 MIT |
 | `native/` | 把舞台透過 PipeWire 傳到 OBS 的小程式 | MIT |
 | `thirdparty/` | 我們一起編譯的上游程式：[libfunnel](https://github.com/hoshinolina/libfunnel)、godot-keylogger、gd-virtualcamera | 依各自的授權 |
-| `tracker/` | 臉部追蹤引擎 `yorishiro-tracker`（輸出 ARKit 52 種表情，模型可替換，支援 Vulkan / CPU / CUDA / TensorRT） | Apache-2.0，見 `tracker/LICENSE` |
+| `models/` | 追蹤用的模型（自己產生或下載，git 裡只有眼睛模型） | 見 `models/README.md` |
+| `research/` | 產生追蹤模型的 Python 工具，以及眼睛模型的訓練 | Apache-2.0，見 `research/LICENSE` |
 | `tools/` | 開發和測試用的工具 | 依所屬的部分而定 |
 
 測試用的臉部錄影和模型都放在 repo 外面，不會被提交。

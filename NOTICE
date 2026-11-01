@@ -25,9 +25,11 @@ Licensing by directory
   native/   MIT, like app/. The PipeWire output helper.
   thirdparty/
             Upstream code we build, each under its own license, below.
-  tracker/  Apache-2.0, see tracker/LICENSE.
+  research/ Apache-2.0, see research/LICENSE. Tools that make the tracking
+            models (not shipped).
+  models/   The tracking models, see models/README.md and below.
   tools/    Same license as the component they belong to (app MIT, tracking
-            and tracker Apache-2.0).
+            and research Apache-2.0).
 
 Third-party components used by app/
 
@@ -67,12 +69,12 @@ Third-party components used by crates/tracking
 
   ONNX Runtime          https://github.com/microsoft/onnxruntime, MIT,
                         Copyright (c) Microsoft Corporation. Not linked: the
-                        core loads a libonnxruntime the install provides
-                        (the CPU build, or the GPU build with NVIDIA's CUDA,
-                        cuDNN and TensorRT libraries under their own terms).
+                        core loads the official CPU build, which
+                        app/build_dependencies.sh fetches and places beside
+                        the core's library with its third-party notices.
   ncnn                  https://github.com/Tencent/ncnn, BSD-3-Clause,
                         Copyright (C) 2017 THL A29 Limited, a Tencent company.
-                        Optional (the ncnn feature), shipped as libncnn.so.1
+                        Built by tools/build_ncnn.sh, shipped as libncnn.so.1
                         beside the core's library.
 
 Copies of these licenses are placed in app/license/ by app/build_dependencies.sh.
@@ -83,23 +85,22 @@ crates/tracking/THIRD_PARTY.md and is regenerated for any binary release.
 
 Data that is not part of this repository
 
-  Face tracking models (MediaPipe, ICT-FaceKit and others) are downloaded at
-  run time and keep their own licenses. The tracker reports which models allow
-  commercial use.
+  The tracking models in models/ (except the eye model) are made from
+  upstream files by research/ tools and keep their own licenses.
 
-Models the default tracker (facemesh) uses, all commercially usable
+Models the tracking core uses, all commercially usable
 
   MediaPipe Face Landmarker   Google, Apache-2.0
     https://storage.googleapis.com/mediapipe-models/face_landmarker/
     The face_landmarker.task bundle holds the face detector, FaceMesh-V2 and
     Blendshapes V2. Yorishiro changes their format, not their weights:
     - face detector: tflite2onnx to ONNX, then pnnx to ncnn
-      (tracker/tools/export_mediapipe.py, a channel Pad op is rewritten
+      (research/tools/export_mediapipe.py, a channel Pad op is rewritten
       for ncnn).
     - FaceMesh-V2: the ONNX conversion from PINTO model zoo 410_FaceMeshV2
       (Apache-2.0, https://github.com/PINTO0309/PINTO_model_zoo), then pnnx
       to ncnn.
-    - Blendshapes V2: converted to ONNX by tracker/tools/mixer_tflite_to_onnx.py
+    - Blendshapes V2: converted to ONNX by research/tools/mixer_tflite_to_onnx.py
       (fp16 weights stored as fp32, 1x1 convolutions as MatMul).
     Training data per Google's model cards: FaceMesh-V2 on Google's own
     smartphone photos taken through an AR app, depth from synthetic data;
@@ -109,37 +110,37 @@ Models the default tracker (facemesh) uses, all commercially usable
     https://storage.googleapis.com/mediapipe-models/hand_landmarker/
     The hand_landmarker.task bundle holds the palm detector and the hand
     landmark model. Converted, weights unchanged: tflite2onnx and tf2onnx to
-    ONNX, pnnx to ncnn (tracker/tools/export_hands.py).
+    ONNX, pnnx to ncnn (research/tools/export_hands.py).
   ICT-FaceKit                 USC Institute for Creative Technologies, MIT
     https://github.com/ICT-VGL/ICT-FaceKit
     Neutral head and 53 ARKit-named expression shapes, used by the expression
-    solver and the preview avatar.
-  Eye openness model          Yorishiro, same license as the tracker
-    tracker/src/yorishiro_tracker/assets/eye_openness.onnx, part of this
-    repository. Trained only on synthetic renders of the ICT-FaceKit head
-    (tracker/tools/eye_synth), eye crops located by FaceMesh-V2. No photos of
+    solver (models/core/fit.npz, research/tools/export_fit.py) and the
+    preview avatar.
+  Eye openness model          Yorishiro, Apache-2.0
+    models/eye_openness.onnx, part of this repository. Trained only on
+    synthetic renders of the ICT-FaceKit head (research/tools/eye_synth),
+    eye crops located by FaceMesh-V2. No photos of
     real people were used for training; the user's own clips and CREMA-D were
     used for evaluation only.
 
 Code adapted from MediaPipe (Apache-2.0)
 
-  tracker/src/yorishiro_tracker/adapters/landmark_smoother.py follows
-  MediaPipe's LandmarksSmoothingCalculator and OneEuroFilter and uses the
-  Face Landmarker's smoothing settings. adapters/mediapipe_blendshapes.py
-  copies the landmark subset and output order of face_blendshapes_graph.cc.
-  mediapipe_ncnn/ reimplements MediaPipe's face detector decoding and
-  landmark ROI handling, mediapipe_ncnn/hands.py its palm detector decoding
-  and hand crops. crates/tracking/src/inference.rs and crates/tracking/src/hands.rs port the same
-  to Rust. Copyright Google LLC, Apache-2.0.
+  crates/tracking/src/smooth.rs follows MediaPipe's
+  LandmarksSmoothingCalculator and OneEuroFilter and uses the Face
+  Landmarker's smoothing settings. crates/tracking/src/inference.rs
+  reimplements MediaPipe's face detector decoding and landmark ROI handling
+  and copies the landmark subset and output order of
+  face_blendshapes_graph.cc, crates/tracking/src/hands.rs its palm detector
+  decoding and hand crops, research/src/yorishiro_research/mediapipe_ncnn/
+  the face part in Python. Copyright Google LLC, Apache-2.0.
 
 Evaluation only, not used by the tracker and not distributed
 
-  OpenSeeFace (BSD-2-Clause) and Intel Open Model Zoo models (Apache-2.0) run
-  in their own environments for comparison (tracker/tools/osf_worker.py,
-  tracker/tools/omz_worker.py). Research datasets (for example CREMA-D, ODbL)
-  are used for evaluation only, never for training (see the tracker's
-  design notes). Hand tracking is evaluated on a sample of HaGRID
-  (CC BY-SA 4.0, tracker/tools/eval_hands.py), also never for training.
+  OpenSeeFace (BSD-2-Clause) and Intel Open Model Zoo models (Apache-2.0)
+  were run in their own environments for comparison (tools in git history).
+  Research datasets (for example CREMA-D, ODbL) are used for evaluation only,
+  never for training. Hand tracking is evaluated on a sample of HaGRID
+  (CC BY-SA 4.0), also never for training.
   Live2D sample models and the Live2D Cubism SDK are not included and are not
   redistributed. Users download them and accept Live2D's terms themselves.
   Yorishiro renders Live2D models with Katashiro (from Ayagami) and does not ship Live2D Cubism

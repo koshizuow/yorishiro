@@ -1,0 +1,35 @@
+[project]
+name = "yorishiro-research"
+version = "0.1.0"
+description = "Makes the models Yorishiro's tracking core loads, and the research behind them"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Tzu-Hsien Kao", email = "jasonkao0810@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10",
+    "moderngl>=5.13.0",
+    "ncnn>=1.0.20261020",
+    "numpy>=2.5.4",
+    "onnx",
+    "onnxruntime>=1.31.1",
+    "opencv-contrib-python>=5.0.0.93",
+    "pnnx",
+    "tflite2onnx>=0.4.1",
+    "torch",
+]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
