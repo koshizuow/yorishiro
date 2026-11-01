@@ -492,7 +492,9 @@ func _pipewire_test(seconds: float):
 		window.size = size
 		await get_tree().create_timer(seconds).timeout
 		var stage_size: Vector2i = out._viewport.get_texture().get_size()
-		print("[automation] pipewire %s at %s: %s" % [stage_size, size, out.status])
+		var latency: PackedFloat64Array = out._out.latency() if out._out else PackedFloat64Array()
+		print("[automation] pipewire %s at %s: %s, frame handed over %s ms after submission (mean, max, frames)" % [
+			stage_size, size, out.status, latency])
 		check.call("running at %s" % size, out.status_ok and out._running)
 	out.enabled = false
 	check.call("stopped", not out._running and out.status_ok)

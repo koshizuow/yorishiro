@@ -1,7 +1,8 @@
 ## Sends the stage to OBS as a PipeWire video stream with alpha (D34, the Linux counterpart of Spout2).
 ## The PipeWireStageOut node (addons/yorishiro_pipewire, crates/pipewire-gd, libfunnel) copies the stage on
-## the graphics card into the stream every frame, no pixels go through the CPU. OBS receives it with a
-## PipeWire video source (the obs-pwvideo plugin). Only the stage goes out, not the settings or buttons.
+## the graphics card into the stream as soon as each frame is drawn, no pixels go through the CPU. OBS
+## receives it with a PipeWire video source (the obs-pwvideo plugin). Only the stage goes out, not the
+## settings or buttons.
 ## Saved in the profile as window.pipewire_out.
 extends Node
 
@@ -22,7 +23,6 @@ var status := ""
 var status_ok := true
 
 var _viewport: Viewport
-## one PipeWireStageOut for the app's lifetime: it frees the GPU images of a stopped stream frames later
 var _out: RefCounted
 var _running := false
 var _state := ""
@@ -62,8 +62,6 @@ func _exit_tree() -> void:
 
 func _send_frame() -> void:
 	if not _running:
-		if _out:
-			_out.collect()
 		return
 	var err: String = _out.send(_viewport.get_texture().get_rid())
 	if err:
