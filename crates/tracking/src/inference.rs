@@ -138,6 +138,10 @@ pub struct FaceMesh {
     pub detections: usize,
     /// the mirrored crop is also run and the two estimates averaged (see facemesh.py FLIP_MAX_PASS_MS)
     pub flip_mirror: Option<Vec<usize>>,
+    /// Some: flip averaging follows the pass times while tracking (the mirror table to turn it back on with)
+    adaptive: Option<Vec<usize>>,
+    /// single pass times (ms) since the last decision
+    pass_times: Vec<f64>,
 }
 
 /// One frame's landmark result.
@@ -170,7 +174,33 @@ impl FaceMesh {
             roi: None,
             detections: 0,
             flip_mirror: None,
+            adaptive: None,
+            pass_times: Vec::new(),
         })
+    }
+
+    /// Lets flip averaging follow the pass times while tracking: off when the median of 30 passes is over
+    /// FLIP_MAX_PASS_MS by a quarter, on again when it is under by a quarter. The one measurement at open runs
+    /// passes back to back on a warm GPU; tracking at 30 fps leaves the GPU idle between frames, and a slow
+    /// GPU then stays at low clocks (the low-end reference: 5.2 ms at open, 11.4 ms while tracking).
+    pub fn adapt_flip(&mut self, mirror: Vec<usize>) {
+        self.adaptive = Some(mirror);
+    }
+
+    fn note_pass(&mut self, ms: f64) {
+        let Some(mirror) = self.adaptive.as_ref() else { return };
+        self.pass_times.push(ms);
+        if self.pass_times.len() < 30 {
+            return;
+        }
+        let median = crate::fit::median(&mut self.pass_times);
+        self.pass_times.clear();
+        let max = crate::tracker::FLIP_MAX_PASS_MS;
+        if self.flip_mirror.is_some() && median > max * 1.25 {
+            self.flip_mirror = None;
+        } else if self.flip_mirror.is_none() && median < max * 0.75 {
+            self.flip_mirror = Some(mirror.clone());
+        }
     }
 
     /// One landmark pass's time (ms): the median of 10 after 3 warm-up runs on a blank crop, as the Python
@@ -221,7 +251,9 @@ impl FaceMesh {
         {
             let m = roi_matrix(&roi);
             let crop = img.warp_affine(&m, LM_INPUT, LM_INPUT, Border::Constant);
+            let t = std::time::Instant::now();
             let (mut raw, presence) = self.landmarks_in(&crop)?;
+            self.note_pass(t.elapsed().as_secs_f64() * 1000.0);
             if presence > PRESENCE_LOGIT {
                 if let Some(mirror) = self.flip_mirror.clone() {
                     let (flipped, _) = self.landmarks_in(&crop.flip_horizontal())?;

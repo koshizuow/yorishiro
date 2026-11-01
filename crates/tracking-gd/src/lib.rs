@@ -375,8 +375,10 @@ fn run(cfg: Config, s: Arc<Shared>) {
         Ok(t) => t,
         Err(e) => return s.status("error", &format!("tracker failed to start: {e}"), vec![], texts(&[])),
     };
-    let runtime_name = tracker.mesh.runtime.clone();
-    s.log(format!("tracker facemesh-core on {runtime_name}"));
+    if let Err(e) = tracker.adapt_flip(&paths) {
+        s.log(format!("flip averaging stays as decided at start: {e}"));
+    }
+    s.log(format!("tracker facemesh-core on {}", tracker.runtime_name()));
     let mut camera = match &cfg.replay {
         Some(dir) => match Recording::open(dir, true) {
             Ok(r) => {
@@ -484,7 +486,7 @@ fn run(cfg: Config, s: Arc<Shared>) {
                                ("face".into(), last_found as u8 as f64), ("calibrated".into(), calibrated as u8 as f64),
                                ("commercial_use".into(), 1.0)];
             s.status("running", if last_found { "tracking" } else { "no face in view" }, numbers,
-                     texts(&[("runtime", &format!("{runtime_name} (Rust core)"))]));
+                     texts(&[("runtime", &format!("{} (Rust core)", tracker.runtime_name()))]));
         }
     }
 }

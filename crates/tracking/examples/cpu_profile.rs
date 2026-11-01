@@ -84,7 +84,7 @@ fn main() {
     stage("face: eye model (ort cpu)", &frames, |i, f| { eyes.run(f, &points[i]).unwrap(); });
     stage("face: lens glare", &frames, |i, f| { std::hint::black_box(lens_glare(f, &points[i])); });
     let mut tracker = Tracker::open_on(&ModelPaths { mediapipe: &mp, fit: &fit, eyes: Some(&eyes_path) }, rt.clone(), threads).unwrap();
-    println!("    tracker landmark runtime: {}", tracker.mesh.runtime);
+    println!("    tracker landmark runtime: {}", tracker.runtime_name());
     stage("face: after landmarks (all)", &frames, |i, f| { tracker.process_landmarks(f, &points[i], 1000 + i as i64 * 33).unwrap(); });
     stage("face: whole tracker", &frames, |i, f| { tracker.process(f, 1000 + i as i64 * 33).unwrap(); });
 

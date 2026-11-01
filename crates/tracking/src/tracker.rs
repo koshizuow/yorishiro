@@ -38,16 +38,32 @@ impl Tracker {
         let mut mesh = FaceMesh::open_on(paths.mediapipe, runtime, threads)?;
         let pass = mesh.pass_ms()?;
         if pass <= FLIP_MAX_PASS_MS {
-            let mut fit = crate::data::Npz::open(paths.fit).map_err(|e| e.to_string())?;
-            mesh.flip_mirror = Some(fit.ints("flip_mirror").map_err(|e| e.to_string())?);
+            mesh.flip_mirror = Some(Self::mirror_table(paths)?);
         }
-        mesh.runtime = format!("{}{} (pass {pass:.1} ms)", mesh.runtime, if mesh.flip_mirror.is_some() { " flip-averaged" } else { "" });
+        mesh.runtime = format!("{} (pass {pass:.1} ms)", mesh.runtime);
         Ok(Self {
             mesh,
             blend: Blendshapes::open(&paths.mediapipe.join("face_blendshapes.onnx"))?,
             eyes: paths.eyes.map(Eyes::open).transpose()?,
             pipeline: Pipeline::new(Fitter::load(paths.fit).map_err(|e| e.to_string())?),
         })
+    }
+
+    /// The landmark pairs that swap in a mirrored face
+    fn mirror_table(paths: &ModelPaths) -> Result<Vec<usize>, Error> {
+        let mut fit = crate::data::Npz::open(paths.fit).map_err(|e| e.to_string())?;
+        Ok(fit.ints("flip_mirror").map_err(|e| e.to_string())?)
+    }
+
+    /// Flip averaging decided again from the pass times while tracking (FaceMesh::adapt_flip), for live use
+    pub fn adapt_flip(&mut self, paths: &ModelPaths) -> Result<(), Error> {
+        self.mesh.adapt_flip(Self::mirror_table(paths)?);
+        Ok(())
+    }
+
+    /// The landmark runtime as the status shows it, with flip averaging as it is now
+    pub fn runtime_name(&self) -> String {
+        format!("{}{}", self.mesh.runtime, if self.mesh.flip_mirror.is_some() { " flip-averaged" } else { "" })
     }
 
     /// One picture: None when no face was found.
