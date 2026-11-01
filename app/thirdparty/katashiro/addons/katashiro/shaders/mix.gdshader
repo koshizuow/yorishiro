@@ -1,5 +1,6 @@
 shader_type canvas_item;
-render_mode blend_ayagami_mix, unshaded;
+// Live2D normal: premultiplied alpha over, (1, 1 - Sa) for color and alpha, which is Godot's own premul_alpha
+render_mode blend_premul_alpha, unshaded;
 
 #include "_draw.gdshaderinc"
 

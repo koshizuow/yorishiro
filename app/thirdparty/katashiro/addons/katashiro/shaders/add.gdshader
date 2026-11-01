@@ -1,5 +1,9 @@
 shader_type canvas_item;
-render_mode blend_ayagami_add, unshaded;
+// Live2D additive: color (1, 1), alpha kept. Godot's add is (Sa, 1) for both, so the color comes out right
+// when the shader sends rgb / k with alpha k; the alpha then gains k * k instead of nothing, and only shows
+// where additive art lies over a transparent background. k is the largest premultiplied channel (the
+// smallest k that keeps rgb / k within 0..1).
+render_mode blend_add, unshaded;
 
 #include "_draw.gdshaderinc"
 
@@ -20,5 +24,10 @@ void fragment() {
 	color *= modulate;
 	color *= vec4(vec3(1.0), mask_val);
 	
-	COLOR = vec4(color.rgb * color.a, color.a);
+	vec3 premultiplied = color.rgb * color.a;
+	float k = max(max(premultiplied.r, premultiplied.g), premultiplied.b);
+	if (k <= 0.0) {
+		discard;  // adds nothing
+	}
+	COLOR = vec4(premultiplied / k, k);
 }
