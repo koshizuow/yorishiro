@@ -319,6 +319,17 @@ fn landmark_runtime(name: &str, models: &std::path::Path) -> Result<LandmarkRunt
     })
 }
 
+/// CPU threads for the networks (examples/cpu_profile on a 4 core i3): ncnn's CPU path was fastest and
+/// cheapest on one thread (15 ms per frame, 15 ms CPU; four threads 18 ms for 30 ms CPU), ONNX Runtime as fast
+/// on two as on four (22 ms) for 9 ms less CPU. GPU runtimes use the CPU for little more than the copies.
+fn cpu_threads(runtime: &LandmarkRuntime) -> usize {
+    match runtime {
+        #[cfg(feature = "ncnn")]
+        LandmarkRuntime::NcnnCpu => 1,
+        _ => 2,
+    }
+}
+
 /// The worker: models, camera, then frames until stopped. Mirrors serve.py's loop and its status messages.
 fn run(cfg: Config, s: Arc<Shared>) {
     let source = format!("camera {}", cfg.camera);
@@ -347,7 +358,8 @@ fn run(cfg: Config, s: Arc<Shared>) {
     let mediapipe = cfg.models.join("mediapipe");
     let fit = cfg.models.join("core/fit.npz");
     let paths = ModelPaths { mediapipe: &mediapipe, fit: &fit, eyes: cfg.eye_model.as_deref() };
-    let mut tracker = match Tracker::open_on(&paths, runtime, 4) {
+    let threads = cpu_threads(&runtime);
+    let mut tracker = match Tracker::open_on(&paths, runtime, threads) {
         Ok(t) => t,
         Err(e) => return s.status("error", &format!("tracker failed to start: {e}"), vec![], texts(&[])),
     };
@@ -362,7 +374,7 @@ fn run(cfg: Config, s: Arc<Shared>) {
     };
     s.log(format!("camera {}: {}", cfg.camera, camera.mode));
     let hand_worker = if cfg.hands {
-        match HandTracker::open(&cfg.models.join("mediapipe/hands"), &landmark_runtime(&cfg.runtime, &cfg.models).unwrap_or(LandmarkRuntime::OrtCpu), 2) {
+        match HandTracker::open(&cfg.models.join("mediapipe/hands"), &landmark_runtime(&cfg.runtime, &cfg.models).unwrap_or(LandmarkRuntime::OrtCpu), threads) {
             Ok(t) => {
                 s.log(format!("hand tracking on {}", t.runtime));
                 Some(HandWorker::start(t))

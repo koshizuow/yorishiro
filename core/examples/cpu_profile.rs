@@ -1,6 +1,6 @@
 //! Where the CPU goes, stage by stage, on the PNG frames:
 //! cargo run --release --features ncnn --example cpu_profile -- <frames dir> <monorepo> [runtime] [threads]
-//! runtime: ort-cpu (default), cuda, tensorrt, vulkan. Prints wall and process CPU milliseconds per frame for
+//! runtime: ort-cpu (default), cuda, tensorrt, vulkan, ncnn-cpu. Prints wall and process CPU milliseconds per frame for
 //! each stage (CPU above wall means several threads worked), so a GPU runtime shows what is still on the CPU.
 use std::time::Instant;
 use yorishiro_core::backend::Provider;
@@ -51,6 +51,7 @@ fn main() {
         "cuda" => LandmarkRuntime::Ort(Provider::Cuda),
         "tensorrt" => LandmarkRuntime::Ort(Provider::TensorRt { cache: root.join("tracker/models/cache/tensorrt-core") }),
         "vulkan" => LandmarkRuntime::Vulkan { fp16: true },
+        "ncnn-cpu" => LandmarkRuntime::NcnnCpu,
         _ => LandmarkRuntime::OrtCpu,
     };
     let frames: Vec<Image> = (0..100).map(|i| Image::load(&dir.join(format!("{i:05}.png"))).unwrap()).collect();

@@ -44,7 +44,7 @@ build_ayagami () {
 	cd $PROJ_ROOT
 }
 
-## Yorishiro's tracking core as a Godot node (core/gd, Phase B4). With NCNN_DIR set (ncnn built with Vulkan),
+## Yorishiro's tracking core as a Godot node (core/gd, Phase B4). With NCNN_DIR set (ncnn built with Vulkan and NCNN_SIMPLEOMP, so no libgomp to ship and no spinning workers),
 ## the landmark model can also run on ncnn; ONNX Runtime is loaded at run time from the tracker's venv.
 build_core () {
 	echo -e "\n#### Preparing yorishiro-core\n\n"
