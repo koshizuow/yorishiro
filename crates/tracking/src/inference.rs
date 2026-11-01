@@ -142,6 +142,8 @@ pub struct FaceMesh {
     adaptive: Option<Vec<usize>>,
     /// single pass times (ms) since the last decision
     pass_times: Vec<f64>,
+    /// the median pass time (ms) over the last 30 passes while tracking (adaptive only)
+    pub tracking_pass_ms: f64,
 }
 
 /// One frame's landmark result.
@@ -176,6 +178,7 @@ impl FaceMesh {
             flip_mirror: None,
             adaptive: None,
             pass_times: Vec::new(),
+            tracking_pass_ms: 0.0,
         })
     }
 
@@ -195,6 +198,7 @@ impl FaceMesh {
         }
         let median = crate::fit::median(&mut self.pass_times);
         self.pass_times.clear();
+        self.tracking_pass_ms = median;
         let max = crate::tracker::FLIP_MAX_PASS_MS;
         if self.flip_mirror.is_some() && median > max * 1.25 {
             self.flip_mirror = None;
