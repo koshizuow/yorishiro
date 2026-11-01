@@ -34,6 +34,15 @@ pub fn invert_affine(m: &Affine) -> Affine {
     [[a, b, -a * m[0][2] - b * m[1][2]], [c, e, -c * m[0][2] - e * m[1][2]]]
 }
 
+/// Rounded half to even and saturated to 0..255, as OpenCV's saturate_cast. Adding and taking away 1.5 * 2^23
+/// leaves the nearest even integer (the default rounding mode); f32::round_ties_even is a library call on the
+/// baseline x86-64 target, and this ran three times per pixel.
+#[inline]
+fn to_u8(v: f32) -> u8 {
+    const MAGIC: f32 = 12582912.0;
+    (v.clamp(0.0, 255.0) + MAGIC - MAGIC) as u8
+}
+
 impl Image {
     pub fn new(width: usize, height: usize) -> Self {
         Self { width, height, rgb: vec![0; width * height * 3] }
@@ -117,19 +126,34 @@ impl Image {
             let (rx, ry) = (f[1] * oy as f32 + f[2], f[4] * oy as f32 + f[5]);
             for ox in 0..w {
                 let (sx, sy) = (f[0] * ox as f32 + rx, f[3] * ox as f32 + ry);
-                let (x0, y0) = (sx.floor(), sy.floor());
-                let (ax, ay) = (sx - x0, sy - y0);
-                let (x0, y0) = (x0 as i64, y0 as i64);
+                // floor without a libm call (the baseline x86-64 target has no SSE4.1 round)
+                let floor = |v: f32| { let t = v as i64; if (t as f32) > v { t - 1 } else { t } };
+                let (x0, y0) = (floor(sx), floor(sy));
+                let (ax, ay) = (sx - x0 as f32, sy - y0 as f32);
                 if border == Border::Constant && (x0 < -1 || y0 < -1 || x0 >= iw || y0 >= ih) {
                     continue; // all four neighbours outside
                 }
                 let o = (oy * w + ox) * 3;
+                if x0 >= 0 && y0 >= 0 && x0 + 1 < iw && y0 + 1 < ih {
+                    // all four inside: the same arithmetic without the per-sample border checks
+                    let i00 = (y0 as usize * self.width + x0 as usize) * 3;
+                    let i10 = i00 + self.width * 3;
+                    let (r0, r1) = (&self.rgb[i00..i00 + 6], &self.rgb[i10..i10 + 6]);
+                    for c in 0..3 {
+                        let (p00, p01) = (r0[c] as f32, r0[c + 3] as f32);
+                        let (p10, p11) = (r1[c] as f32, r1[c + 3] as f32);
+                        let a = p00 + ax * (p01 - p00);
+                        let b = p10 + ax * (p11 - p10);
+                        out.rgb[o + c] = to_u8(a + ay * (b - a));
+                    }
+                    continue;
+                }
                 for c in 0..3 {
                     let (p00, p01) = (sample(x0, y0, c), sample(x0 + 1, y0, c));
                     let (p10, p11) = (sample(x0, y0 + 1, c), sample(x0 + 1, y0 + 1, c));
                     let a = p00 + ax * (p01 - p00);
                     let b = p10 + ax * (p11 - p10);
-                    out.rgb[o + c] = (a + ay * (b - a)).round_ties_even().clamp(0.0, 255.0) as u8;
+                    out.rgb[o + c] = to_u8(a + ay * (b - a));
                 }
             }
         }

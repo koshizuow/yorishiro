@@ -84,7 +84,11 @@ impl NcnnModel {
         unsafe {
             let net = ncnn_net_create();
             let opt = ncnn_option_create();
-            ncnn_option_set_num_threads(opt, threads.max(1) as c_int);
+            // On the GPU the CPU side is only uploads and a few small layers: one thread, because libgomp's
+            // idle workers spin (OMP_WAIT_POLICY is read when the library loads, too early to set from here)
+            // and took 4 to 8 times the CPU of the work itself.
+            let threads = if device.is_some() { 1 } else { threads.max(1) };
+            ncnn_option_set_num_threads(opt, threads as c_int);
             ncnn_option_set_use_vulkan_compute(opt, device.is_some() as c_int);
             for set in [ncnn_option_set_use_fp16_packed, ncnn_option_set_use_fp16_storage, ncnn_option_set_use_fp16_arithmetic] {
                 set(opt, fp16 as c_int);
