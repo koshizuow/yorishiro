@@ -34,6 +34,7 @@ extern "C" {
     fn ncnn_option_set_use_fp16_packed(opt: ncnn_option_t, on: c_int);
     fn ncnn_option_set_use_fp16_storage(opt: ncnn_option_t, on: c_int);
     fn ncnn_option_set_use_fp16_arithmetic(opt: ncnn_option_t, on: c_int);
+    fn ncnn_mat_create_external_2d(w: c_int, h: c_int, data: *mut c_void, allocator: *mut c_void) -> ncnn_mat_t;
     fn ncnn_mat_create_external_3d(w: c_int, h: c_int, c: c_int, data: *mut c_void, allocator: *mut c_void) -> ncnn_mat_t;
     fn ncnn_mat_destroy(mat: ncnn_mat_t);
     fn ncnn_mat_get_w(mat: ncnn_mat_t) -> c_int;
@@ -112,13 +113,24 @@ impl NcnnModel {
     }
 
     /// One CHW input (c, h, w), every output flattened per channel with its name (pnnx names them out0, out1..).
-    pub fn run(&mut self, c: usize, h: usize, w: usize, mut data: Vec<f32>) -> Result<Vec<(String, Vec<f32>)>, Error> {
-        assert_eq!(data.len(), c * h * w);
+    pub fn run(&mut self, c: usize, h: usize, w: usize, data: Vec<f32>) -> Result<Vec<(String, Vec<f32>)>, Error> {
+        self.run_shape(&[c, h, w], data)
+    }
+
+    /// One input of shape (h, w) or (c, h, w), the ONNX shape without its batch of 1.
+    pub fn run_shape(&mut self, shape: &[usize], mut data: Vec<f32>) -> Result<Vec<(String, Vec<f32>)>, Error> {
+        assert_eq!(data.len(), shape.iter().product::<usize>());
         unsafe {
-            // external data: one channel after another, which needs each channel's size to be 16 byte aligned
-            // (true for the crops used here; ncnn would pad otherwise)
-            assert!((h * w * 4) % 16 == 0, "channel size not 16 byte aligned");
-            let input = ncnn_mat_create_external_3d(w as c_int, h as c_int, c as c_int, data.as_mut_ptr() as *mut c_void, std::ptr::null_mut());
+            let input = match *shape {
+                [h, w] => ncnn_mat_create_external_2d(w as c_int, h as c_int, data.as_mut_ptr() as *mut c_void, std::ptr::null_mut()),
+                [c, h, w] => {
+                    // external data: one channel after another, which needs each channel's size to be 16 byte
+                    // aligned (true for the crops used here; ncnn would pad otherwise)
+                    assert!((h * w * 4) % 16 == 0, "channel size not 16 byte aligned");
+                    ncnn_mat_create_external_3d(w as c_int, h as c_int, c as c_int, data.as_mut_ptr() as *mut c_void, std::ptr::null_mut())
+                }
+                _ => return Err("ncnn input must have 2 or 3 dimensions".into()),
+            };
             let ex = ncnn_extractor_create(self.net);
             let mut out = vec![];
             let mut result = Ok(());
