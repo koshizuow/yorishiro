@@ -100,6 +100,9 @@
   opens all settings.
 - **OBS:** turn on *Send the stage to OBS* in Settings, then add a *PipeWire video* source in OBS and pick
   Yorishiro.
+- **60 fps camera on an older PC:** if the tracking fps in Settings stays under the camera's, an NVIDIA card
+  set to *Prefer Maximum Performance* (`nvidia-settings`, PowerMizer, X11 only) keeps its clock up between
+  frames. On a GTX 1650 this took tracking from about 55 to 59 fps.
 - App data (settings, model library, thumbnails) lives in `userdata/yorishiro/` while running from source.
 
 ## Repository
