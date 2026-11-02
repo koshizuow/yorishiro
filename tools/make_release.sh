@@ -24,7 +24,13 @@ template=$(dirname "$GODOT")/editor_data/export_templates/$ver.stable/linux_rele
 
 rm -rf "${DIR:?}"
 mkdir -p "$DIR"
-"$GODOT" --headless --path "$ROOT/app" --export-release linux "$DIR/yorishiro.x86_64" > "$OUT/export.log" 2>&1 || { tail -20 "$OUT/export.log"; exit 1; }
+# the About page's version, only for the export
+cp "$ROOT/app/project.godot" "$OUT/project.godot.keep"
+sed -i "s/^config\/version=.*/config\/version=\"${VERSION#v}\"/" "$ROOT/app/project.godot"
+export_failed=0
+"$GODOT" --headless --path "$ROOT/app" --export-release linux "$DIR/yorishiro.x86_64" > "$OUT/export.log" 2>&1 || export_failed=1
+mv "$OUT/project.godot.keep" "$ROOT/app/project.godot"
+[ $export_failed = 0 ] || { tail -20 "$OUT/export.log"; exit 1; }
 
 # the Rust libraries are built with debug info (for perf and gdb): not in a release
 strip --strip-unneeded "$DIR"/*.so* "$DIR/yorishiro.x86_64"
@@ -36,6 +42,7 @@ mkdir -p "$DIR/models"
 
 mkdir -p "$DIR/licenses"
 cp "$ROOT/NOTICE" "$ROOT/README.md" "$DIR/"
+cp "$ROOT/app/branding/icon.svg" "$DIR/yorishiro.svg"   # the About page installs it with the menu entry
 cp "$ROOT/app/LICENSE.txt" "$DIR/licenses/LICENSE.app.txt"
 cp "$ROOT/crates/tracking/LICENSE" "$DIR/licenses/LICENSE.tracking.txt"
 cp "$ROOT"/app/license/* "$DIR/licenses/"

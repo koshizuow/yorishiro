@@ -35,6 +35,41 @@ const LICENSE_FILES = [
 
 var _texts := RichTextLabel.new()
 
+const DesktopEntry = preload("res://lib/desktop_entry.gd")
+
+## a release is not installed: this puts it in the application menu and gives the dock its icon
+func _add_menu_entry(column: Container) -> void:
+	if not DesktopEntry.available():
+		return
+	var row := HBoxContainer.new()
+	row.name = "MenuEntry"
+	row.add_theme_constant_override("separation", 10)
+	var add := Button.new()
+	add.name = "AddToMenuBtn"
+	add.tooltip_text = tr("Adds Yorishiro to the application menu and shows its icon in the dock. Press it again if you move this file.")
+	var remove := Button.new()
+	remove.name = "RemoveFromMenuBtn"
+	remove.text = "Remove from application menu"
+	var state := Label.new()
+	state.theme_type_variation = &"FieldLabel"
+	var refresh := func ():
+		var there: bool = DesktopEntry.installed()
+		add.text = tr("Update application menu entry") if there else tr("Add to application menu")
+		remove.visible = there
+	add.pressed.connect(func ():
+		var error: String = DesktopEntry.install()
+		state.text = error if error != "" else tr("Added. If the dock still shows the old icon, restart the app.")
+		refresh.call())
+	remove.pressed.connect(func ():
+		DesktopEntry.remove()
+		state.text = tr("Removed.")
+		refresh.call())
+	refresh.call()
+	row.add_child(add)
+	row.add_child(remove)
+	row.add_child(state)
+	column.add_child(row)
+
 func _init() -> void:
 	name = "AboutPage"
 	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -64,6 +99,7 @@ func _init() -> void:
 	names.add_child(version)
 	head.add_child(names)
 	column.add_child(head)
+	_add_menu_entry(column)
 
 	column.add_child(_paragraph(tr("Yorishiro is a VTubing app with its own face tracker. Its app started as a fork of OpenVT by erodozer, released under the MIT license. Yorishiro is not the OpenVT project, please send problems with Yorishiro to Yorishiro.")))
 	column.add_child(_paragraph(tr("\"Live2D\" and \"Cubism\" are trademarks of Live2D Inc. \"VTube Studio\" is a trademark of its respective owner. Yorishiro is not affiliated with them and does not include the Live2D Cubism SDK.")))

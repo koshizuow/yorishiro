@@ -421,3 +421,9 @@ Track hands,Track hands,追蹤手部
 "Hand position, angle and fingers for models with hand parameters. Uses more CPU.","Hand position, angle and fingers for models with hand parameters. Uses more CPU.",給有手部參數的模型用：手的位置、角度和手指。會多用一些 CPU。
 Hands,Hands,手部
 "Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.","Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.",給有手部參數的模型用：手的位置、角度和手指。和臉部用同一個運算方式並行。
+Add to application menu,Add to application menu,加到應用程式選單
+Update application menu entry,Update application menu entry,更新應用程式選單項目
+Remove from application menu,Remove from application menu,從應用程式選單移除
+Removed.,Removed.,已移除。
+"Added. If the dock still shows the old icon, restart the app.","Added. If the dock still shows the old icon, restart the app.",已加入。如果 Dock 還是舊圖示，請重開 app。
+Adds Yorishiro to the application menu and shows its icon in the dock. Press it again if you move this file.,Adds Yorishiro to the application menu and shows its icon in the dock. Press it again if you move this file.,把 Yorishiro 加到應用程式選單，並在 Dock 顯示圖示。移動這個檔案後請再按一次。
