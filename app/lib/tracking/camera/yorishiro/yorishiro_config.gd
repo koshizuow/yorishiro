@@ -185,7 +185,10 @@ func _process(_delta):
 
 func _on_restart():
 	tracker.camera = _camera.get_selected_id()
-	tracker.runtime = _runtime.get_item_text(_runtime.selected)
+	var picked := _runtime.get_item_text(_runtime.selected)
+	if picked != tracker.runtime:
+		tracker.runtime_picked = true
+	tracker.runtime = picked
 	tracker.save_settings()
 	tracker.restart()
 

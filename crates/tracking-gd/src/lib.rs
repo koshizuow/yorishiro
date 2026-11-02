@@ -367,14 +367,24 @@ fn run(cfg: Config, s: Arc<Shared>) {
     if let Err(e) = ort_runtime(cfg.ort_library.as_deref()) {
         return s.status("error", &format!("ONNX Runtime did not load: {e}"), vec![], texts(&[]));
     }
-    let runtime = match landmark_runtime(&cfg.runtime) {
-        Ok(r) => r,
-        Err(e) => return s.status("error", &e, vec![], texts(&[])),
-    };
     let mediapipe = cfg.models.join("mediapipe");
+    let runtime = if cfg.runtime == "auto" {
+        s.status("starting", "checking the GPU against the CPU", vec![], texts(&[]));
+        let (pick, trials) = yorishiro_tracking::inference::auto_runtime(&mediapipe, 2);
+        for t in &trials {
+            s.log(format!("runtime check: {} {:.1} ms per pass, {:.2} px from the CPU", t.name, t.pass_ms, t.max_diff));
+        }
+        pick
+    } else {
+        match landmark_runtime(&cfg.runtime) {
+            Ok(r) => r,
+            Err(e) => return s.status("error", &e, vec![], texts(&[])),
+        }
+    };
     let fit = cfg.models.join("core/fit.npz");
     let paths = ModelPaths { mediapipe: &mediapipe, fit: &fit, eyes: cfg.eye_model.as_deref() };
     let threads = cpu_threads(&runtime);
+    let runtime_for_hands = runtime.clone();
     let mut tracker = match Tracker::open_on(&paths, runtime, threads) {
         Ok(t) => t,
         Err(e) => return s.status("error", &format!("tracker failed to start: {e}"), vec![], texts(&[])),
@@ -403,7 +413,7 @@ fn run(cfg: Config, s: Arc<Shared>) {
         },
     };
     let hand_worker = if cfg.hands {
-        match HandTracker::open(&cfg.models.join("mediapipe/hands"), &landmark_runtime(&cfg.runtime).unwrap_or(LandmarkRuntime::OrtCpu), threads) {
+        match HandTracker::open(&cfg.models.join("mediapipe/hands"), &runtime_for_hands, threads) {
             Ok(t) => {
                 s.log(format!("hand tracking on {}", t.runtime));
                 Some(HandWorker::start(t))

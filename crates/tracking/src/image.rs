@@ -126,6 +126,9 @@ impl Image {
             let (rx, ry) = (f[1] * oy as f32 + f[2], f[4] * oy as f32 + f[5]);
             for ox in 0..w {
                 let (sx, sy) = (f[0] * ox as f32 + rx, f[3] * ox as f32 + ry);
+                if !(sx.is_finite() && sy.is_finite()) {
+                    continue; // a degenerate matrix: the pixel stays as it is
+                }
                 // floor without a libm call (the baseline x86-64 target has no SSE4.1 round)
                 let floor = |v: f32| { let t = v as i64; if (t as f32) > v { t - 1 } else { t } };
                 let (x0, y0) = (floor(sx), floor(sy));
@@ -134,7 +137,7 @@ impl Image {
                     continue; // all four neighbours outside
                 }
                 let o = (oy * w + ox) * 3;
-                if x0 >= 0 && y0 >= 0 && x0 + 1 < iw && y0 + 1 < ih {
+                if x0 >= 0 && y0 >= 0 && x0 < iw - 1 && y0 < ih - 1 {
                     // all four inside: the same arithmetic without the per-sample border checks
                     let i00 = (y0 as usize * self.width + x0 as usize) * 3;
                     let i10 = i00 + self.width * 3;

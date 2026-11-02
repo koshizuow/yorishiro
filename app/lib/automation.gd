@@ -42,7 +42,7 @@
 ##                          to watch it in OBS) and check the output keeps running
 ##   --core-test=<camera>   switch the tracker from the replayed recording to that camera (the development loopback
 ##                          camera is 10), check it runs and moves the model, with the outputs to other apps on;
-##                          --core-runtime=<vulkan|vulkan-fp32|ncnn-cpu|ort-cpu> picks the runtime (vulkan)
+##                          --core-runtime=<auto|vulkan|vulkan-fp32|ncnn-cpu|ort-cpu> picks the runtime (vulkan)
 ##   --app-action-test      after --open-panel=hotkeys: add a hotkey through the list, switch it to each app action
 ##                          (saved position, background, change model) and check what pressing it does
 ##   --hotkey-test=<prefix> after --open-panel=hotkeys, add a hotkey through the list, set Ctrl+K with key

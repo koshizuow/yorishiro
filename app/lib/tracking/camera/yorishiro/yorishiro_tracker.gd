@@ -4,9 +4,10 @@
 ## YORISHIRO_RECORDING (a recording folder) replays that recording in a loop instead of the camera, for tests.
 extends "../camera_tracker.gd"
 
-## vulkan: the GPU on any graphics card (ncnn), the default; vulkan-fp32 for drivers with fp16 trouble;
-## ncnn-cpu and ort-cpu without a GPU
-const RUNTIMES = ["vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu"]
+## auto (the default): the GPU when its landmarks match the CPU's and it is not much slower, else ONNX Runtime on
+## the CPU (Intel's integrated GPUs: wrong in fp16, 7x slower than the CPU in fp32). vulkan: the GPU on any
+## graphics card (ncnn); vulkan-fp32 for drivers with fp16 trouble; ncnn-cpu and ort-cpu without a GPU
+const RUNTIMES = ["auto", "vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu"]
 const LOG_LINES = 200
 const SETTINGS_PATH = "user://yorishiro_tracker.json"
 
@@ -44,7 +45,9 @@ var glare_now := false
 var _glare_frames: Array[bool] = []
 var _glare_msec := 0
 var _last_glare_check := 0
-var runtime := "vulkan"
+var runtime := "auto"
+## the user picked the runtime (Restart tracker), else a saved "vulkan" was only the old default
+var runtime_picked := false
 ## tracking for other apps on this computer, sent by the tracker next to the app's own link:
 ## VTube Studio and OpenVT read the VTube Studio iPhone protocol, VSeeFace, Warudo and VNyan iFacialMocap
 var send_vts_iphone := false
@@ -219,8 +222,11 @@ func load_settings():
 	if typeof(data) == TYPE_DICTIONARY:
 		camera = int(data.get("camera", camera))
 		runtime = data.get("runtime", runtime)
+		runtime_picked = bool(data.get("runtime_picked", false))
 		if not runtime in RUNTIMES:  # e.g. cuda or tensorrt from before they were removed
 			runtime = RUNTIMES[0]
+		if runtime == "vulkan" and not runtime_picked:  # the default before auto
+			runtime = "auto"
 		when_lost = int(data.get("when_lost", when_lost))
 		glasses = int(data.get("glasses", glasses))
 		lost_delay = float(data.get("lost_delay", lost_delay))
@@ -231,6 +237,6 @@ func load_settings():
 func save_settings():
 	var f = FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify({"camera": camera, "runtime": runtime,
+		f.store_string(JSON.stringify({"camera": camera, "runtime": runtime, "runtime_picked": runtime_picked,
 			"when_lost": when_lost, "lost_delay": lost_delay, "glasses": glasses,
 			"send_vts_iphone": send_vts_iphone, "send_ifacialmocap": send_ifacialmocap, "track_hands": track_hands}))

@@ -163,6 +163,91 @@ pub struct Tracked {
     pub next_roi: Roi,
 }
 
+/// One candidate of the automatic runtime choice: its pass time and how far its landmarks are from ONNX Runtime's
+#[derive(Clone, Debug)]
+pub struct RuntimeTrial {
+    pub runtime: LandmarkRuntime,
+    pub name: String,
+    pub pass_ms: f64,
+    /// largest landmark difference from ONNX Runtime CPU on the probe picture, in crop pixels (of 256)
+    pub max_diff: f64,
+}
+
+/// A GPU runtime is kept when its landmarks are within this of ONNX Runtime's on the probe picture
+pub const AUTO_MAX_DIFF_PX: f64 = 2.0;
+/// and its pass is no slower than this many times the CPU's (the GPU leaves the CPU to the game and OBS)
+pub const AUTO_GPU_SLOWER: f64 = 1.5;
+
+/// The probe picture for the runtime check: smooth gradients and soft blobs, the same everywhere
+fn probe_image() -> Image {
+    let mut img = Image::new(LM_INPUT, LM_INPUT);
+    for y in 0..LM_INPUT {
+        for x in 0..LM_INPUT {
+            let (fx, fy) = (x as f64 / LM_INPUT as f64, y as f64 / LM_INPUT as f64);
+            let blob = |cx: f64, cy: f64, r: f64| (-((fx - cx).powi(2) + (fy - cy).powi(2)) / (r * r)).exp();
+            let face = blob(0.5, 0.5, 0.3);
+            let eyes = blob(0.38, 0.42, 0.05) + blob(0.62, 0.42, 0.05);
+            let mouth = blob(0.5, 0.7, 0.07);
+            let i = (y * LM_INPUT + x) * 3;
+            img.rgb[i] = (60.0 + 170.0 * face - 120.0 * eyes - 60.0 * mouth).clamp(0.0, 255.0) as u8;
+            img.rgb[i + 1] = (50.0 + 140.0 * face - 110.0 * eyes - 90.0 * mouth).clamp(0.0, 255.0) as u8;
+            img.rgb[i + 2] = (40.0 + 120.0 * face - 100.0 * eyes - 80.0 * mouth + 40.0 * fy).clamp(0.0, 255.0) as u8;
+        }
+    }
+    img
+}
+
+/// "auto": tries the GPU (fp16, then fp32) against ONNX Runtime on the CPU and keeps it only when its landmarks
+/// agree and it is not much slower. Intel's integrated GPUs gave wrong landmarks in fp16 (UHD 630: they crashed the
+/// eye crop) and took 46 ms per pass in fp32 against 6 ms on the CPU (user's test machine, 2026-11-02).
+/// Returns the choice and every trial, for the log.
+pub fn auto_runtime(models: &Path, threads: usize) -> (LandmarkRuntime, Vec<RuntimeTrial>) {
+    let probe = probe_image().to_nchw(1.0 / 255.0, 0.0);
+    let stem = models.join("face_landmarks");
+    let trial = |runtime: LandmarkRuntime, reference: Option<&[f32]>| -> Option<(RuntimeTrial, Vec<f32>)> {
+        let mut net = crate::net::Net::open(&stem, &runtime, threads).ok()?;
+        let mut out = vec![];
+        for _ in 0..3 {
+            out = net.run(3, LM_INPUT, LM_INPUT, probe.clone()).ok()?.into_iter().next()?;
+        }
+        let mut times = vec![];
+        for _ in 0..10 {
+            let t = std::time::Instant::now();
+            net.run(3, LM_INPUT, LM_INPUT, probe.clone()).ok()?;
+            times.push(t.elapsed().as_secs_f64() * 1000.0);
+        }
+        let max_diff = match reference {
+            Some(r) if r.len() == out.len() => out.iter().zip(r).map(|(a, b)| {
+                let d = (a - b).abs() as f64;
+                if d.is_finite() { d } else { f64::INFINITY }
+            }).fold(0.0, f64::max),
+            Some(_) => f64::INFINITY,
+            None => 0.0,
+        };
+        Some((RuntimeTrial { name: net.name(), runtime, pass_ms: crate::fit::median(&mut times), max_diff }, out))
+    };
+    let Some((cpu, reference)) = trial(LandmarkRuntime::OrtCpu, None) else {
+        return (LandmarkRuntime::OrtCpu, vec![]);
+    };
+    let mut trials = vec![cpu.clone()];
+    #[cfg(feature = "ncnn")]
+    if crate::ncnn::pick_vulkan_device().is_some() {
+        for fp16 in [true, false] {
+            let Some((t, _)) = trial(LandmarkRuntime::Vulkan { fp16 }, Some(&reference)) else { continue };
+            trials.push(t.clone());
+            if t.max_diff > AUTO_MAX_DIFF_PX {
+                continue; // wrong answers: fp32 next
+            }
+            // fp32 is slower than a correct fp16, so a correct fp16 decides
+            if t.pass_ms <= cpu.pass_ms * AUTO_GPU_SLOWER {
+                return (t.runtime, trials);
+            }
+            break;
+        }
+    }
+    (LandmarkRuntime::OrtCpu, trials)
+}
+
 impl FaceMesh {
     pub fn open(models: &Path, threads: usize) -> Result<Self, Error> {
         Self::open_on(models, LandmarkRuntime::OrtCpu, threads)
@@ -380,6 +465,10 @@ pub fn crop_eye(img: &Image, lm: &[P3], side: usize) -> Image {
     let center = [(inner[0] + outer[0]) / 2.0, (inner[1] + outer[1]) / 2.0];
     let d = [outer[0] - inner[0], outer[1] - inner[1]];
     let width = d[0].hypot(d[1]);
+    // broken landmarks (Intel's fp16 GPU gave some) made a zero or infinite crop and crashed the warp: a blank crop
+    if !(width.is_finite() && width >= 1.0 && center[0].is_finite() && center[1].is_finite()) {
+        return Image::new(EYE_W, EYE_H);
+    }
     let ux = [d[0] / width.max(1e-6), d[1] / width.max(1e-6)];
     let uy = [-ux[1], ux[0]];
     // the crop's corner (0, 0) and its axes in image pixels; the matrix maps image pixels into the crop

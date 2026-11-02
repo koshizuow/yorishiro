@@ -1,4 +1,6 @@
 keys,en,zh_TW
+auto,auto,自動（顯示卡較快且結果正確時用顯示卡）
+checking the GPU against the CPU,checking the GPU against the CPU,正在比較顯示卡和 CPU
 Models & Items,Models & Items,模型與道具
 Hotkeys,Hotkeys,熱鍵
 Settings,Settings,設定
