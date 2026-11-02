@@ -44,6 +44,11 @@ fn check(name: &str, own_landmarks: bool) -> bool {
     let mut calibrations = vec![];
     let mut same_found = 0;
     let lm_g = g.f64s("landmarks").unwrap().0;
+    // since 2026-11-02 the eye model's reading fades to open on a turned head (pipeline::EYE_TRUST_FULL_DEG), which
+    // the Python tracker did not do: the eye values are not compared there and for a second after (smoothing)
+    let eye_names = ["eyeBlinkLeft", "eyeBlinkRight", "eyeWideLeft", "eyeWideRight"];
+    let eye_bs: Vec<usize> = eye_names.iter().map(|n| yorishiro_tracking::frame::ARKIT52.iter().position(|a| a == n).unwrap()).collect();
+    let mut last_turned: Option<usize> = None;
     for i in 0..found.len() {
         let img = Image::load(&frames.join(format!("{i:05}.png"))).unwrap();
         let out = if own_landmarks {
@@ -62,6 +67,11 @@ fn check(name: &str, own_landmarks: bool) -> bool {
         }
         let f = &out.frame;
         let fin = &out.final_frame;
+        if f.head_rotation[0].to_degrees().abs() > yorishiro_tracking::pipeline::EYE_TRUST_FULL_DEG {
+            last_turned = Some(i);
+        }
+        let eyes_differ = last_turned.is_some_and(|t| i - t <= 30);
+        let vts_names: Vec<&str> = vts_params(fin, true).into_iter().map(|(n, _)| n).collect();
         let ours: Vec<Vec<f64>> = vec![
             tracker_eye_open(f),
             f.lens_glare.unwrap_or([0.0; 2]).to_vec(),
@@ -77,6 +87,14 @@ fn check(name: &str, own_landmarks: bool) -> bool {
             }
             let theirs = &golden[k][i * o.len()..(i + 1) * o.len()];
             for (j, (a, b)) in o.iter().zip(theirs).enumerate() {
+                let eye_value = match stages[k] {
+                    "bs" | "final_bs" => eye_bs.contains(&j),
+                    "vts" => vts_names[j].starts_with("EyeOpen"),
+                    _ => false,
+                };
+                if eyes_differ && eye_value {
+                    continue;
+                }
                 if (a - b).abs() > worst[k].0 {
                     worst[k] = ((a - b).abs(), i, j);
                 }

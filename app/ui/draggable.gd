@@ -76,13 +76,7 @@ func _handle_mouse_button_down(event: InputEventMouseButton):
 		if Input.is_key_pressed(KEY_SHIFT):
 			rotation = wrapf(rotation + deg_to_rad(ROTATE_STEP * up), 0, 2 * PI)
 		else:
-			# zoom toward the cursor: the point under it stays where it is
-			var factor := ZOOM_STEP if up > 0 else 1.0 / ZOOM_STEP
-			var new_scale: Vector2 = (scale * factor).clamp(Vector2(0.01, 0.01), Vector2(5.0, 5.0))
-			factor = new_scale.x / scale.x
-			var cursor := get_canvas_transform().affine_inverse() * event.position
-			global_position = cursor + (global_position - cursor) * factor
-			scale = new_scale
+			_zoom_at(ZOOM_STEP if up > 0 else 1.0 / ZOOM_STEP, event.position)
 		dirty = true
 
 	if event.button_index == MOUSE_BUTTON_LEFT:
@@ -90,6 +84,40 @@ func _handle_mouse_button_down(event: InputEventMouseButton):
 		drag_pressed.emit()
 
 	return dirty
+
+## zoom toward the cursor: the point under it stays where it is
+func _zoom_at(factor: float, at: Vector2) -> void:
+	var new_scale: Vector2 = (scale * factor).clamp(Vector2(0.01, 0.01), Vector2(5.0, 5.0))
+	factor = new_scale.x / scale.x
+	var cursor := get_canvas_transform().affine_inverse() * at
+	global_position = cursor + (global_position - cursor) * factor
+	scale = new_scale
+
+## pixels of touchpad scrolling that count as one wheel step
+const PAN_PER_STEP = 10.0
+
+## touchpads: two finger scrolling comes as a pan gesture (Wayland sends no wheel steps for it) and works as the
+## wheel, a pinch zooms
+func _handle_gesture(event: InputEventGesture) -> void:
+	if event is InputEventMagnifyGesture:
+		_zoom_at(event.factor, event.position)
+	elif event is InputEventPanGesture:
+		var steps: float = -event.delta.y / PAN_PER_STEP
+		if Input.is_key_pressed(KEY_SHIFT):
+			rotation = wrapf(rotation + deg_to_rad(ROTATE_STEP * steps), 0, 2 * PI)
+		else:
+			_zoom_at(pow(ZOOM_STEP, steps), event.position)
+
+var _last_gesture := []
+
+## the event's position is on this object's box, and on a drawn pixel when sampling alpha
+func _hit(at: Vector2) -> bool:
+	var p_xy = get_global_transform_with_canvas().affine_inverse() * at
+	if not rect.has_point(p_xy):
+		return false
+	if "texture" in self and sample_mode == SampleMode.ALPHA and self.texture != null:
+		return self.texture.get_image().get_pixelv(p_xy).a > 0.0
+	return true
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> bool:
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -138,16 +166,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.pressed:
 			# mouse event must be within the bounds of the control. Use the event's own position (already in this
 			# viewport's coordinates): the viewport's last mouse position lags when other UI took the motion
-			var p_xy = get_global_transform_with_canvas().affine_inverse() * event.position
-			if not rect.has_point(p_xy):
+			if not _hit(event.position):
 				return
-			# sample for alpha if control has texture
-			if "texture" in self and sample_mode == SampleMode.ALPHA:
-				if self.texture != null:
-					var px = self.texture.get_image().get_pixelv(p_xy)
-					var opaque = px.a > 0.0
-					if not opaque:
-						return
 			dirty = dirty || _handle_mouse_button_down(event)
 			get_viewport().set_input_as_handled()
 		elif not event.pressed and event.button_index == MOUSE_BUTTON_LEFT and dragging:
@@ -157,6 +177,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			return
 		
+	if (event is InputEventPanGesture or event is InputEventMagnifyGesture) and (dragging or _hit(event.position)):
+		# the stage's nested viewports deliver a gesture twice in its frame (two copies, same values); Godot already
+		# merges a frame's touchpad events into one, so a second identical one is the copy
+		var sig := [Engine.get_process_frames(), event.get_class(), event.position,
+				event.delta if event is InputEventPanGesture else Vector2(event.factor, 0)]
+		if sig == _last_gesture:
+			get_viewport().set_input_as_handled()
+			return
+		_last_gesture = sig
+		_handle_gesture(event)
+		dirty = true
+		get_viewport().set_input_as_handled()
+
 	if dragging and event is InputEventMouseMotion:
 		dirty = dirty || _handle_mouse_motion(event)
 		get_viewport().set_input_as_handled()

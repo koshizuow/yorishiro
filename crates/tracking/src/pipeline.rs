@@ -98,6 +98,13 @@ pub struct Extras {
 /// eye's openness, scaled by the two neutrals.
 pub const HIDDEN_EYE_WIDTH: f64 = 0.55;
 
+/// The eye model is trained on faces seen from the front. On a turned head it misreads open eyes as closed, the near
+/// eye too (a webcam recording at 55 to 61 degrees: open eyes read 0.13 to 0.64 against 0.6 facing the camera, and
+/// the hidden eye rule then closed both, so turning the head blinked). Its reading is used fully up to the first
+/// angle and fades to the eye's neutral (open) by the second; a blink with the head turned that far is lost.
+pub const EYE_TRUST_FULL_DEG: f64 = 30.0;
+pub const EYE_TRUST_NONE_DEG: f64 = 50.0;
+
 pub struct Pipeline {
     pub fitter: Fitter,
     smoother: LandmarkSmoother,
@@ -163,6 +170,11 @@ impl Pipeline {
                 if widths[far] < HIDDEN_EYE_WIDTH * widths[near] {
                     open[far] = open[near] * n[far] / n[near];
                 }
+            }
+            let yaw = rotation_to_ypr(&rot)[0].to_degrees().abs();
+            let trust = ((EYE_TRUST_NONE_DEG - yaw) / (EYE_TRUST_NONE_DEG - EYE_TRUST_FULL_DEG)).clamp(0.0, 1.0);
+            for i in 0..2 {
+                open[i] = trust * open[i] + (1.0 - trust) * n[i];
             }
             extra.eye_open = Some(open);
         }

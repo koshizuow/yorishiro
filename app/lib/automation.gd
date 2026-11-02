@@ -24,7 +24,7 @@
 ##   --cycle-models=<prefix> after the screenshot, open each library model in turn like a click on its card, save
 ##                          <prefix>_<nn>_<name>.png (window) after --pose-frames frames and print load time
 ##   --gestures=<prefix>    after the screenshot, operate the model with synthetic mouse and key events (drag,
-##                          wheel, wheel while dragging, shift+wheel, right drag), save <prefix>_<step>.png and print
+##                          wheel, wheel while dragging, shift+wheel, touchpad scroll and pinch, right drag), save <prefix>_<step>.png and print
 ##                          the model transform after each step
 ##   --plugin-api-test[=<png>]  (png: a shot of the approval card) switch the plugin API on, connect as a plugin over WebSocket, get allowed on the card,
 ##                          authenticate and check the requests (model, hotkeys, expressions, parameters, injection)
@@ -361,6 +361,10 @@ func _gestures(prefix: String):
 		["wheel_down_x10_while_dragging", [["press", MOUSE_BUTTON_LEFT], ["wheel", MOUSE_BUTTON_WHEEL_DOWN, 10], ["release", MOUSE_BUTTON_LEFT]]],
 		["shift_wheel_x10", [["key", KEY_SHIFT, true], ["wheel", MOUSE_BUTTON_WHEEL_UP, 10], ["key", KEY_SHIFT, false]]],
 		["shift_wheel_back_x10", [["key", KEY_SHIFT, true], ["wheel", MOUSE_BUTTON_WHEEL_DOWN, 10], ["key", KEY_SHIFT, false]]],
+		["touchpad_scroll_up_100px_at_head", [["pan", Vector2(0, -10), 10]], Vector2(0.5, 0.12)],
+		["touchpad_scroll_down_100px_at_head", [["pan", Vector2(0, 10), 10]], Vector2(0.5, 0.12)],
+		["touchpad_pinch_out_x1.5", [["magnify", 1.0414, 10]]],
+		["touchpad_pinch_in_back", [["magnify", 1.0 / 1.0414, 10]]],
 		["drag_left_1500_offscreen", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(-1500, 0)], ["release", MOUSE_BUTTON_LEFT]]],
 		["drag_back_right_300", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(300, 0)], ["release", MOUSE_BUTTON_LEFT]], Vector2(0.6, 0.5)],
 		["drag_down_1000_offscreen", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(0, 1000)], ["release", MOUSE_BUTTON_LEFT]]],
@@ -398,6 +402,18 @@ func _gestures(prefix: String):
 							e.global_position = at
 							e.factor = 1.0
 							Input.parse_input_event(e)
+						await get_tree().process_frame
+				"pan", "magnify":
+					for i in op[2]:
+						var g: InputEventGesture
+						if op[0] == "pan":
+							g = InputEventPanGesture.new()
+							g.delta = op[1]
+						else:
+							g = InputEventMagnifyGesture.new()
+							g.factor = op[1]
+						g.position = at
+						Input.parse_input_event(g)
 						await get_tree().process_frame
 				"key":
 					var k := InputEventKey.new()

@@ -84,10 +84,15 @@ func _on_model_changed(model, stage) -> void:
 	var path: String = model.modelmeta.model
 	_cfg.set_value("last_used", _key(path), int(Time.get_unix_time_from_system()))
 	_cfg.save(STATE)
+	var rest: bool = model.has_method("hold_rest_pose")
+	if rest:
+		model.hold_rest_pose(true)
 	for i in SETTLE_FRAMES:
 		await RenderingServer.frame_post_draw
 	if is_instance_valid(model) and stage.active_model == model:
 		_capture(model, stage.capture_viewport, path)
+	if rest and is_instance_valid(model):
+		model.hold_rest_pose(false)
 	changed.emit()
 
 ## from the stage: a tall figure (a person) gives its head and upper body, a 3:4 box at the top of its opaque

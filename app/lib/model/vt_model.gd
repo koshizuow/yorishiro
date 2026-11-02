@@ -38,6 +38,24 @@ var blueprints: Array :
 			g.visible = false
 ## dynamic store used for passing named values between blueprints
 var store: Dictionary = {}
+
+var _held_graphs := {}
+
+## the model at rest: graphs held and every parameter at its default, for the library's thumbnail (taken from the
+## live face, a half blink stayed in it). Off gives the graphs back as they were.
+func hold_rest_pose(on: bool) -> void:
+	if on:
+		for g in blueprints:
+			_held_graphs[g] = g.enabled
+			g.enabled = false
+		var params: Dictionary = get_parameters()
+		for p in params:
+			set("parameters/%s" % p, params[p].default)
+	else:
+		for g in _held_graphs:
+			if is_instance_valid(g):
+				g.enabled = _held_graphs[g]
+		_held_graphs.clear()
 var _store_changed = false
 signal store_changed
 			
