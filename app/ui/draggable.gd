@@ -137,18 +137,26 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> bool:
 		elif Input.is_key_pressed(KEY_ALT):
 			free_offset += movement
 		else:
+			var from: Vector2 = get_global_transform_with_canvas() * rect.get_center()
 			global_position += movement
-			_keep_on_screen()
+			_keep_on_screen(from)
 		return true
 	return false
 
-## pulls the object back so the center of its box stays in the viewport. The box is often much larger than
-## the drawn figure (a Live2D canvas has wide transparent margins), so keeping a few pixels of the box
-## visible could still leave nothing to grab.
-func _keep_on_screen() -> void:
+## how far past the edge of the view the center of the box may go, in parts of the box: a model zoomed in on its face has
+## its center far below the view, and the figure usually fills the height of its box but not the width
+const KEEP_OUT := Vector2(0.2, 0.45)
+
+## keeps part of the object in the view, where it can be grabbed again. Starting outside that (a zoom moved it there) it
+## never jumps: it only can't go further out.
+func _keep_on_screen(from: Vector2) -> void:
 	var view := get_viewport_rect()
-	var center: Vector2 = get_global_transform_with_canvas() * rect.get_center()
-	var inside := center.clamp(view.position, view.end)
+	var to_screen := get_global_transform_with_canvas()
+	var center: Vector2 = to_screen * rect.get_center()
+	var past: Vector2 = KEEP_OUT * size * to_screen.get_scale().abs()
+	var low := (view.position - past).min(from)
+	var high := (view.end + past).max(from)
+	var inside := center.clamp(low, high)
 	if inside != center:
 		global_position += get_canvas_transform().affine_inverse().basis_xform(inside - center)
 

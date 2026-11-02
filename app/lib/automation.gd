@@ -376,8 +376,13 @@ func _gestures(prefix: String):
 		["touchpad_pinch_out_x1.5", [["magnify", 1.0414, 10]]],
 		["touchpad_pinch_in_back", [["magnify", 1.0 / 1.0414, 10]]],
 		["drag_left_1500_offscreen", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(-1500, 0)], ["release", MOUSE_BUTTON_LEFT]]],
-		["drag_back_right_300", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(300, 0)], ["release", MOUSE_BUTTON_LEFT]], Vector2(0.6, 0.5)],
+		["drag_back_right_300", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(300, 0)], ["release", MOUSE_BUTTON_LEFT]], Vector2(0.8, 0.5)],
 		["drag_down_1000_offscreen", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(0, 1000)], ["release", MOUSE_BUTTON_LEFT]]],
+		["drag_up_700_back", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(0, -700)], ["release", MOUSE_BUTTON_LEFT]], Vector2(0.5, 0.03)],
+		# zoomed in on the head: the center of the box goes far out of the view, a small drag must move just that much
+		["wheel_up_x24_at_head", [["wheel", MOUSE_BUTTON_WHEEL_UP, 24]], Vector2(0.5, 0.1)],
+		["drag_right_40_zoomed", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(40, 0)], ["release", MOUSE_BUTTON_LEFT]], Vector2(0.5, 0.1)],
+		["drag_down_120_zoomed", [["press", MOUSE_BUTTON_LEFT], ["move", Vector2(0, 120)], ["release", MOUSE_BUTTON_LEFT]], Vector2(0.5, 0.1)],
 	]
 	for step in steps:
 		# aim at the model's current center, converted from the stage viewport to the window
