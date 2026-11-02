@@ -69,7 +69,7 @@ EOF
 cat > "$appdir/AppRun" <<'EOF'
 #!/bin/sh
 export FC_LANG="${FC_LANG:-en}"
-[ -n "$WAYLAND_DISPLAY" ] && set -- --display-driver wayland "$@"
+if [ -n "$WAYLAND_DISPLAY" ]; then set -- --display-driver wayland "$@"; fi
 exec "$(dirname "$(readlink -f "$0")")/usr/bin/yorishiro.x86_64" "$@"
 EOF
 chmod +x "$appdir/AppRun"
