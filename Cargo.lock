@@ -1563,6 +1563,7 @@ name = "yorishiro-tracking-gd"
 version = "0.1.0"
 dependencies = [
  "godot",
+ "libc",
  "yorishiro-tracking",
 ]
 
