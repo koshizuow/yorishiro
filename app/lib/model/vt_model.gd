@@ -126,8 +126,26 @@ func follow_face(tracking_data: Dictionary, delta: float) -> Vector3:
 ## positions a hotkey can move the model to ("1".."4" -> {x, y, scale, rotation}), saved with the model
 var saved_positions := {}
 
+## positions and sizes are saved as on a 1280x720 stage, as VTube Studio does, so they hold at any window size and
+## display scale (they were stage pixels before, so files saved at the default size read the same)
+const SAVED_STAGE := Vector2(1280, 720)
+
+func to_saved(pos: Vector2, s: float) -> Dictionary:
+	var view := get_viewport_rect().size
+	var p := pos * SAVED_STAGE / view
+	return {"x": p.x, "y": p.y, "scale": s * SAVED_STAGE.y / view.y}
+
+## {"position", "scale"} on the stage as it is now, from saved x, y and scale
+func from_saved(saved: Dictionary) -> Dictionary:
+	var view := get_viewport_rect().size
+	return {
+		"position": Vector2(float(saved.x), float(saved.y)) * view / SAVED_STAGE,
+		"scale": float(saved.scale) * view.y / SAVED_STAGE.y,
+	}
+
 func save_position(slot: String) -> void:
-	saved_positions[slot] = {"x": position.x, "y": position.y, "scale": scale.x, "rotation": rotation_degrees}
+	saved_positions[slot] = to_saved(position, scale.x)
+	saved_positions[slot]["rotation"] = rotation_degrees
 
 func load_model_settings(settings: Dictionary):
 	saved_positions = settings.get("positions", {}).duplicate(true)
@@ -137,18 +155,19 @@ func load_model_settings(settings: Dictionary):
 		movement_amount = Vector3(movement.get("x", movement_amount.x), movement.get("y", movement_amount.y), movement.get("z", movement_amount.z))
 		movement_smoothing = movement.get("smoothing", movement_smoothing)
 
-	self.scale = Vector2.ONE * settings.get("transform", {}).get(
-		"scale", 
-		clampf(get_viewport_rect().size.y / size.y, 0.001, 2.0)
-	)
+	var transform: Dictionary = settings.get("transform", {})
+	var pos: Dictionary = transform.get("position", {})
+	if transform.has("scale") and pos.has("x") and pos.has("y"):
+		var on_stage := from_saved({"x": pos.x, "y": pos.y, "scale": transform.scale})
+		self.scale = Vector2.ONE * on_stage.scale
+		self.position = on_stage.position
+	else:
+		self.scale = Vector2.ONE * clampf(get_viewport_rect().size.y / size.y, 0.001, 2.0)
+		self.position = get_viewport_rect().get_center()
 	self.rotation_degrees = settings.get("transform", {}).get("rotation", 0)
 	self.texture_filter = TEXTURE_FILTER_NEAREST_WITH_MIPMAPS_ANISOTROPIC if settings.get("quality", {}).get("filter", "linear") == "nearest" else TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	self.smoothing = settings.get("quality", {}).get("smoothing", false)
-		
-	self.position = Serializers.Vec2Serializer.from_json(
-		settings.get("transform", {}).get("position", {}),
-		get_viewport_rect().get_center()
-	)
+
 	
 func save_model_settings(settings: Dictionary):
 	settings.merge({
@@ -163,11 +182,7 @@ func save_model_settings(settings: Dictionary):
 			"smoothing": movement_smoothing,
 		},
 		"positions": saved_positions,
-		"transform": {
-			"position": Serializers.Vec2Serializer.to_json(self.position),
-			"scale": self.scale.x,
-			"rotation": self.rotation_degrees
-		},
+		"transform": _saved_transform(),
 		"graphs": blueprints.reduce(
 			func (acc, b):
 				acc[b.name] = b.serialize()
@@ -175,6 +190,10 @@ func save_model_settings(settings: Dictionary):
 			{}
 		)
 	})
+
+func _saved_transform() -> Dictionary:
+	var saved := to_saved(position, scale.x)
+	return {"position": {"x": saved.x, "y": saved.y}, "scale": saved.scale, "rotation": rotation_degrees}
 
 ## load the model's own settings (.yori.json)
 func _load_settings():

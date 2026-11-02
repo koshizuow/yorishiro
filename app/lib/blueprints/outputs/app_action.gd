@@ -93,9 +93,10 @@ func _move_to_position(stage) -> void:
 	if m == null or not m.saved_positions.has(target):
 		return
 	var p: Dictionary = m.saved_positions[target]
+	var on_stage: Dictionary = m.from_saved(p)
 	var t: Tween = m.create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	t.tween_property(m, "position", Vector2(p.x, p.y), MOVE_SECONDS)
-	t.tween_property(m, "scale", Vector2.ONE * float(p.scale), MOVE_SECONDS)
+	t.tween_property(m, "position", on_stage.position, MOVE_SECONDS)
+	t.tween_property(m, "scale", Vector2.ONE * on_stage.scale, MOVE_SECONDS)
 	t.tween_property(m, "rotation_degrees", float(p.rotation), MOVE_SECONDS)
 
 ## the same picture (or animation folder) is taken away when it is on the stage, put in the middle otherwise
