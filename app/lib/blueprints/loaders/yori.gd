@@ -92,4 +92,6 @@ func _deserialize(graph: Blueprint, model: VtModel, data: Dictionary):
 				from_node.name, src_port,
 				to_node.name, dst_port
 			)
+	if data.get("nodes", []).any(func (i): return i.get("type") == "blink"):
+		graph.blink_both_eyes.call_deferred(model)  # after the connections, deferred above
 			

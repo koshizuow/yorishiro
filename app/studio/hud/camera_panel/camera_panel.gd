@@ -155,19 +155,27 @@ func load_settings(data: Dictionary):
 		# settings load when the panel enters the tree, before _ready fills the tracker list, so the
 		# default is looked up a frame later (it picked item 0, OpenSeeFace, for new profiles)
 		await get_tree().process_frame
-		var source = Collections.path(data, "trackers.source", _default_tracker_index())
-		%TrackingSource.select(source)
+		%TrackingSource.select(_tracker_index(Collections.path(data, "trackers.name", "")))
+		_tracker_chosen = true
 		tracking_system.activate_tracker(
 			%TrackingSource.get_selected_metadata().new()
 		)
 
-## new profiles start on the built-in Yorishiro tracker
-func _default_tracker_index() -> int:
-	var yorishiro = preload("res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd")
+var _tracker_chosen := false
+
+## the list differs between builds, so the choice is kept by name (a saved index picked the WiFi tracker)
+func _tracker_name(index: int) -> String:
+	return %TrackingSource.get_item_metadata(index).resource_path.get_file().get_basename()
+
+## new profiles, and a name not in this build, start on the built-in Yorishiro tracker
+func _tracker_index(wanted: String) -> int:
+	var fallback := 0
 	for i in %TrackingSource.item_count:
-		if %TrackingSource.get_item_metadata(i) == yorishiro:
+		if _tracker_name(i) == wanted:
 			return i
-	return 0
+		if _tracker_name(i) == "yorishiro_tracker":
+			fallback = i
+	return fallback
 	
 func save_settings(data: Dictionary):
 	var w = data.get("window", {})
@@ -177,7 +185,9 @@ func save_settings(data: Dictionary):
 	w["theme"] = %UITheme.selected
 	w["fov"] = %FovDegrees.value
 	var c = data.get("trackers", {})
-	c["source"] = %TrackingSource.get_selected_id()
+	c.erase("source")
+	if _tracker_chosen:  # settings saved in the frame before the list is ready keep what they had
+		c["name"] = _tracker_name(%TrackingSource.selected)
 	data["window"] = w
 	data["trackers"] = c
 	

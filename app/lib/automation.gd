@@ -38,6 +38,7 @@
 ##                          check the Hand* inputs
 ##   --pin-test             add an item over the model, pin it to the art mesh under it (as dropping it does), move
 ##                          the model and check the item follows the mesh (vertices read back from the GPU)
+##   --blink-test=<s>      the lowest value each eye's open parameter reaches in that time, and how many frames they differ
 ##   --background=<RRGGBB or image path> set the stage background before the outputs start
 ##   --virtual-camera=<dev> send the stage to this v4l2loopback device, for --hold=<s> seconds before going on
 ##   --pipewire-test[=<s>]  send the stage to PipeWire, resize the window twice (s seconds per size, default 2, longer
@@ -252,6 +253,8 @@ func _ready() -> void:
 			await _hand_test(str(args["hand-test"]))
 		if args.has("pin-test"):
 			await _pin_test()
+		if args.has("blink-test"):
+			await _blink_test(float(args["blink-test"]))
 		if args.has("background"):
 			_set_background(str(args["background"]))
 		if args.has("virtual-camera"):
@@ -1399,3 +1402,19 @@ func _set_background(value: String) -> void:
 	else:
 		stage.background_image = value
 		stage.background_mode = 1
+
+
+func _blink_test(seconds: float) -> void:
+	var model = get_tree().get_first_node_in_group("system:stage").active_model
+	var low := [9.0, 9.0]
+	var high := [-9.0, -9.0]
+	var apart := 0
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < seconds * 1000:
+		await RenderingServer.frame_post_draw
+		var l: float = model.get("parameters/ParamEyeLOpen")
+		var r: float = model.get("parameters/ParamEyeROpen")
+		low = [minf(low[0], l), minf(low[1], r)]
+		high = [maxf(high[0], l), maxf(high[1], r)]
+		apart += 1 if absf(l - r) > 0.2 else 0
+	print("[automation] blink: left %.2f to %.2f, right %.2f to %.2f, frames apart %d" % [low[0], high[0], low[1], high[1], apart])

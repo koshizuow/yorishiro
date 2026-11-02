@@ -109,7 +109,12 @@ func _build_hotkey_graph(model: VtModel, vtube_data: Dictionary) -> Blueprint:
 	remove_child(graph)
 	return graph
 
+const EYE_OPEN = ["EyeOpenLeft", "EyeOpenRight"]
+
 func _build_parameter_graph(model: VtModel, vtube_data: Dictionary) -> Blueprint:
+	var blink_eyes: bool = vtube_data["ParameterSettings"].any(
+		func (p): return p.get("UseBlinking", false) and p.get("Input", "") in EYE_OPEN
+	)
 	
 	var graph = BlueprintTemplate.instantiate()
 	graph.name = "VTS_Parameters"
@@ -158,7 +163,8 @@ func _build_parameter_graph(model: VtModel, vtube_data: Dictionary) -> Blueprint
 		
 		var unbound = input_slot < 0
 		var breathing = data.get("UseBreathing", false)
-		var blinking = data.get("UseBlinking", false)
+		# a model can have this on for one eye only, which winks whenever tracking stops: an eye blinks with the other
+		var blinking = data.get("UseBlinking", false) or (blink_eyes and data.get("Input", "") in EYE_OPEN)
 		var _x = x
 		var _y = 0
 		

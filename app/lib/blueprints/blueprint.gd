@@ -121,6 +121,39 @@ func _on_connection_request(from_node: StringName, from_port: int, to_node: Stri
 	invalidate_routes()
 	n2.bind(s2, n1)
 
+## A graph saved from a model with auto blink on one eye only winks when tracking stops. Gives the other eye the same,
+## leaving the rest of the graph (the user's ranges and smoothing) as it is.
+func blink_both_eyes(model: VtModel) -> void:
+	var blink: VtAction
+	for c in get_children():
+		if c is VtAction and c.get_type() == &"blink":
+			blink = c
+	if blink == null:
+		return
+	var eyes := {}
+	var tracker: VtAction
+	for out in connections.filter(func (c): return c.from_node == blink.name):
+		for input in connections.filter(func (c): return c.to_node == out.to_node and c.from_node != blink.name):
+			var source: VtAction = get_node(NodePath(input.from_node))
+			for eye in ["EyeOpenLeft", "EyeOpenRight"]:
+				if source.get_output_port_by_name(eye) == input.from_port:
+					eyes[eye] = true
+					tracker = source
+	if eyes.size() != 1:
+		return
+	var other: String = "EyeOpenLeft" if eyes.has("EyeOpenRight") else "EyeOpenRight"
+	var port: int = tracker.get_output_port_by_name(other)
+	var targets: Array = connections.filter(func (c): return c.from_node == tracker.name and c.from_port == port)
+	if targets.is_empty():
+		return
+	var scalar: VtAction = spawn_action(&"arithmetic", model)
+	scalar.operator = 1
+	for t in targets:
+		_on_disconnection_request(t.from_node, t.from_port, t.to_node, t.to_port)
+		_on_connection_request(scalar.name, scalar.get_output_port_by_name("output"), t.to_node, t.to_port)
+	_on_connection_request(tracker.name, port, scalar.name, scalar.get_input_port_by_name("a"))
+	_on_connection_request(blink.name, blink.get_output_port_by_name("value"), scalar.name, scalar.get_input_port_by_name("b"))
+
 func _on_disconnection_request(from_node: StringName, from_port: int, to_node: StringName, to_port: int) -> void:
 	disconnect_node(from_node, from_port, to_node, to_port)
 	invalidate_routes()
