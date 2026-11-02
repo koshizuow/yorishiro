@@ -1,0 +1,116 @@
+# Yorishiro guide
+
+[繁體中文](guide.zh-TW.md)
+
+- [Getting started](#getting-started)
+- [Hotkeys](#hotkeys)
+- [OBS](#obs)
+- [Virtual camera](#virtual-camera)
+- [Left and right](#left-and-right)
+- [Several people on one computer](#several-people-on-one-computer)
+- [Troubleshooting](#troubleshooting)
+
+## Getting started
+
+1. Download the AppImage from [Releases](https://github.com/koshizuow/yorishiro/releases), then
+   `chmod +x Yorishiro-<version>-x86_64.AppImage` and run it.
+2. The card on the stage walks you through choosing a model, checking face tracking and placing the model.
+   A Live2D model is a folder with a `.model3.json` file. Models in `~/.local/share/yorishiro/Live2DModels/` show up
+   by themselves.
+3. Look straight at the camera with a relaxed face for a moment, or use **Auto calibrate** on the Sensitivity page.
+   It goes one step at a time, so you can read each step before you do it.
+4. Drag the model to move it, scroll or pinch to resize it, and hold Shift and scroll to tilt it. The gear in the corner
+   opens all settings.
+
+## Hotkeys
+
+If the model comes with hotkeys, they are ready when it loads. To see or change them, open the **Hotkeys** page in
+Settings. A model must be loaded.
+
+- **Change the keys:** click the keys of a hotkey, then press the new keys together, up to three, such as Ctrl+M.
+  Esc cancels and Backspace clears.
+- **Add one:** press **Add hotkey**, then choose what it does: an expression, an animation or an app action.
+- **Hold:** with Hold on, the hotkey is active only while you keep the keys down.
+
+Keyboard hotkeys work while the app's window has focus. To use them from other windows, for example with OBS or a game
+in front, add your user to the `input` group and log in again:
+
+```sh
+sudo usermod -aG input $USER
+```
+
+With this group every program you run can read the keyboard, so only add it if you need it. Check it with `id -nG`.
+
+## OBS
+
+The stage goes to OBS with a transparent background, without the app's buttons and menus.
+
+You need:
+
+- PipeWire 1.4 or newer. Ubuntu 25.10 and 26.04 and Debian 13 have it. Ubuntu 24.04 and Linux Mint 22 ship 1.0, and the
+  app runs there without this output unless PipeWire is updated.
+- The Vulkan renderer, which is the default.
+- OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin. It is a separate project.
+  **The plugin must match your OBS version:** OBS refuses a plugin built for a newer one, so take the build for your
+  version or build it yourself.
+
+For a per-user install, the plugin goes here:
+
+```text
+~/.config/obs-studio/plugins/obs-pwvideo/bin/64bit/obs-pwvideo.so
+~/.config/obs-studio/plugins/obs-pwvideo/data/
+```
+
+Then:
+
+1. In Yorishiro, turn on **Send the stage to OBS (PipeWire, transparent)**.
+2. In OBS, add a **PipeWire video** source and pick Yorishiro.
+
+The app keeps sending frames while its window is covered or minimized, so OBS can sit on top of it.
+
+## Virtual camera
+
+For apps that only take a camera, such as Google Meet. A camera has no transparency, so it shows the app's background:
+the image or color you chose, and black in transparent mode. Change the background and the camera follows.
+
+On Ubuntu:
+
+```sh
+sudo apt install v4l2loopback-dkms
+sudo modprobe v4l2loopback devices=1 video_nr=20 card_label="Yorishiro" exclusive_caps=1
+```
+
+The `modprobe` line lasts until you reboot. The app shows this command when it finds no device, and **Check again** looks
+for the device without a restart. Then choose the device in the camera panel, turn the virtual camera on, and pick
+**Yorishiro** as the camera in the other app.
+
+The picture keeps the size it had when the camera started, and a resized window is scaled to fit it, so the other app
+keeps working.
+
+## Left and right
+
+Yorishiro works like a mirror. Look to your right and the model turns to the right side of the screen.
+
+OBS, your stream and the people in a call see the same picture as the app's window. Video call apps such as Google Meet
+usually flip **your own preview** only, so your preview can look reversed compared to the app while everyone else sees it
+the right way round.
+
+## Several people on one computer
+
+Open the app again. Each copy takes the next number, or choose one with `--instance=2`.
+
+- Each copy has its own settings and takes a free camera. The model library is shared.
+- OBS streams are named `Yorishiro`, `Yorishiro-2` and so on. Plugin ports are 8001, 8002 and so on.
+- Two copies cannot read one camera at the same time. The second shows the camera as busy and keeps running.
+
+Every copy runs its own tracking, so the limit depends on your computer.
+
+## Troubleshooting
+
+| What you see | What to do |
+|---|---|
+| The window takes about a minute to appear on Wayland | The desktop portal is not answering. Install and start the backend for your desktop, for example `xdg-desktop-portal-wlr` or `xdg-desktop-portal-hyprland`. |
+| Keyboard hotkeys do nothing | Click the app's window so it has focus. For other windows see [Hotkeys](#hotkeys). |
+| No Yorishiro source in OBS | Check that **Send the stage to OBS** is on, then check the plugin against your OBS version. |
+| No device in the virtual camera list | Run the `modprobe` line from [Virtual camera](#virtual-camera), then press **Check again**. It is needed again after a reboot. |
+| Camera busy | Another app or another copy has the camera. Close it, or choose another camera. |

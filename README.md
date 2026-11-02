@@ -101,6 +101,8 @@ library live in `~/.local/share/yorishiro/`.
 
 ## Usage
 
+The [guide](docs/guide.md) has the steps for hotkeys, OBS, the virtual camera and more.
+
 Start the AppImage (or `./yorishiro.x86_64` from the tar.gz), or `./run.sh` when built from source.
 
 - On the first start a card in the middle of the stage walks you through it: choose a model, check face
