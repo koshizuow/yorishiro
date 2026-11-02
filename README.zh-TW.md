@@ -89,8 +89,6 @@
 - 追蹤器會跟著 app 一起啟動。剛開始請放鬆表情、看著鏡頭幾秒，讓它記住你平常的樣子。也可以到「靈敏度」頁按「自動校正」。
 - 拖曳模型可以移動，滾輪縮放，按住 Shift 再滾滾輪可以旋轉。點角落的齒輪可以打開所有設定。
 - **OBS：** 在「設定」裡打開「把舞台傳到 OBS」，再到 OBS 新增「PipeWire video」來源，選擇 Yorishiro。
-- **舊電腦配 60 fps 鏡頭：** 如果設定裡的追蹤 fps 一直比鏡頭低，NVIDIA 顯示卡可以在 `nvidia-settings` 的 PowerMizer
-  選「Prefer Maximum Performance」（只在 X11 有效），讓顯示卡在兩格之間不降頻。GTX 1650 上追蹤從約 55 fps 提高到 59 fps。
 - 從原始碼執行時，app 的資料（設定、模型庫、縮圖）會存在 `userdata/yorishiro/`。
 
 ## Repo 結構
