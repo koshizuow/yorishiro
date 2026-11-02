@@ -6,7 +6,7 @@ FROM docker.io/library/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-		build-essential pkg-config cmake ninja-build meson git curl ca-certificates unzip binutils file \
+		build-essential pkg-config cmake ninja-build meson git curl ca-certificates unzip binutils file desktop-file-utils \
 		libclang-dev clang libudev-dev libinput-dev libgbm-dev libdrm-dev libvulkan-dev \
 		libfontconfig1 \
 	&& rm -rf /var/lib/apt/lists/*
