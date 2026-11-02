@@ -46,7 +46,9 @@
 
 ## Requirements
 
-- Linux on x86_64 with a Vulkan capable GPU (AMD and Intel through Mesa, NVIDIA with its driver).
+- Linux on x86_64 with a Vulkan capable GPU (AMD and Intel through Mesa, NVIDIA with its driver). The release
+  builds (AppImage, tar.gz from `tools/make_release.sh`) need Ubuntu 24.04, Linux Mint 22, Fedora 39, Debian 13
+  or newer (glibc 2.38).
 - A webcam.
 - For the PipeWire output to OBS: PipeWire 1.4 or newer for building, 1.2 or newer at run time, the Vulkan
   renderer (the default), OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin.

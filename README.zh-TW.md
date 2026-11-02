@@ -41,7 +41,9 @@
 
 ## 系統需求
 
-- x86_64 的 Linux，以及支援 Vulkan 的顯示卡（AMD 和 Intel 用 Mesa 驅動，NVIDIA 用官方驅動）。
+- x86_64 的 Linux，以及支援 Vulkan 的顯示卡（AMD 和 Intel 用 Mesa 驅動，NVIDIA 用官方驅動）。發行版（AppImage、
+  tar.gz，由 `tools/make_release.sh` 產生）需要 Ubuntu 24.04、Linux Mint 22、Fedora 39、Debian 13 或更新的版本
+  （glibc 2.38）。
 - 網路攝影機。
 - 想透過 PipeWire 傳到 OBS 的話：編譯時需要 PipeWire 1.4 以上，執行時需要 1.2 以上，並使用 Vulkan 渲染器（預設就是），OBS 要 31 以上，
   並裝好 [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) 外掛。
