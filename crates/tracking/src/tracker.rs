@@ -22,6 +22,9 @@ pub struct Tracker {
     frame_times: Vec<f64>,
     intervals: Vec<f64>,
     last_timestamp: Option<i64>,
+    /// time per frame (ms, smoothed) in the landmark stage (detector, crop, passes), the blendshape model and
+    /// the eye model, for the status
+    pub stage_ms: [f64; 3],
 }
 
 /// Where the models are: MediaPipe's (face_detector, face_landmarks, face_blendshapes .onnx), the fit data,
@@ -53,6 +56,7 @@ impl Tracker {
             frame_times: Vec::new(),
             intervals: Vec::new(),
             last_timestamp: None,
+            stage_ms: [0.0; 3],
         })
     }
 
@@ -80,6 +84,7 @@ impl Tracker {
             self.pipeline.lost();
             return Ok(None);
         };
+        smooth(&mut self.stage_ms[0], start.elapsed());
         let out = self.process_landmarks(img, &lm.points, timestamp_ms)?;
         self.note_frame(start.elapsed().as_secs_f64() * 1000.0, timestamp_ms);
         Ok(Some(out))
@@ -108,15 +113,20 @@ impl Tracker {
     pub fn process_landmarks(&mut self, img: &Image, points: &[crate::P3], timestamp_ms: i64) -> Result<Output, Error> {
         let (w, h) = (img.width as f64, img.height as f64);
         let mut failure = None;
-        let (blend, eyes) = (&mut self.blend, &mut self.eyes);
+        let (blend, eyes, stage_ms) = (&mut self.blend, &mut self.eyes, &mut self.stage_ms);
         let out = self.pipeline.process_with(points, w, h, timestamp_ms, &mut |smoothed| {
             let mut x = Extras { lens_glare: Some(lens_glare(img, smoothed)), ..Default::default() };
+            let t = std::time::Instant::now();
             match blend.run(smoothed, w, h) {
                 Ok(m) => x.mouth = Some(m),
                 Err(e) => failure = Some(e),
             }
+            smooth(&mut stage_ms[1], t.elapsed());
             if let Some(eyes) = eyes.as_mut() {
-                match eyes.run(img, smoothed) {
+                let t = std::time::Instant::now();
+                let r = eyes.run(img, smoothed);
+                smooth(&mut stage_ms[2], t.elapsed());
+                match r {
                     Ok(o) => x.eye_open = Some(o),
                     Err(e) => failure = Some(e),
                 }
@@ -129,4 +139,9 @@ impl Tracker {
             None => Ok(out),
         }
     }
+}
+
+/// A running average of a stage's time in ms, as the status's infer_ms
+fn smooth(avg: &mut f64, d: std::time::Duration) {
+    *avg = 0.9 * *avg + 100.0 * d.as_secs_f64();
 }

@@ -484,6 +484,9 @@ fn run(cfg: Config, s: Arc<Shared>) {
             report = Instant::now();
             let numbers = vec![("fps".into(), (fps * 10.0).round() / 10.0), ("infer_ms".into(), (infer_ms * 10.0).round() / 10.0),
                                ("pass_ms".into(), (tracker.mesh.tracking_pass_ms * 10.0).round() / 10.0),
+                               ("landmarks_ms".into(), (tracker.stage_ms[0] * 10.0).round() / 10.0),
+                               ("blendshapes_ms".into(), (tracker.stage_ms[1] * 10.0).round() / 10.0),
+                               ("eyes_ms".into(), (tracker.stage_ms[2] * 10.0).round() / 10.0),
                                ("face".into(), last_found as u8 as f64), ("calibrated".into(), calibrated as u8 as f64),
                                ("commercial_use".into(), 1.0)];
             s.status("running", if last_found { "tracking" } else { "no face in view" }, numbers,
