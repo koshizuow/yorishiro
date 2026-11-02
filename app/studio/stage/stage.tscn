@@ -98,6 +98,34 @@ size = 0.05
 [node name="ModelLayer" type="CanvasLayer" parent="CanvasLayer/ViewportWrapper/SubViewportContainer/SubViewport" unique_id=800326305]
 unique_name_in_owner = true
 
-[node name="VirtualCamera" type="VirtualCamera" parent="CanvasLayer/ViewportWrapper/SubViewportContainer/SubViewport" unique_id=341780835 groups=["output:v4l2"]]
+[node name="CameraView" type="SubViewport" parent="." unique_id=620418377]
+unique_name_in_owner = true
+disable_3d = true
+handle_input_locally = false
+gui_disable_input = true
+size = Vector2i(1280, 720)
+render_target_update_mode = 0
+
+[node name="Black" type="ColorRect" parent="CameraView" unique_id=620418378]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="StageLayer" type="CanvasLayer" parent="CameraView" unique_id=620418379]
+
+[node name="StageImage" type="TextureRect" parent="CameraView/StageLayer" unique_id=620418380]
+unique_name_in_owner = true
+material = SubResource("CanvasItemMaterial_premult")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+
+[node name="VirtualCamera" type="VirtualCamera" parent="CameraView" unique_id=341780835 groups=["output:v4l2"]]
 
 [connection signal="child_order_changed" from="CanvasLayer/ViewportWrapper/SubViewportContainer/SubViewport/ModelLayer" to="." method="_on_model_layer_child_order_changed"]

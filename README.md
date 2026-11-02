@@ -29,7 +29,8 @@
 - **Hotkeys, expressions and items.** A hotkey list and on-screen buttons, expression toggles, Live2D pose
   groups, an item library for pictures and animations, item scenes.
 - **Into OBS with a transparent background.** The stage goes to OBS as a PipeWire video stream with alpha,
-  without the app's buttons and menus. A v4l2loopback virtual camera and a transparent window work too.
+  without the app's buttons and menus. A v4l2loopback virtual camera, which has no alpha and so
+  shows the app's background, and a transparent window work too.
 - **Tracking for other apps.** The tracker can also send its data in common face tracking protocols
   (iFacialMocap and the iPhone tracking protocol other VTuber apps read).
 - **Plugins.** A local WebSocket API (port 8001, off by default) in the message format VTuber plugins

@@ -38,6 +38,7 @@
 ##                          check the Hand* inputs
 ##   --pin-test             add an item over the model, pin it to the art mesh under it (as dropping it does), move
 ##                          the model and check the item follows the mesh (vertices read back from the GPU)
+##   --background=<RRGGBB or image path> set the stage background before the outputs start
 ##   --virtual-camera=<dev> send the stage to this v4l2loopback device, for --hold=<s> seconds before going on
 ##   --pipewire-test[=<s>]  send the stage to PipeWire, resize the window twice (s seconds per size, default 2, longer
 ##                          to watch it in OBS) and check the output keeps running
@@ -251,6 +252,8 @@ func _ready() -> void:
 			await _hand_test(str(args["hand-test"]))
 		if args.has("pin-test"):
 			await _pin_test()
+		if args.has("background"):
+			_set_background(str(args["background"]))
 		if args.has("virtual-camera"):
 			get_tree().get_first_node_in_group("output:v4l2").set("loopback_device", str(args["virtual-camera"]))
 			await get_tree().create_timer(float(args.get("hold", 0))).timeout
@@ -1381,3 +1384,13 @@ func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
 			func (q): return "%s %s" % [q, model.get("parameters/%s" % q) if model else null]))])
 		_debug_meshes_after(args, model)
 		tracker.reset()
+
+
+func _set_background(value: String) -> void:
+	var stage = get_tree().get_first_node_in_group("system:stage")
+	if value.is_valid_html_color():
+		stage.background_color = Color(value)
+		stage.background_mode = 2
+	else:
+		stage.background_image = value
+		stage.background_mode = 1

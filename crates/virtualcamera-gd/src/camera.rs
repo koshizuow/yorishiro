@@ -12,8 +12,8 @@ use v4l::v4l_sys::v4l2_format__bindgen_ty_1;
 use v4l::v4l2;
 use v4l::capability::Flags;
 
-/// YUYV (BT.601, limited range): the format camera readers take, AB24 was refused by ffmpeg. The stage is premultiplied
-/// over transparent black, so it shows over black.
+/// YUYV (BT.601, limited range): the format camera readers take, AB24 was refused by ffmpeg. The node's viewport is
+/// opaque: the stage over the chosen background (stage.gd).
 fn rgba_to_yuyv(rgba: &[u8], width: usize) -> Vec<u8> {
     let mut out = Vec::with_capacity(rgba.len() / 2);
     for row in rgba.chunks_exact(width * 4) {

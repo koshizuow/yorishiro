@@ -24,6 +24,7 @@ var background_mode: int :
 		%Bg/GridFill.visible = mode == 0 or (background_image.is_empty() and mode == 1)
 		%Bg/ColorFill.visible = mode == 2
 		background_mode = mode
+		_sync_camera_background()
 
 var background_image: String = "" :
 	set(path):
@@ -31,6 +32,7 @@ var background_image: String = "" :
 			%Bg/DefaultBackground.visible = true
 			%Bg/GridFill.visible = true
 			background_image = path
+			_sync_camera_background()
 			return
 
 		var image = Image.load_from_file(path)
@@ -44,11 +46,13 @@ var background_image: String = "" :
 		if background_mode == 1:
 			%Bg/DefaultBackground.visible = false
 			%Bg/GridFill.visible = false
+		_sync_camera_background()
 		
 var background_color: Color = Color.BLACK :
 	set(color):
 		%Bg/ColorFill.color = color
 		background_color = color
+		_sync_camera_background()
 
 var active_model: VtModel
 ## the last model asked for, a slower earlier load is dropped when it finishes
@@ -68,6 +72,7 @@ var objects: Array :
 func _ready() -> void:
 	_stage_size = Vector2(capture_viewport.size)
 	capture_viewport.size_changed.connect(_on_stage_resized)
+	_setup_camera_view()
 	if OS.has_feature("linux"):
 		_pipewire = PipeWireOutput.new()
 		add_child(_pipewire)
@@ -85,6 +90,7 @@ var _stage_size := Vector2.ZERO
 ## display scale applied after start), as in VTube Studio
 func _on_stage_resized() -> void:
 	var new_size := Vector2(capture_viewport.size)
+	_camera_view.size = capture_viewport.size
 	if _stage_size.x > 0 and _stage_size.y > 0 and new_size.x > 0 and new_size.y > 0 and new_size != _stage_size:
 		var k := new_size / _stage_size
 		for o in canvas.get_children():
@@ -96,13 +102,40 @@ func _on_stage_resized() -> void:
 ## the stage's pace while the window cannot draw (16 ms: 60 fps)
 const HIDDEN_FRAME_MS = 16
 var _next_hidden_draw := 0
-@onready var _vcam = capture_viewport.get_node_or_null("VirtualCamera")
+@onready var _camera_view: SubViewport = %CameraView
+@onready var _vcam = _camera_view.get_node_or_null("VirtualCamera")
+var _camera_bg: CanvasLayer
 var _pipewire
+
+## The virtual camera has no alpha, so it gets the stage over the chosen background, in a view of its own. The other
+## outputs keep the stage alone with alpha. The transparent mode shows over black.
+func _setup_camera_view() -> void:
+	_camera_view.size = capture_viewport.size
+	%StageImage.texture = capture_viewport.get_texture()
+	_camera_bg = %Bg.duplicate()
+	_camera_bg.name = "Background"
+	_camera_view.add_child(_camera_bg)
+	_camera_view.move_child(_camera_bg, 1)
+	_sync_camera_background()
+
+func _sync_camera_background() -> void:
+	if _camera_bg == null:
+		return
+	_camera_bg.visible = %Bg.visible
+	for shown in %Bg.get_children():
+		var copy = _camera_bg.get_node(NodePath(shown.name))
+		copy.visible = shown.visible
+		if shown is TextureRect:
+			copy.texture = shown.texture
+		elif shown is ColorRect:
+			copy.color = shown.color
 
 ## A window that is fully covered, minimized or on another workspace gets no frame events on Wayland and Godot stops
 ## drawing: the stage froze in OBS and the virtual camera, usually with OBS itself on top. They still need frames.
 func _process(_delta: float) -> void:
-	var outputs: bool = (_pipewire != null and _pipewire.running) or (_vcam != null and not _vcam.loopback_device.is_empty())
+	var camera_on: bool = _vcam != null and not _vcam.loopback_device.is_empty()
+	_camera_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS if camera_on else SubViewport.UPDATE_DISABLED
+	var outputs: bool = camera_on or (_pipewire != null and _pipewire.running)
 	if not outputs or DisplayServer.window_can_draw(get_window().get_window_id()):
 		return
 	if Time.get_ticks_msec() >= _next_hidden_draw:
