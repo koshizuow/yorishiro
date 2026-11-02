@@ -12,7 +12,8 @@ extends Node
 const PluginInput = preload("./plugin_input.gd")
 const VtItem = preload("res://lib/items/vt_item.gd")
 
-const PORT = 8001
+const BASE_PORT = 8000
+var PORT: int = BASE_PORT + preload("res://lib/instance.gd").number()
 const API_NAME = "VTubeStudioPublicAPI"
 const API_VERSION = "1.0"
 const STATE = "user://plugin_api.cfg"

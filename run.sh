@@ -14,6 +14,23 @@ export XDG_DATA_HOME="${YORISHIRO_USERDATA:-$ROOT/userdata}"
 # orders candidates, fallback still goes by the characters, so CJK text keeps rendering.
 export FC_LANG=${FC_LANG:-en}
 mkdir -p "$XDG_DATA_HOME/yorishiro/Live2DModels"
+# --instance=N: another copy of the app (several people on one computer), with its own settings folder. The model, item
+# and background libraries stay the first copy's. lib/instance.gd has the rest.
+instance_setup() {
+	[ "${1:-1}" -gt 1 ] 2>/dev/null || return 0
+	base=${XDG_DATA_HOME:-$HOME/.local/share}
+	export YORISHIRO_INSTANCE=$1 XDG_DATA_HOME="$base/yorishiro-instances/$1"
+	mkdir -p "$XDG_DATA_HOME/yorishiro" "$base/yorishiro/Live2DModels" "$base/yorishiro/Items" "$base/yorishiro/Backgrounds"
+	for shared in Live2DModels Items Backgrounds; do
+		ln -sfn "$base/yorishiro/$shared" "$XDG_DATA_HOME/yorishiro/$shared"
+	done
+}
+n=0
+for arg in "$@"; do
+	case "$arg" in --instance=*) n=${arg#--instance=} ;; *) set -- "$@" "$arg" ;; esac
+	shift
+done
+instance_setup "$n"
 # Wayland when the session has it: Godot's default is X11, which under XWayland never gets the display scale.
 # Chosen here rather than in project.godot, where an X11 session would log errors before falling back.
 if [ -n "${WAYLAND_DISPLAY:-}" ]; then set -- --display-driver wayland "$@"; fi

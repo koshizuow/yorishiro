@@ -69,6 +69,23 @@ EOF
 cat > "$appdir/AppRun" <<'EOF'
 #!/bin/sh
 export FC_LANG="${FC_LANG:-en}"
+# --instance=N: another copy of the app (several people on one computer), with its own settings folder. The model, item
+# and background libraries stay the first copy's. lib/instance.gd has the rest.
+instance_setup() {
+	[ "${1:-1}" -gt 1 ] 2>/dev/null || return 0
+	base=${XDG_DATA_HOME:-$HOME/.local/share}
+	export YORISHIRO_INSTANCE=$1 XDG_DATA_HOME="$base/yorishiro-instances/$1"
+	mkdir -p "$XDG_DATA_HOME/yorishiro" "$base/yorishiro/Live2DModels" "$base/yorishiro/Items" "$base/yorishiro/Backgrounds"
+	for shared in Live2DModels Items Backgrounds; do
+		ln -sfn "$base/yorishiro/$shared" "$XDG_DATA_HOME/yorishiro/$shared"
+	done
+}
+n=0
+for arg in "$@"; do
+	case "$arg" in --instance=*) n=${arg#--instance=} ;; *) set -- "$@" "$arg" ;; esac
+	shift
+done
+instance_setup "$n"
 if [ -n "$WAYLAND_DISPLAY" ]; then set -- --display-driver wayland "$@"; fi
 exec "$(dirname "$(readlink -f "$0")")/usr/bin/yorishiro.x86_64" "$@"
 EOF

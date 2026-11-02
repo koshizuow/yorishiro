@@ -282,7 +282,7 @@ func _plugin_row() -> void:
 	box.name = "PluginApiRow"
 	var toggle := CheckButton.new()
 	toggle.name = "PluginApiToggle"
-	toggle.text = "Allow plugins (port 8001)"
+	toggle.text = tr("Allow plugins (port %d)") % PluginApi.PORT
 	toggle.tooltip_text = "Plugins on this computer can connect over WebSocket. Each one asks once, here in the main window."
 	toggle.button_pressed = PluginApi.enabled
 	toggle.toggled.connect(func (on): PluginApi.enabled = on)

@@ -8,7 +8,7 @@ extends Node
 
 signal status_changed(text: String, ok: bool)
 
-const STREAM_NAME = "Yorishiro"
+const Instance = preload("res://lib/instance.gd")
 
 var enabled := false:
 	set(on):
@@ -50,7 +50,7 @@ func _start() -> void:
 		return
 	if _out == null:
 		_out = ClassDB.instantiate(&"PipeWireStageOut")
-	var err: String = _out.start(STREAM_NAME)
+	var err: String = _out.start(Instance.name_with("-"))
 	if err:
 		_set_status(_explain(err), false)
 		return

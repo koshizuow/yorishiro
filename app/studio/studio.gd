@@ -21,6 +21,7 @@ static func display_scale() -> float:
 	return _display_scale
 
 func _ready() -> void:
+	get_window().title = preload("res://lib/instance.gd").name_with(" #")
 	if not Engine.is_embedded_in_editor():
 		get_window().borderless = false
 
