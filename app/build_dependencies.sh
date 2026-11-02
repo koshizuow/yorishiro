@@ -92,7 +92,7 @@ build_core () {
 	fetch_onnxruntime $ADDON/lib || return 1
 	cp -L $NCNN_DIR/lib/libncnn.so.1 $ADDON/lib/  # found through the node library's $ORIGIN rpath
 	[ -f $NCNN_DIR/LICENSE.txt ] && cp $NCNN_DIR/LICENSE.txt $PROJ_ROOT/license/LICENSE.ncnn.md
-	cat > $ADDON/yorishiro_tracking.gdextension <<'GDEXT'
+	cat > $ADDON/yorishiro_tracking.gdextension <<GDEXT
 [configuration]
 entry_symbol = "gdext_rust_init"
 compatibility_minimum = 4.7
@@ -101,6 +101,12 @@ reloadable = false
 [libraries]
 linux.debug.x86_64 = "res://addons/yorishiro_tracking/lib/libyorishiro_tracking_gd.x86_64.so"
 linux.release.x86_64 = "res://addons/yorishiro_tracking/lib/libyorishiro_tracking_gd.x86_64.so"
+
+[dependencies]
+linux.x86_64 = {
+	"res://addons/yorishiro_tracking/lib/libncnn.so.1": "",
+	"res://addons/yorishiro_tracking/lib/libonnxruntime.so.$ORT_VERSION": ""
+}
 GDEXT
 	echo "*" > $ADDON/.gitignore
 	find $ADDON -type f

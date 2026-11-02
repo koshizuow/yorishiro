@@ -76,13 +76,20 @@ func _exit_tree():
 static func core_available() -> bool:
 	return ClassDB.class_exists(&"YorishiroCore")
 
-## the models folder next to the app folder (models/README.md)
-func _models_dir() -> String:
-	return ProjectSettings.globalize_path("res://").trim_suffix("/").get_base_dir().path_join("models")
+## where the app's own files are: the repository root when running from source, the executable's folder in
+## a release (tools/make_release.sh puts models/ and the libraries there)
+static func app_dir() -> String:
+	if OS.has_feature("editor"):
+		return ProjectSettings.globalize_path("res://").trim_suffix("/").get_base_dir()
+	return OS.get_executable_path().get_base_dir()
 
-## ONNX Runtime next to the extension (build_dependencies.sh fetches it)
+## the models folder (models/README.md)
+func _models_dir() -> String:
+	return app_dir().path_join("models")
+
+## ONNX Runtime beside the extension (build_dependencies.sh fetches it; a release has it beside the executable)
 func _ort_library() -> String:
-	var lib := ProjectSettings.globalize_path("res://addons/yorishiro_tracking/lib")
+	var lib := ProjectSettings.globalize_path("res://addons/yorishiro_tracking/lib") if OS.has_feature("editor") else app_dir()
 	for f in DirAccess.get_files_at(lib):
 		if f.begins_with("libonnxruntime.so."):
 			return lib.path_join(f)
