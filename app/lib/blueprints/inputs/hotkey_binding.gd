@@ -73,10 +73,18 @@ func ut_to_gd(input_name: String):
 		"Numpad9", "N9": return "Kp 9"
 		_: return input_name
 	
+## GlobalInput reads /dev/input, which needs the input group: it sees keys in any window, but none without the group.
+## Godot's own keys need the window in focus and work for everyone. Not while typing in a text box.
+func _key_pressed(keycode: int) -> bool:
+	if GlobalInput.is_key_pressed(keycode):
+		return true
+	var focus := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	return Input.is_key_pressed(keycode) and not (focus is LineEdit or focus is TextEdit)
+
 func _map_input(button: String) -> Callable:
 	var keycode = OS.find_keycode_from_string(button)
 	if keycode != KEY_NONE:
-		return GlobalInput.is_key_pressed.bind(keycode)
+		return _key_pressed.bind(keycode)
 	if button.to_lower().contains("mouse"):
 		if button == "MOUSE_BUTTON_LEFT" or button == "LeftMouseButton":
 			return Input.is_mouse_button_pressed.bind(MOUSE_BUTTON_LEFT)

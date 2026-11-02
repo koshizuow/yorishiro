@@ -51,6 +51,9 @@
   builds (AppImage, tar.gz from `tools/make_release.sh`) need Ubuntu 24.04, Linux Mint 22, Fedora 39, Debian 13
   or newer (glibc 2.38).
 - A webcam.
+- Keyboard hotkeys work while the app's window has focus. To use them from other windows too, add your user to
+  the `input` group (`sudo usermod -aG input $USER`, then log in again). Every program you run can then read the
+  keyboard, so only do this if you need it.
 - For the PipeWire output to OBS: PipeWire 1.4 or newer (building and running), the Vulkan renderer (the
   default), OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin (a separate project: it must
   match your OBS version, so take the build for your version or build it yourself, OBS refuses a plugin built for a newer one). Ubuntu 26.04
