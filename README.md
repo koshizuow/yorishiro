@@ -110,6 +110,9 @@ Start the AppImage (or `./yorishiro.x86_64` from the tar.gz), or `./run.sh` when
 - **OBS:** turn on *Send the stage to OBS* in Settings, then add a *PipeWire video* source in OBS and pick
   Yorishiro.
 - App data (settings, model library, thumbnails) lives in `userdata/yorishiro/` while running from source.
+- If the window takes about a minute to appear on Wayland, the desktop portal is not answering: Godot asks it at
+  start and waits 25 s per question. Install and start the portal backend for your desktop (for example
+  `xdg-desktop-portal-wlr` or `xdg-desktop-portal-hyprland`).
 
 ## Repository
 

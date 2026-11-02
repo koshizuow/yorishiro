@@ -97,6 +97,8 @@
 - 拖曳模型可以移動，滾輪（或觸控板雙指縮放）可以調整大小，按住 Shift 再滾滾輪可以旋轉。點角落的齒輪可以打開所有設定。
 - **OBS：** 在「設定」裡打開「把舞台傳到 OBS」，再到 OBS 新增「PipeWire video」來源，選擇 Yorishiro。
 - 從原始碼執行時，app 的資料（設定、模型庫、縮圖）會存在 `userdata/yorishiro/`。
+- 在 Wayland 下如果視窗要等將近一分鐘才出現，是桌面的 portal 沒有回應：Godot 啟動時會詢問它，每個問題等 25 秒。請安裝並啟動
+  你的桌面對應的 portal 後端（例如 `xdg-desktop-portal-wlr` 或 `xdg-desktop-portal-hyprland`）。
 
 ## Repo 結構
 
