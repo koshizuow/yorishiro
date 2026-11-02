@@ -6,12 +6,13 @@ members = [
 	"crates/tracking",
 	"crates/tracking-gd",
 	"crates/pipewire-gd",
+	"crates/virtualcamera-gd",
 	"crates/katashiro",
 	"crates/katashiro-gd",
 	"tools/moc3",
 ]
 # upstream submodules with their own lock files and builds
-exclude = ["thirdparty/godot-keylogger", "thirdparty/gd-virtualcamera"]
+exclude = ["thirdparty/godot-keylogger"]
 
 # debug builds (cargo test) fast enough for the tracking math and model files
 [profile.dev]

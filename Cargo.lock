@@ -1568,6 +1568,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "yorishiro-virtualcamera-gd"
+version = "0.1.0"
+dependencies = [
+ "godot",
+ "libc",
+ "v4l",
+]
+
+[[package]]
 name = "zerocopy"
 version = "0.8.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -23,7 +23,7 @@ esac
 ## Our Rust addons share one Cargo workspace (the repo root, outputs in its target/). Both are built in one cargo
 ## call: building one alone resolves godot-rust with other features and compiles it again.
 build_workspace () {
-	cargo build --release -p katashiro-gd -p yorishiro-tracking-gd -p yorishiro-pipewire-gd --features yorishiro-tracking-gd/ncnn --manifest-path $PROJ_ROOT/../Cargo.toml
+	cargo build --release -p katashiro-gd -p yorishiro-tracking-gd -p yorishiro-pipewire-gd -p yorishiro-virtualcamera-gd --features yorishiro-tracking-gd/ncnn --manifest-path $PROJ_ROOT/../Cargo.toml
 }
 
 ## ncnn with Vulkan, the tracking core's GPU path: NCNN_DIR (an install prefix), else built once by
@@ -140,27 +140,25 @@ GDEXT
 }
 
 build_virtualcamera () {
-	echo -e "\n#### Preparing gd-virtualcamera\n\n"
+	echo -e "\n#### Preparing yorishiro-virtualcamera\n\n"
 
-	WORKDIR=$PROJ_ROOT/../thirdparty/gd-virtualcamera
-	ADDONDIR=$PROJ_ROOT/addons
+	ADDON=$PROJ_ROOT/addons/virtualcamera
+	build_workspace || return 1
+	mkdir -p $ADDON/lib
+	cp $PROJ_ROOT/../target/release/libgd_virtualcamera.so $ADDON/lib/libgd_virtualcamera.release.so
+	cat > $ADDON/virtualcamera.gdextension <<'GDEXT'
+[configuration]
+entry_symbol = "gdext_rust_init"
+compatibility_minimum = 4.7
+reloadable = false
 
-	mkdir -p $ADDONDIR
-	
-	cd $WORKDIR
-
-	# keeps the device open (v4l2loopback 0.13+) and sends YUYV, not upstream yet
-	git apply --reverse --check ../patches/gd-virtualcamera.patch 2>/dev/null || git apply ../patches/gd-virtualcamera.patch
-
-	make package
-	cp -r $WORKDIR/addons/virtualcamera $ADDONDIR
-
-	cp LICENSE.md $PROJ_ROOT/license/LICENSE.gdvirtualcamera.md
-	cp README.md $ADDONDIR/virtualcamera/README.md
-	echo "*" > $ADDONDIR/virtualcamera/.gitignore
-	
-	# log completion
-	find $ADDONDIR/virtualcamera -type f
+[libraries]
+linux.debug.x86_64 = "res://addons/virtualcamera/lib/libgd_virtualcamera.release.so"
+linux.release.x86_64 = "res://addons/virtualcamera/lib/libgd_virtualcamera.release.so"
+GDEXT
+	cp $PROJ_ROOT/../crates/virtualcamera-gd/LICENSE.md $PROJ_ROOT/license/LICENSE.gdvirtualcamera.md
+	echo "*" > $ADDON/.gitignore
+	find $ADDON -type f
 
 	cd $PROJ_ROOT
 }

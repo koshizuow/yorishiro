@@ -123,7 +123,8 @@ Start the AppImage (or `./yorishiro.x86_64` from the tar.gz), or `./run.sh` when
 | `crates/tracking`, `crates/tracking-gd` | The face tracking core in Rust and its Godot node | Apache-2.0, see `crates/tracking/LICENSE` |
 | `crates/pipewire-gd` | Sends the stage to OBS over PipeWire on the graphics card, with libfunnel | Apache-2.0, see `crates/pipewire-gd/LICENSE` |
 | `crates/katashiro`, `crates/katashiro-gd` | Katashiro, the Live2D renderer: our fork of [Ayagami](https://github.com/AyagamiDev/ayagami) and its Godot bindings | MIT or Apache-2.0 (core), MIT (Godot part) |
-| `thirdparty/` | Upstream code we build: [libfunnel](https://github.com/hoshinolina/libfunnel), godot-keylogger, gd-virtualcamera | Their own |
+| `crates/virtualcamera-gd` | Sends the stage to a v4l2loopback camera: our copy of [gd-virtualcamera](https://github.com/erodozer/gd-virtualcamera) by erodozer, changed | Unlicense, see `crates/virtualcamera-gd/LICENSE.md` |
+| `thirdparty/` | Upstream code we build: [libfunnel](https://github.com/hoshinolina/libfunnel), godot-keylogger | Their own |
 | `models/` | The tracking models (made or downloaded, only the eye model is in git) | See `models/README.md` |
 | `research/` | Python tools that make the tracking models, and the eye model's training | Apache-2.0, see `research/LICENSE` |
 | `tools/` | Development and test tools | Same as the part they belong to |

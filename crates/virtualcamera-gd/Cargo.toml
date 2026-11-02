@@ -1,0 +1,16 @@
+[package]
+name = "yorishiro-virtualcamera-gd"
+version = "0.1.0"
+edition = "2024"
+license = "Unlicense"
+description = "Godot node that sends a viewport to a v4l2loopback camera, from erodozer's gd-virtualcamera (fccb57d)"
+publish = false
+
+[lib]
+name = "gd_virtualcamera"
+crate-type = ["cdylib"]
+
+[dependencies]
+godot = "0.5.5"
+libc = "0.2.189"
+v4l = "0.14.0"

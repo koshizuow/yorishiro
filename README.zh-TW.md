@@ -108,7 +108,8 @@
 | `crates/tracking`、`crates/tracking-gd` | Rust 寫的臉部追蹤核心，以及給 Godot 用的節點 | Apache-2.0，見 `crates/tracking/LICENSE` |
 | `crates/katashiro`、`crates/katashiro-gd` | Live2D 渲染器 Katashiro：我們從 [Ayagami](https://github.com/AyagamiDev/ayagami) 和它的 Godot 擴充分支出來的版本 | 核心是 MIT 或 Apache-2.0，Godot 部分是 MIT |
 | `crates/pipewire-gd` | 在顯示卡上直接把舞台透過 PipeWire 傳到 OBS（使用 libfunnel） | Apache-2.0，見 `crates/pipewire-gd/LICENSE` |
-| `thirdparty/` | 我們一起編譯的上游程式：[libfunnel](https://github.com/hoshinolina/libfunnel)、godot-keylogger、gd-virtualcamera | 依各自的授權 |
+| `crates/virtualcamera-gd` | 把舞台傳到 v4l2loopback 虛擬攝影機：erodozer 的 [gd-virtualcamera](https://github.com/erodozer/gd-virtualcamera) 收進來後修改的版本 | Unlicense，見 `crates/virtualcamera-gd/LICENSE.md` |
+| `thirdparty/` | 我們一起編譯的上游程式：[libfunnel](https://github.com/hoshinolina/libfunnel)、godot-keylogger | 依各自的授權 |
 | `models/` | 追蹤用的模型（自己產生或下載，git 裡只有眼睛模型） | 見 `models/README.md` |
 | `research/` | 產生追蹤模型的 Python 工具，以及眼睛模型的訓練 | Apache-2.0，見 `research/LICENSE` |
 | `tools/` | 開發和測試用的工具 | 依所屬的部分而定 |

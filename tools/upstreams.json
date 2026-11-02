@@ -64,16 +64,6 @@
         "path": "thirdparty/godot-keylogger"
       },
       "policy": "bump"
-    },
-    {
-      "name": "gd-virtualcamera",
-      "url": "https://github.com/erodozer/gd-virtualcamera.git",
-      "branch": "main",
-      "pin": {
-        "kind": "submodule",
-        "path": "thirdparty/gd-virtualcamera"
-      },
-      "policy": "bump"
     }
   ],
   "godot": {

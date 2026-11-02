@@ -54,7 +54,8 @@ Third-party components used by app/
                         addons/yorishiro_pipewire (crates/pipewire-gd),
                         linked to PipeWire's client library (MIT).
   gd-virtualcamera      https://github.com/erodozer/gd-virtualcamera
-                        The Unlicense (public domain), thirdparty/gd-virtualcamera
+                        The Unlicense (public domain). Our copy with changes is
+                        crates/virtualcamera-gd
   godot-keylogger       https://github.com/erodozer/godot-keylogger
                         MIT, Copyright (c) 2025-present erodozer,
                         thirdparty/godot-keylogger
