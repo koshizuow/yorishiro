@@ -37,8 +37,9 @@ pub(crate) fn f32r(x: f64) -> f64 {
 
 /// Asks the scheduler to treat this thread as busy (utilisation clamp minimum 1024) so the CPU is at full clock
 /// while it works. A thread that waits between frames runs on a core the schedutil governor has clocked down:
-/// on the low-end reference the eye model on a new thread took 12.5 ms instead of 4.6. Needs no privileges; no effect under governors that ignore it (intel_pstate, amd-pstate active).
-/// YORISHIRO_NO_CLOCK_HINT turns it off, for measuring.
+/// on the low-end reference the eye model on a new thread took 12.5 ms instead of 4.6. Needs no privileges; no
+/// effect under governors that ignore it (intel_pstate, amd-pstate active). YORISHIRO_NO_CLOCK_HINT turns it
+/// off, for measuring.
 pub fn keep_clock_up() -> Result<(), String> {
     if std::env::var_os("YORISHIRO_NO_CLOCK_HINT").is_some() {
         return Err("YORISHIRO_NO_CLOCK_HINT".into());
