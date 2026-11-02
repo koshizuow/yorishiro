@@ -64,8 +64,12 @@ Exec=yorishiro
 Icon=yorishiro
 Categories=AudioVideo;Video;
 EOF
+# as run.sh: Wayland when the session has it (display scale), FC_LANG=en (a CJK locale made Godot's per-frame font
+# fallback take about 80 ms)
 cat > "$appdir/AppRun" <<'EOF'
 #!/bin/sh
+export FC_LANG="${FC_LANG:-en}"
+[ -n "$WAYLAND_DISPLAY" ] && set -- --display-driver wayland "$@"
 exec "$(dirname "$(readlink -f "$0")")/usr/bin/yorishiro.x86_64" "$@"
 EOF
 chmod +x "$appdir/AppRun"

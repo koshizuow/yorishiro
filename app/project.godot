@@ -51,8 +51,6 @@ Automation="*res://lib/automation.gd"
 
 [display]
 
-display_server/driver.linuxbsd="wayland"
-
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/size/transparent=true

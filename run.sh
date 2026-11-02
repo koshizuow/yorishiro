@@ -14,4 +14,8 @@ export XDG_DATA_HOME="${YORISHIRO_USERDATA:-$ROOT/userdata}"
 # orders candidates, fallback still goes by the characters, so CJK text keeps rendering.
 export FC_LANG=${FC_LANG:-en}
 mkdir -p "$XDG_DATA_HOME/yorishiro/Live2DModels"
-exec "$GODOT" --path "$ROOT/app" "$@"
+# Wayland when the session has it: Godot's default is X11, which under XWayland never gets the display scale.
+# Chosen here rather than in project.godot, where an X11 session would log errors before falling back.
+DRIVER=()
+[ -n "${WAYLAND_DISPLAY:-}" ] && DRIVER=(--display-driver wayland)
+exec "$GODOT" --path "$ROOT/app" "${DRIVER[@]}" "$@"

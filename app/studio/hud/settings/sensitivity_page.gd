@@ -298,7 +298,7 @@ func _row(chain: Dictionary) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
 	var names := VBoxContainer.new()
-	names.custom_minimum_size.x = 210
+	names.custom_minimum_size.x = 240
 	var title := Label.new()
 	title.text = _names.get(chain.param, chain.param)
 	title.tooltip_text = chain.param
@@ -307,7 +307,12 @@ func _row(chain: Dictionary) -> Control:
 	names.add_child(title)
 	var source := Label.new()
 	source.text = tr("%s from %s") % [chain.param, chain.tracker_param]
+	source.tooltip_text = source.text
 	source.theme_type_variation = &"SubscriptLabel"
+	# a long source line widened only its own row, so the bars did not line up
+	source.clip_text = true
+	source.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	source.mouse_filter = Control.MOUSE_FILTER_PASS
 	names.add_child(source)
 	row.add_child(names)
 
