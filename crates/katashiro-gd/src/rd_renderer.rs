@@ -1,8 +1,8 @@
 //! Draws a whole Live2D model through RenderingDevice into one texture (route B, D38, D44): the vertices are
 //! deformed on the GPU (gpu_deform.rs) straight into the vertex buffer, all masks are drawn into one atlas,
 //! and the meshes are drawn in one pass with Live2D's blend equations as GPU blend states. The model node
-//! shows the texture as a single canvas item, instead of one MeshInstance2D per art mesh and one SubViewport
-//! per mask.
+//! shows the texture as a single canvas item (it replaced one MeshInstance2D per art mesh and one SubViewport
+//! per mask, D44).
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -63,7 +63,7 @@ void main() {
 }
 "#;
 
-/// Matches the canvas shaders (mix, add, mul.gdshader): multiply and screen colors as they had them, the
+/// Multiply and screen colors as the earlier canvas shaders applied them (rgb * multiply + screen * alpha), the
 /// result premultiplied; the blend states do the rest.
 const MESH_FRAGMENT: &str = r#"
 #version 450

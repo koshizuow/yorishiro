@@ -7,12 +7,12 @@ use godot::classes::animation::{LoopMode, TrackType};
 use godot::classes::mesh::PrimitiveType;
 use godot::classes::{
     Animation, AnimationLibrary, ArrayMesh, FileAccess, Image, ImageTexture, Json, MeshInstance2D,
-    ProjectSettings, ResourceLoader, Shader, ShaderMaterial, SubViewport, Texture2D,
-    ViewportTexture, mesh,
+    ProjectSettings, ResourceLoader, Texture2D,
+    mesh,
 };
 use godot::prelude::*;
 
-use katashiro_core::core::{ArtMesh, BlendMode, Collection, Item, Model};
+use katashiro_core::core::{ArtMesh, Collection, Item, Model};
 use katashiro_core::driver::DrawNode;
 
 use crate::expression::{KatashiroExpression, KatashiroExpressionMutator, KatashiroExpressionTrack};
@@ -20,17 +20,6 @@ use crate::importer::EXPRESSION_EXTENSION;
 use crate::model::{KatashiroModel, PARAMETER_PREFIX, PART_PREFIX};
 use crate::motion::KatashiroMotionMutator;
 use crate::physics::KatashiroPhysicsMutator;
-
-fn shader_material(s: &str) -> Gd<ShaderMaterial> {
-    let mut rl = ResourceLoader::singleton();
-    let shader: Gd<Shader> = rl.load(s).unwrap().cast();
-
-    let mut material = ShaderMaterial::new_gd();
-    material.set_shader(&shader);
-    material.set_local_to_scene(true);
-
-    material
-}
 
 #[derive(GodotClass)]
 #[class(tool, init, singleton)]
@@ -71,24 +60,14 @@ impl KatashiroLoader {
             })
             .collect();
 
-        let shaders: Array<Gd<ShaderMaterial>> = array![
-            &shader_material("res://addons/katashiro/shaders/mix.gdshader"),
-            &shader_material("res://addons/katashiro/shaders/add.gdshader"),
-            &shader_material("res://addons/katashiro/shaders/mul.gdshader"),
-            &shader_material("res://addons/katashiro/shaders/mask.gdshader")
-        ];
-
         let mut meshes = HashMap::new();
         let mut mesh_group = Node2D::new_alloc();
         mesh_group.set_name("Meshes");
+        // the art mesh nodes name the meshes and keep their triangles (pinning); Katashiro draws the model
+        // through RenderingDevice (rd_renderer.rs), so they never draw
+        mesh_group.set_visible(false);
         scene.add_child(&mesh_group);
         mesh_group.set_owner(&scene);
-
-        let mut masks = HashMap::new();
-        let mut mask_group = Node2D::new_alloc(); // using node2d so texture filter settings can propogate down to masks
-        mask_group.set_name("Masks");
-        scene.add_child(&mask_group);
-        mask_group.set_owner(&scene);
 
         let mut expression_controller = KatashiroExpressionMutator::new_alloc();
         expression_controller.set_name("ExpressionController");
@@ -141,13 +120,6 @@ impl KatashiroLoader {
             let tex_id = artmesh.texture() as usize;
             let tex = textures.get(tex_id).unwrap();
             mesh_instance.set_texture(tex);
-
-            let mat = match artmesh.blend_config().simple().unwrap_or(BlendMode::Normal) {
-                BlendMode::Normal => Some(shaders.at(0)),
-                BlendMode::Add => Some(shaders.at(1)),
-                BlendMode::Multiply => Some(shaders.at(2)),
-            };
-            mesh_instance.set_material(mat.as_ref());
 
             mesh_group.add_child(&mesh_instance);
             meshes.insert(artmesh.uid(), mesh_instance);
@@ -208,90 +180,11 @@ impl KatashiroLoader {
             mesh.set_custom_aabb(aabb);
         }
 
-        // make masks and attach them to art meshes
-        for artmesh in m.artmeshes() {
-            let mask_parts: Vec<u32> = artmesh.clips().into_iter().map(|p| p.uid()).collect();
-            if mask_parts.len() > 0 {
-                let mask_ids = PackedArray::from_iter(
-                    mask_parts
-                        .clone()
-                        .into_iter()
-                        .map(|c| c.to_string().to_gstring()),
-                );
-                let hash = GString::from("_").join(&mask_ids).to_string_name();
-                let mask_name = hash.clone();
-
-                let mask = masks.entry(hash).or_insert_with(|| {
-                    let mut vp = SubViewport::new_alloc();
-                    vp.set_name(&mask_name);
-                    vp.set_transparent_background(true);
-
-                    // TODO enable this once godot-rust exposes the enum, it's currently missing in 0.5.4
-                    // vp.set_default_canvas_item_texture_filter(DefaultCanvasItemTextureFilter::PARENT_NODE);
-
-                    // canvas transform can not be set before the node is in the SceneTree
-                    // accurate viewport size and offsets will be delayed until the model
-                    // is added and visible for rendering
-                    vp.set_size(Vector2i { x: 2, y: 2 });
-
-                    for part in mask_parts {
-                        let src_mi = meshes.get(&part).unwrap();
-                        let mesh = src_mi.get_mesh().unwrap().cast::<ArrayMesh>();
-                        let mut mi = MeshInstance2D::new_alloc();
-                        mi.set_name(&src_mi.get_name());
-                        mi.set_mesh(&mesh);
-                        mi.set_texture(&src_mi.get_texture().unwrap());
-                        mi.set_material(&shaders.at(3));
-                        vp.add_child(&mi);
-                    }
-
-                    mask_group.add_child(&vp);
-
-                    return vp;
-                });
-
-                let node = meshes.get_mut(&artmesh.uid()).unwrap();
-                let offset = mask.get_canvas_transform().origin;
-
-                let mut tex = ViewportTexture::new_gd();
-                tex.set_local_to_scene(true);
-
-                let mut mat = node
-                    .get_material()
-                    .unwrap()
-                    .duplicate_resource()
-                    .cast::<ShaderMaterial>();
-                mat.set_shader_parameter("tex_mask", &tex.to_variant());
-                mat.set_shader_parameter("has_mask", &true.to_variant());
-                mat.set_shader_parameter("mesh_offset", &offset.to_variant());
-                node.set_instance_shader_parameter(
-                    "mask_invert",
-                    &artmesh.invert_mask().to_variant(),
-                );
-                node.set_material(&mat);
-
-                let mut dependent_meshes: VarArray;
-                if !mask.has_meta("meshes") {
-                    mask.set_meta("meshes", &VarArray::new().to_variant());
-                }
-                dependent_meshes = mask.get_meta("meshes").to::<VarArray>();
-                dependent_meshes.push(&format!("Meshes/{}", node.get_name()).to_node_path());
-
-                mask.set_meta("meshes", &dependent_meshes.to_variant());
-            }
-        }
-
         drop(m_scene);
 
         // make sure all nodes are persisted within the scene
         for child in meshes.values_mut() {
             child.set_owner(&scene);
-        }
-        for child in masks.values_mut() {
-            child.set_owner(&scene);
-            for mut m in child.get_children().iter_shared() {
-                m.set_owner(&scene);
-            }
         }
 
         scene.bind_mut().set_size(Vector2i {

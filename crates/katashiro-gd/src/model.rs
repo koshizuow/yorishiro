@@ -7,14 +7,13 @@ use godot::classes::notify::CanvasItemNotification;
 use godot::classes::canvas_item::TextureFilter;
 use godot::classes::canvas_item_material::BlendMode as CanvasBlend;
 use godot::classes::rendering_device::TextureSamples;
-use godot::classes::sub_viewport::UpdateMode;
 use godot::classes::viewport::Msaa;
-use godot::classes::{ArrayMesh, CanvasItemMaterial, FileAccess, INode2D, MeshInstance2D, ShaderMaterial, Sprite2D, SubViewport, Texture2D};
+use godot::classes::{CanvasItemMaterial, FileAccess, INode2D, MeshInstance2D, Sprite2D, Texture2D};
 use godot::meta::ClassId;
 use godot::prelude::*;
 
 use katashiro_core::core::{ArtMesh, Collection, Item, Model, Param};
-use katashiro_core::driver::{DrawNode, Driver};
+use katashiro_core::driver::Driver;
 use katashiro_core::file::ParsedModel;
 use katashiro_core::pose::{Key, Pose, PoseMap, Value};
 use godot::register::info::{PropertyHint, PropertyHintInfo, PropertyInfo, PropertyUsageFlags};
@@ -59,10 +58,6 @@ pub struct KatashiroModel {
     size: Vector2i,
     #[var(pub)]
     origin: Vector2,
-    #[export(range = (128.0, 8096.0))]
-    #[init(val = 2048)]
-    mask_resolution: i32,
-
     pub model: Option<LoadedModel<ParsedModel, Box<ParsedModel>>>,
     display_info: Option<DisplayInfo>,
     parameter_groups: HashMap<u32, GString>,
@@ -70,15 +65,14 @@ pub struct KatashiroModel {
     dirty: bool,
 
     mesh_group: Option<Gd<Node2D>>,
+    /// the art mesh nodes: names, triangles and first shapes, they do not draw
     meshes: HashMap<u32, Gd<MeshInstance2D>>,
-    masks: Vec<Gd<SubViewport>>,
-    mask_lookup: HashMap<StringName, Vec<Gd<MeshInstance2D>>>,
 
     pub pose: Option<Pose>,
     pub pose_map: Arc<PoseMap>,
     pub last_pose: Option<Pose>,
 
-    /// route B: the whole model through RenderingDevice (KATASHIRO_RENDERER=canvas keeps the mesh nodes)
+    /// draws the whole model through RenderingDevice (route B); None when that failed (an error says why)
     renderer: Option<RdRenderer>,
     view: Option<Gd<Sprite2D>>,
     mesh_uids: HashMap<StringName, u32>,
@@ -142,179 +136,6 @@ impl KatashiroModel {
         self.model = Some(loaded);
 
         self.dirty = true;
-    }
-
-    fn reorder_meshes(&mut self) {
-        let mesh_group = self.mesh_group.as_mut().unwrap();
-        let md = self.model.as_mut().unwrap();
-
-        // reorder meshes if dirty to properly maintain z-index
-        // if Godot ever implements sorting groups (https://github.com/godotengine/godot-proposals/issues/9428)
-        // then we will be able to sensibly use z-index
-        // but as long as z-index is a global sort order, it's better for use the scene tree
-        // and pray that a model isn't constantly changing its render order
-        if md.driver.order_changed() {
-            let mut order = 0;
-            for node in md.driver.draw_nodes(None).unwrap() {
-                let DrawNode::ArtMesh(uid) = node else {
-                    continue;
-                };
-                let mesh_instance = &self.meshes[uid];
-
-                mesh_group.move_child(mesh_instance, order as i32);
-                order += 1;
-            }
-        }
-    }
-
-    fn update_meshes(&mut self, force: bool) {
-        let binding = self.model.as_mut();
-        let md = binding.unwrap();
-        let m = md.model.as_ref();
-        md.driver.drive(m);
-
-        let px_size = md.model.canvas_properties().scale;
-
-        // update mesh vertices
-        for (uid, child) in self.meshes.iter() {
-            let mut mesh_instance = child.to_owned().cast::<MeshInstance2D>();
-            let mut mesh = mesh_instance.get_mesh().unwrap().cast::<ArrayMesh>();
-
-            let m = md.driver.artmesh_state(*uid).unwrap();
-
-            let verts = m.vertices;
-            let count = verts.len();
-
-            if count < 3 {
-                mesh_instance.set_visible(false);
-                continue;
-            }
-
-            mesh_instance.set_visible(m.visual.visible);
-            mesh_instance.set_self_modulate(Color {
-                r: 1.0,
-                g: 1.0,
-                b: 1.0,
-                a: m.visual.opacity,
-            });
-            if mesh_instance.get_instance_shader_parameter("color_override") != true.to_variant() {
-                mesh_instance.set_instance_shader_parameter(
-                    "color_multiply",
-                    &Color {
-                        r: m.visual.multiply_color.x,
-                        g: m.visual.multiply_color.y,
-                        b: m.visual.multiply_color.z,
-                        a: 1.0,
-                    }
-                    .to_variant(),
-                );
-                mesh_instance.set_instance_shader_parameter(
-                    "color_screen",
-                    &Color {
-                        r: m.visual.screen_color.x,
-                        g: m.visual.screen_color.y,
-                        b: m.visual.screen_color.z,
-                        a: 1.0,
-                    }
-                    .to_variant(),
-                );
-            }
-
-            if !force {
-                if !m.updated {
-                    continue;
-                }
-
-                if !m.visual.visible {
-                    continue;
-                }
-            }
-
-            let mut ary = PackedVector2Array::new();
-            ary.resize(count);
-
-            let mut vtx_min = Vector3::new(f32::MAX, f32::MAX, 0.0); // top-left
-            let mut vtx_max = Vector3::new(f32::MIN, f32::MIN, 0.0); // bottom-right
-
-            for (i, vtx) in verts.iter().enumerate() {
-                let x = vtx.x * px_size;
-                let y = vtx.y * px_size;
-                vtx_min.x = f32::min(vtx_min.x, x); // left
-                vtx_min.y = f32::min(vtx_min.y, y); // top
-                vtx_max.x = f32::max(vtx_max.x, x); // right
-                vtx_max.y = f32::max(vtx_max.y, y); // bottom
-
-                ary[i] = Vector2::new(x, y);
-            }
-
-            mesh.surface_update_vertex_region(0, 0, &ary.to_byte_array());
-
-            // aabb does not get automatically updated when directly updating the vertex region
-            let aabb = Aabb::new(Vector3::new(vtx_min.x, vtx_min.y, 0.0), vtx_max - vtx_min);
-            let existing_aabb = mesh.get_custom_aabb();
-
-            // only mark as dirty of the bounds of the mesh have shifted so that we may
-            // update affected mask viewports
-            if aabb != existing_aabb {
-                mesh.set_custom_aabb(aabb);
-            }
-        }
-    }
-
-    fn update_masks(&mut self) {
-        let base_scale = self.base_mut().get_global_scale().x.min(1.0);
-        // update viewport dimensions and transform for masks
-        for mask in self.masks.iter_mut() {
-            let meshes: Vec<Gd<MeshInstance2D>> = mask
-                .get_children()
-                .iter_shared()
-                .map(|n| n.cast::<MeshInstance2D>())
-                .collect();
-            let mut group_aabb: Aabb = {
-                let node = &meshes[0];
-                let mesh = node.get_mesh().unwrap().cast::<ArrayMesh>();
-
-                mesh.get_custom_aabb()
-            };
-
-            for node in meshes.iter() {
-                let mesh = node.get_mesh().unwrap().cast::<ArrayMesh>();
-                let aabb = mesh.get_custom_aabb();
-                group_aabb = group_aabb.merge(aabb);
-            }
-
-            group_aabb = group_aabb.grow(4.0);
-
-            let mut dimensions = Vector2 {
-                x: group_aabb.size.x as f32,
-                y: group_aabb.size.y as f32,
-            };
-
-            let offset = Vector2 {
-                x: group_aabb.position.x,
-                y: group_aabb.position.y,
-            };
-
-            let resolution = self.mask_resolution as f32;
-            let scale: f32 = if dimensions.x > resolution || dimensions.y > resolution {
-                resolution / dimensions.x.max(dimensions.y)
-            } else {
-                1.0
-            } * base_scale;
-            dimensions *= scale;
-
-            let transform =
-                Transform2D::from_angle_origin(0.0, -offset).scaled(Vector2::ONE * scale);
-
-            mask.set_size(dimensions.to_vector2i());
-            mask.set_canvas_transform(transform);
-
-            let dependent_meshes = self.mask_lookup.get_mut(&mask.get_name()).unwrap();
-            for node in dependent_meshes.iter_mut() {
-                node.set_instance_shader_parameter("mask_offset", &offset.to_variant());
-                node.set_instance_shader_parameter("mask_scale", &scale.to_variant());
-            }
-        }
     }
 
     /// An art mesh's current vertices in the model's local pixels (what its mesh node held), for pinning.
@@ -387,12 +208,8 @@ impl KatashiroModel {
         }
     }
 
-    /// Switches to drawing through RenderingDevice: the mesh nodes and mask viewports stay for their names
-    /// and first shapes but no longer draw
+    /// Draws through RenderingDevice from now on: the GPU deforms, the driver only weighs forms
     fn start_rd_renderer(&mut self) {
-        if std::env::var("KATASHIRO_RENDERER").is_ok_and(|v| v == "canvas") {
-            return;
-        }
         let md = self.model.as_ref().unwrap();
         let count = md.model.artmeshes().into_iter().map(|a| a.texture() as usize + 1).max().unwrap_or(0);
         let mut textures: Vec<Option<Gd<Texture2D>>> = vec![None; count];
@@ -403,13 +220,13 @@ impl KatashiroModel {
             }
         }
         let Some(textures) = textures.into_iter().collect::<Option<Vec<_>>>() else {
-            godot_error!("Katashiro: a model texture is missing, drawing with mesh nodes");
+            godot_error!("Katashiro: a model texture is missing, the model is not drawn");
             return;
         };
         let renderer = match RdRenderer::new(&md.model, &textures) {
             Ok(r) => r,
             Err(e) => {
-                godot_error!("Katashiro: {e}, drawing with mesh nodes");
+                godot_error!("Katashiro: {e}, the model is not drawn");
                 return;
             }
         };
@@ -422,17 +239,11 @@ impl KatashiroModel {
         let mut material = CanvasItemMaterial::new_gd();
         material.set_blend_mode(CanvasBlend::PREMULT_ALPHA);
         view.set_material(&material);
-        let mut group = self.mesh_group.clone().unwrap();
-        group.set_visible(false);
-        let index = group.get_index();
+        let index = self.mesh_group.as_ref().unwrap().get_index();
         self.base_mut().add_child(&view);
         self.base_mut().move_child(&view, index);
-        for mask in self.masks.iter_mut() {
-            mask.set_update_mode(UpdateMode::DISABLED);
-        }
         self.view = Some(view);
         self.renderer = Some(renderer);
-        // the GPU deforms from here on, the driver only weighs forms
         self.model.as_mut().unwrap().driver.set_gpu_geometry(true);
     }
 
@@ -508,67 +319,12 @@ impl INode2D for KatashiroModel {
                         acc
                     });
 
-            let mask_group = self.base().get_node_as::<Node>("Masks");
-            self.masks = mask_group
-                .get_children()
-                .iter_shared()
-                .map(|n| n.cast::<SubViewport>())
-                .collect();
-            self.mask_lookup = self
-                .masks
-                .clone()
-                .into_iter()
-                .fold(HashMap::new(), |mut acc, n| {
-                    let meshes = n
-                        .get_meta("meshes")
-                        .to::<VarArray>()
-                        .iter_shared()
-                        .map(|np| np.to::<NodePath>())
-                        .map(|path| self.base().get_node_as::<MeshInstance2D>(&path))
-                        .collect();
-                    acc.insert(n.get_name(), meshes);
-                    acc
-                });
-
             self.mesh_uids = self.meshes.iter().map(|(uid, n)| (n.get_name(), *uid)).collect();
-            self.update_meshes(true);
-            self.update_masks();
-            self.reorder_meshes();
             self.start_rd_renderer();
 
             self.base_mut().set_process_internal(true);
 
             self.signals().loaded().emit();
-        }
-        // reconnect all mask viewport textures to the dependent mesh shaders
-        // this is necessary because Viewport texture paths are relative to the absolute scene tree
-        else if what == CanvasItemNotification::ENTER_TREE {
-            let mask_group = self.base().get_node_as::<Node>("Masks");
-            for mask in mask_group
-                .get_children()
-                .iter_shared()
-                .map(|n| n.cast::<SubViewport>())
-            {
-                for np in mask
-                    .get_meta("meshes")
-                    .to::<VarArray>()
-                    .iter_shared()
-                    .map(|v| v.to::<NodePath>())
-                {
-                    let node = self.base().get_node_as::<MeshInstance2D>(&np);
-                    let mut mat = node.get_material().unwrap().cast::<ShaderMaterial>();
-                    mat.set_shader_parameter("tex_mask", &mask.get_texture().unwrap().to_variant());
-                }
-            }
-            /* Bug: godot-rust has not properly scoped this for public access
-            RenderingServer::singleton().canvas_item_set_custom_rect_full(
-                self.base().get_canvas_item(), true,
-                Rect2i {
-                    position: Vector2i::ZERO,
-                    size: self.size
-                }
-            );
-            */
         }
         // apply mutators to pose and send to driver
         else if what == CanvasItemNotification::INTERNAL_PROCESS && self.is_loaded() {
@@ -595,10 +351,6 @@ impl INode2D for KatashiroModel {
 
             if self.renderer.is_some() {
                 self.render_rd();
-            } else {
-                self.update_meshes(false);
-                self.update_masks();
-                self.reorder_meshes();
             }
         }
     }
