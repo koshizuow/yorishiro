@@ -34,3 +34,34 @@ pub type P3 = [f64; 3];
 pub(crate) fn f32r(x: f64) -> f64 {
     x as f32 as f64
 }
+
+/// Asks the scheduler to treat this thread as busy (utilisation clamp minimum 1024) so the CPU is at full clock
+/// while it works. A thread that waits between frames runs on a core the schedutil governor has clocked down:
+/// on the low-end reference the eye model on a new thread took 12.5 ms instead of 4.6. Needs no privileges; no effect under governors that ignore it (intel_pstate, amd-pstate active).
+/// YORISHIRO_NO_CLOCK_HINT turns it off, for measuring.
+pub fn keep_clock_up() -> Result<(), String> {
+    if std::env::var_os("YORISHIRO_NO_CLOCK_HINT").is_some() {
+        return Err("YORISHIRO_NO_CLOCK_HINT".into());
+    }
+    #[repr(C)]
+    struct SchedAttr {
+        size: u32,
+        policy: u32,
+        flags: u64,
+        nice: i32,
+        priority: u32,
+        runtime: u64,
+        deadline: u64,
+        period: u64,
+        util_min: u32,
+        util_max: u32,
+    }
+    const KEEP_POLICY: u64 = 0x08;
+    const KEEP_PARAMS: u64 = 0x10;
+    const UTIL_CLAMP_MIN: u64 = 0x20;
+    let attr = SchedAttr { size: std::mem::size_of::<SchedAttr>() as u32, policy: 0, flags: KEEP_POLICY | KEEP_PARAMS | UTIL_CLAMP_MIN,
+                           nice: 0, priority: 0, runtime: 0, deadline: 0, period: 0, util_min: 1024, util_max: 1024 };
+    // SAFETY: sched_setattr on the calling thread (pid 0) with a filled sched_attr of the size it states
+    let r = unsafe { libc::syscall(libc::SYS_sched_setattr, 0, &attr as *const SchedAttr, 0) };
+    if r == 0 { Ok(()) } else { Err(std::io::Error::last_os_error().to_string()) }
+}

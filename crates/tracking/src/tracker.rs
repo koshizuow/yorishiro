@@ -116,16 +116,27 @@ impl Tracker {
         let (blend, eyes, stage_ms) = (&mut self.blend, &mut self.eyes, &mut self.stage_ms);
         let out = self.pipeline.process_with(points, w, h, timestamp_ms, &mut |smoothed| {
             let mut x = Extras { lens_glare: Some(lens_glare(img, smoothed)), ..Default::default() };
-            let t = std::time::Instant::now();
-            match blend.run(smoothed, w, h) {
+            // the two models do not depend on each other: the eye model on a second thread (both run on the CPU,
+            // together 8 ms per frame on the low-end reference)
+            let (mouth, eye_open) = std::thread::scope(|scope| {
+                let eye_open = eyes.as_mut().map(|eyes| scope.spawn(move || {
+                    // a new thread starts on a core the governor has clocked down: 12.5 ms instead of 4.6 without
+                    let _ = crate::keep_clock_up();
+                    let t = std::time::Instant::now();
+                    let r = eyes.run(img, smoothed);
+                    (r, t.elapsed())
+                }));
+                let t = std::time::Instant::now();
+                let mouth = blend.run(smoothed, w, h);
+                smooth(&mut stage_ms[1], t.elapsed());
+                (mouth, eye_open.map(|h| h.join().expect("eye model thread")))
+            });
+            match mouth {
                 Ok(m) => x.mouth = Some(m),
                 Err(e) => failure = Some(e),
             }
-            smooth(&mut stage_ms[1], t.elapsed());
-            if let Some(eyes) = eyes.as_mut() {
-                let t = std::time::Instant::now();
-                let r = eyes.run(img, smoothed);
-                smooth(&mut stage_ms[2], t.elapsed());
+            if let Some((r, elapsed)) = eye_open {
+                smooth(&mut stage_ms[2], elapsed);
                 match r {
                     Ok(o) => x.eye_open = Some(o),
                     Err(e) => failure = Some(e),

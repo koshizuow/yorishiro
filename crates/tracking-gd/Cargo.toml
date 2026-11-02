@@ -15,4 +15,3 @@ ncnn = ["yorishiro-tracking/ncnn"]
 [dependencies]
 godot = "0.5.4"
 yorishiro-tracking = { path = "../tracking" }
-libc = "0.2"
