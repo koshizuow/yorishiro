@@ -388,7 +388,7 @@ fn run(cfg: Config, s: Arc<Shared>) {
         t
     };
     s.status("starting", "loading tracker facemesh-core", vec![], texts(&[]));
-    match keep_clock_up() {
+    match if std::env::var_os("YORISHIRO_NO_CLOCK_HINT").is_some() { Err("YORISHIRO_NO_CLOCK_HINT".into()) } else { keep_clock_up() } {
         Ok(()) => s.log("tracking thread: CPU clock kept up while it runs (uclamp)".into()),
         Err(e) => s.log(format!("tracking thread: CPU clock hint not set ({e})")),
     }
