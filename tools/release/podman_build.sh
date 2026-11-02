@@ -4,7 +4,8 @@
 # <ref>: a tag, a commit or origin/<branch> of REPO (default the GitHub repository). Only committed code is
 # built: the ref is checked out in BUILD_DIR/src (default ~/yorishiro-build) and everything untracked except
 # the build caches (target/) is removed first. The output goes to BUILD_DIR/out. Nothing is uploaded.
-# CARGO_BUILD_JOBS limits the compile jobs on machines with little memory.
+# CARGO_BUILD_JOBS limits the compile jobs and MEMORY (e.g. 1500m) caps the build container on machines with
+# little memory.
 set -euo pipefail
 REF=${1:?usage: podman_build.sh <ref> [version]}
 BUILD_DIR=${BUILD_DIR:-$HOME/yorishiro-build}
@@ -25,7 +26,7 @@ echo "== $REF ($(git -C "$src" rev-parse --short HEAD)) as $VERSION"
 
 podman build -q -t "$IMAGE" "$src/tools/release" > /dev/null
 mkdir -p "$BUILD_DIR/cache/cargo-registry" "$out"
-podman run --rm \
+podman run --rm ${MEMORY:+--memory=$MEMORY} \
 	-v "$src:/build/src" -v "$MODELS:/build/models:ro" -v "$BUILD_DIR/cache:/build/cache" \
 	-v "$BUILD_DIR/cache/cargo-registry:/opt/cargo/registry" -v "$out:/build/out" \
 	-e MODELS_DIR=/build/models -e CACHE_DIR=/build/cache -e OUT_DIR=/build/out \
