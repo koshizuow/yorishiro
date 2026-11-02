@@ -114,6 +114,7 @@ func _setup_camera_view() -> void:
 	%StageImage.texture = capture_viewport.get_texture()
 	_camera_bg = %Bg.duplicate()
 	_camera_bg.name = "Background"
+	_camera_bg.layer = 1   # over Black, under StageLayer
 	_camera_view.add_child(_camera_bg)
 	_camera_view.move_child(_camera_bg, 1)
 	_sync_camera_background()

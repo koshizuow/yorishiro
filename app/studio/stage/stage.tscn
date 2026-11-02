@@ -115,6 +115,7 @@ grow_vertical = 2
 color = Color(0, 0, 0, 1)
 
 [node name="StageLayer" type="CanvasLayer" parent="CameraView" unique_id=620418379]
+layer = 2
 
 [node name="StageImage" type="TextureRect" parent="CameraView/StageLayer" unique_id=620418380]
 unique_name_in_owner = true
