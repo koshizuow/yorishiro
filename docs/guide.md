@@ -21,6 +21,9 @@
    It goes one step at a time, so you can read each step before you do it.
 4. Drag the model to move it, scroll or pinch to resize it, and hold Shift and scroll to tilt it. The gear in the corner
    opens all settings.
+5. To get Yorishiro in the application menu with its icon in the dock, press **Add to application menu** on the About
+   page. Press it again if you move the file. The file itself may keep a generic icon in the file manager: that depends
+   on your desktop.
 
 ## Hotkeys
 
