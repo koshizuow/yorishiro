@@ -413,7 +413,8 @@ fn run(cfg: Config, s: Arc<Shared>) {
                 Source::Camera(c)
             }
             Err(e) => {
-                return s.status("error", &format!("cannot open camera {}: {e}. Check that no other app uses it, or pick another camera.", cfg.camera),
+                let which = if cfg.camera < 0 { "a free camera".to_string() } else { format!("camera {}", cfg.camera) };
+                return s.status("error", &format!("cannot open {which}: {e}. Check that no other app uses it, or pick another camera."),
                                 vec![], texts(&[]));
             }
         },
