@@ -28,6 +28,13 @@ func _ready() -> void:
 	var scale = display_scale()
 	DisplayServer.window_set_min_size(Vector2i(540,360) * scale, 0)
 
+## Godot 4.7.2 can hang for good when it closes on Wayland: WaylandThread::destroy reads the last reply itself and the
+## event thread stays in poll(), joined by the main thread (1 close in 10 with a busy CPU). The window is gone by then and
+## everything is saved, but the process would stay. A small watcher ends it if it is still here after a few seconds.
+func _exit_tree() -> void:
+	if DisplayServer.get_name() == "Wayland":
+		OS.create_process("/bin/sh", ["-c", "sleep 5; kill -9 %d 2>/dev/null" % OS.get_process_id()])
+
 ## sizes are stored in logical pixels so they survive a change of display scale
 func save_settings(settings: Dictionary):
 	var scale = display_scale()
