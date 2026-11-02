@@ -56,6 +56,16 @@
   transparent background. Ubuntu 24.04 and Linux Mint 22 ship PipeWire 1.0: the app runs there without the OBS
   output unless PipeWire is updated.
 
+## Download
+
+From [Releases](https://github.com/koshizuow/yorishiro/releases), either:
+
+- **AppImage** (one file): `chmod +x Yorishiro-<version>-x86_64.AppImage`, then run it.
+- **tar.gz**: unpack it and run `./yorishiro.x86_64` inside.
+
+The tracking models come with both. `SHA256SUMS-<version>` lists the files' checksums. Settings and the model
+library live in `~/.local/share/yorishiro/`.
+
 ## Build
 
 1. **Engine.** The official [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/) editor for
@@ -71,8 +81,9 @@
    ```
    The first build also builds [ncnn](https://github.com/Tencent/ncnn) (the GPU runtime, about 5 minutes) and
    downloads [ONNX Runtime](https://github.com/microsoft/onnxruntime)'s CPU build.
-5. **Tracking models** into `models/` (see `models/README.md`). Until releases carry them, the research tools
-   make them from the upstream files ([uv](https://docs.astral.sh/uv/) manages their Python 3.12 environment):
+5. **Tracking models** into `models/` (see `models/README.md`): copy the `models/` folder of a release's tar.gz, or
+   make them from the upstream files with the research tools ([uv](https://docs.astral.sh/uv/) manages their
+   Python 3.12 environment):
    ```sh
    cd research
    uv sync
@@ -85,9 +96,7 @@
 
 ## Usage
 
-```sh
-./run.sh
-```
+Start the AppImage (or `./yorishiro.x86_64` from the tar.gz), or `./run.sh` when built from source.
 
 - On the first start a card in the middle of the stage walks you through it: choose a model, check face
   tracking, place the model.
@@ -96,7 +105,7 @@
   `userdata/yorishiro/Live2DModels/` show up by themselves.
 - The tracker starts with the app. Look straight at the camera with a relaxed face for a moment so it
   can take your neutral face, or use **Auto calibrate** on the Sensitivity page.
-- Drag the model to move it, scroll to resize it, hold Shift and scroll to tilt it. The gear in the corner
+- Drag the model to move it, scroll (or pinch on a touchpad) to resize it, hold Shift and scroll to tilt it. The gear in the corner
   opens all settings.
 - **OBS:** turn on *Send the stage to OBS* in Settings, then add a *PipeWire video* source in OBS and pick
   Yorishiro.

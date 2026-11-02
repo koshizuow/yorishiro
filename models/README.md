@@ -1,7 +1,8 @@
 # Tracking models
 
 The tracking core (crates/tracking) loads these at run time. Only the eye model is kept in git, the others
-are made from upstream files by the research tools and will come with releases.
+are made from upstream files by the research tools and come with the releases (the AppImage and the tar.gz;
+`SHA256SUMS` lists them).
 
 | File | What | Source and license |
 |---|---|---|

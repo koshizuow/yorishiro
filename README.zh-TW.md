@@ -50,6 +50,15 @@
   Debian 13 內建的版本就夠，所以要用透明背景直播的話建議用 Ubuntu 26.04。Ubuntu 24.04 和 Linux Mint 22 內建的是
   PipeWire 1.0，app 可以執行，但除非自行更新 PipeWire，否則不能用 OBS 輸出。
 
+## 下載
+
+到 [Releases](https://github.com/koshizuow/yorishiro/releases) 下載以下其中一種：
+
+- **AppImage**（單一檔案）：先執行 `chmod +x Yorishiro-<版本>-x86_64.AppImage`，再打開它。
+- **tar.gz**：解壓後執行裡面的 `./yorishiro.x86_64`。
+
+兩種都已附上追蹤模型。`SHA256SUMS-<版本>` 列出各檔案的檢查碼。設定和模型庫存在 `~/.local/share/yorishiro/`。
+
 ## 編譯
 
 1. **引擎。** 下載官方的 [Godot 4.7.2](https://godotengine.org/download/archive/4.7.2-stable/) Linux 版編輯器
@@ -65,8 +74,8 @@
    ```
    第一次建置時也會順便建置 [ncnn](https://github.com/Tencent/ncnn)（顯示卡運算用，大約 5 分鐘），並下載
    [ONNX Runtime](https://github.com/microsoft/onnxruntime) 的 CPU 版。
-5. **追蹤模型**放在 `models/`（說明見 `models/README.md`）。在正式版附上模型之前，先用研究工具從原始檔案產生
-   （Python 3.12 環境由 [uv](https://docs.astral.sh/uv/) 管理）：
+5. **追蹤模型**放在 `models/`（說明見 `models/README.md`）：可以直接複製發行版 tar.gz 裡的 `models/` 資料夾，
+   或用研究工具從原始檔案產生（Python 3.12 環境由 [uv](https://docs.astral.sh/uv/) 管理）：
    ```sh
    cd research
    uv sync
@@ -79,15 +88,13 @@
 
 ## 使用方式
 
-```sh
-./run.sh
-```
+打開 AppImage（或 tar.gz 裡的 `./yorishiro.x86_64`）。從原始碼編譯的話執行 `./run.sh`。
 
 - 第一次打開時，舞台中間會出現一張引導卡片，帶你選模型、確認臉部追蹤、把模型擺好。
 - Live2D 模型就是一個含有 `.model3.json` 的資料夾。模型附帶的設定只會讀取，不會被修改。放進
   `userdata/yorishiro/Live2DModels/` 的模型會自動出現在清單裡。
 - 追蹤器會跟著 app 一起啟動。剛開始請放鬆表情、看著鏡頭幾秒，讓它記住你平常的樣子。也可以到「靈敏度」頁按「自動校正」。
-- 拖曳模型可以移動，滾輪縮放，按住 Shift 再滾滾輪可以旋轉。點角落的齒輪可以打開所有設定。
+- 拖曳模型可以移動，滾輪（或觸控板雙指縮放）可以調整大小，按住 Shift 再滾滾輪可以旋轉。點角落的齒輪可以打開所有設定。
 - **OBS：** 在「設定」裡打開「把舞台傳到 OBS」，再到 OBS 新增「PipeWire video」來源，選擇 Yorishiro。
 - 從原始碼執行時，app 的資料（設定、模型庫、縮圖）會存在 `userdata/yorishiro/`。
 
