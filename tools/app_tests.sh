@@ -3,6 +3,7 @@
 # line per check: ok, FAILED, or the measured values. Shots and logs go to $1 (default a temp dir).
 # They run on a copy of the development data (userdata/yorishiro) in the out dir, the checks change settings.
 #   tools/app_tests.sh [out dir]
+# GODOT_ARGS goes to Godot before the app's options, e.g. GODOT_ARGS="--display-driver wayland".
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT=${1:-$(mktemp -d /tmp/yorishiro-tests.XXXX)}
@@ -21,7 +22,7 @@ fail=0
 run() {  # name, model, app options...
   local name=$1 model=$2
   shift 2
-  timeout 400 "$ROOT/run.sh" --disable-vsync -- --model="$model" "$@" --wait-frames=90 --quit > "$OUT/$name.log" 2>&1
+  timeout 400 "$ROOT/run.sh" --disable-vsync ${GODOT_ARGS:-} -- --model="$model" "$@" --wait-frames=90 --quit > "$OUT/$name.log" 2>&1
   local code=$?
   local lines
   lines=$(grep -E "^\[automation\] (.*: ok|.*FAILED|eye test|cycle |gesture|hotkey|expression|playing|app action|plugin api|expression editor|lip sync|hands|core|pin|pipewire)" "$OUT/$name.log" | grep -v "window screenshot")
