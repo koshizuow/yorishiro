@@ -6,9 +6,11 @@
 
 <p align="center"><a href="README.zh-TW.md">繁體中文</a></p>
 
-![Yorishiro with ずんだもん](docs/images/hero.jpg)
+![A bald 3D head with glasses winks and turns on the left, the Live2D model does the same on the right](docs/images/hero.gif)
 
-> Yorishiro is in early development. Expect rough edges and breaking changes.
+> The developer is not very good at winking, sorry about that.
+
+**Yorishiro is in early development. Expect rough edges and breaking changes.**
 
 ## Features
 

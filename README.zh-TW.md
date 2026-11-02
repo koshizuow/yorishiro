@@ -6,9 +6,11 @@
 
 <p align="center"><a href="README.md">English</a></p>
 
-![Yorishiro 與ずんだもん](docs/images/hero.jpg)
+![左邊是戴眼鏡的 3D 光頭在單眼眨眼和轉頭，右邊的 Live2D 模型同步做出一樣的動作](docs/images/hero.gif)
 
-> Yorishiro 還在早期開發階段，功能和設定檔格式之後都可能會改。
+> 開發者不太會 wink，請見諒。
+
+**Yorishiro 還在早期開發階段，功能和設定檔格式之後都可能會改。**
 
 ## 功能
 

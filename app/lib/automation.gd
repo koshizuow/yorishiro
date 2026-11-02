@@ -17,7 +17,9 @@
 ##   --fixed-clock          blink, breathing and smoothing count frames instead of wall time, random seed 1.
 ##                          With Godot's --fixed-fps 60 the same run gives the same screenshots
 ##   --press=<a,b>          after --open-panel, press these buttons (node names) in order, for screenshots of what they open
-##   --face-preview         show the 3D tracking preview head in the window corner, next to the stage (with
+##   --link-eyes            both eyes follow the more closed one
+##   --preview-glasses      the preview head wears its glasses
+##   --face-preview[=<px>]  show the 3D tracking preview head in the window corner, next to the stage (with
 ##                          --poses and only --screenshot-window: one shot per pose with both)
 ##   --show=<name>          after --open-panel and --press, scroll the page so this node (name) is in view
 ##   --import-models=<dir>  add every model under dir to the model library, as the import card would
@@ -152,12 +154,17 @@ func _ready() -> void:
 				button.pressed.emit()
 			else:
 				push_error("[automation] no button %s" % button_name)
+		if args.has("preview-glasses"):
+			var system = get_tree().get_first_node_in_group("system:tracking")
+			if system and system.get_node_or_null("FaceTracker"):
+				system.get_node("FaceTracker").glasses = 1
 		if args.has("face-preview"):
 			var layer := CanvasLayer.new()
 			layer.layer = 50
 			var head := FacePreview.new()
-			head.custom_minimum_size = Vector2(300, 300)
-			head.position = Vector2(16, 16)
+			var side := int(args["face-preview"]) if str(args["face-preview"]).is_valid_int() else 300
+			head.custom_minimum_size = Vector2(side, side)
+			head.position = Vector2(16, 16) if side == 300 else Vector2(0, (720 - side) / 2)
 			layer.add_child(head)
 			get_tree().root.add_child(layer)
 		if args.has("show"):
@@ -253,6 +260,12 @@ func _ready() -> void:
 			await _hand_test(str(args["hand-test"]))
 		if args.has("pin-test"):
 			await _pin_test()
+		if args.has("link-eyes"):
+			for graph in get_tree().get_first_node_in_group("system:stage").active_model.blueprints:
+				for node in graph.get_children():
+					if node.has_method("get_type") and node.get_type() == &"tracking_input":
+						node.link_eyes = true
+						print("[automation] link eyes on %s" % node.name)
 		if args.has("blink-test"):
 			await _blink_test(float(args["blink-test"]))
 		if args.has("background"):
