@@ -15,9 +15,6 @@ use v4l::v4l2;
 use crate::yuyv::Yuyv;
 use v4l::capability::Flags;
 
-/// Frames waiting in the GPU readback. More would only add delay: a frame over this is dropped.
-const MAX_PENDING: u32 = 2;
-
 #[derive(GodotClass)]
 #[class(init, base=Node)]
 pub struct VirtualCamera {
@@ -30,7 +27,6 @@ pub struct VirtualCamera {
     writer: Option<SyncSender<Vec<u8>>>,
     yuyv: Option<Yuyv>,
     size: (u32, u32),
-    pending: u32,
 }
 
 #[godot_api]
@@ -100,7 +96,7 @@ impl VirtualCamera {
     }
 
     fn update_camera(&mut self) {
-        if !self.is_valid_device || self.pending >= MAX_PENDING {
+        if !self.is_valid_device {
             return;
         }
         let Some(viewport) = self.base().get_viewport() else { return };
@@ -133,15 +129,9 @@ impl VirtualCamera {
         let yuyv = self.yuyv.as_mut().unwrap();
         yuyv.convert(source, size);
         let out = yuyv.out;
-        let done = self.to_gd().callable("frame_read");
-        if rd.texture_get_data_async(out, 0, &done) == godot::global::Error::OK {
-            self.pending += 1;
-        }
-    }
-
-    #[func]
-    fn frame_read(&mut self, data: PackedByteArray) {
-        self.pending = self.pending.saturating_sub(1);
+        // not texture_get_data_async: with it the app crashed in the engine (Godot 4.7.2, stages with a later
+        // synchronous read or at exit). This waits for the GPU, not the CPU: 1.9 ms more on the main thread (worker)
+        let data = rd.texture_get_data(out, 0);
         let Some(writer) = &self.writer else { return };
         // a device that is slow only loses this frame
         if let Err(TrySendError::Disconnected(_)) = writer.try_send(data.to_vec()) {
