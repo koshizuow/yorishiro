@@ -1,6 +1,6 @@
 //! Eye openness against head turn on a recording, to see whether a turned head reads as a blink (the far eye looks
-//! narrower). One CSV line per frame: head yaw and pitch in degrees, far/near eye width, the eye model's raw
-//! openness and the eyeBlink values that go to the app (subject's left, right).
+//! narrower). One CSV line per frame: head yaw and pitch in degrees (to the camera), left/right eye width, the eye
+//! model's raw openness, the eyeBlink values that go to the app and the lens glare (subject's left, right).
 //! cargo run --release --example eye_yaw -- <recording dir with frames/ and meta.json> <monorepo>
 use yorishiro_tracking::image::Image;
 use yorishiro_tracking::inference::{eye_widths, Eyes};
@@ -16,15 +16,22 @@ fn main() {
     let stamps: Vec<i64> = meta["timestamps_ms"].as_array().unwrap().iter().map(|v| v.as_i64().unwrap()).collect();
     let blink = |name: &str| yorishiro_tracking::frame::ARKIT52.iter().position(|n| *n == name).unwrap();
     let (bl, br) = (blink("eyeBlinkLeft"), blink("eyeBlinkRight"));
-    println!("frame,yaw,pitch,width_l_over_r,open_l,open_r,blink_l,blink_r");
+    println!("frame,ms,yaw,pitch,width_l_over_r,open_l,open_r,blink_l,blink_r,glare_l,glare_r,raw_open_l,raw_open_r,lag_px");
     for (i, ts) in stamps.iter().enumerate() {
         let path = rec.join(format!("frames/{i:05}.jpg"));
         let Ok(img) = Image::load(&path) else { continue };
-        let Some(out) = t.process(&img, *ts).unwrap() else { continue };
+        // as Tracker::process, keeping the raw landmarks: the eye model on them too, and how far the smoothed ones lag
+        let Some(lm) = t.mesh.process(&img).unwrap() else { t.pipeline.lost(); continue };
+        let out = t.process_landmarks(&img, &lm.points, *ts).unwrap();
+        let raw = eyes.run(&img, &lm.points).unwrap();
+        let lag = lm.points.iter().zip(&out.smoothed).map(|(a, b)| ((a[0] - b[0]) * img.width as f64).hypot((a[1] - b[1]) * img.height as f64))
+            .fold(0.0f64, f64::max);
         let open = eyes.run(&img, &out.smoothed).unwrap();
         let w = eye_widths(&out.smoothed, img.width as f64, img.height as f64);
         let f = &out.final_frame;
-        println!("{i},{:.1},{:.1},{:.3},{:.3},{:.3},{:.3},{:.3}", f.head_rotation[0].to_degrees(), f.head_rotation[1].to_degrees(),
-                 w[0] / w[1], open[0], open[1], f.blendshapes[bl], f.blendshapes[br]);
+        let g = out.frame.lens_glare.unwrap_or([0.0; 2]);
+        println!("{i},{ts},{:.1},{:.1},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.3},{:.1}", out.frame.head_rotation[0].to_degrees(),
+                 out.frame.head_rotation[1].to_degrees(), w[0] / w[1], open[0], open[1], f.blendshapes[bl], f.blendshapes[br], g[0], g[1],
+                 raw[0], raw[1], lag);
     }
 }

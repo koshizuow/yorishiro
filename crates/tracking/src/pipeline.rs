@@ -105,6 +105,13 @@ pub const HIDDEN_EYE_WIDTH: f64 = 0.55;
 pub const EYE_TRUST_FULL_DEG: f64 = 30.0;
 pub const EYE_TRUST_NONE_DEG: f64 = 50.0;
 
+/// On a quick head turn the eyes narrow as they lead it (looking aside, the laptop camera below the face): the
+/// near eye read 0.40 against 0.6 at rest on every quick turn to one side, a third of a blink each time (user
+/// 2026-11-02, laptop recording). While the head turns faster than this (degrees per second) the openness stays at
+/// least what it was before the turn, unless the eye closes for real (below EYE_HOLD_CLOSED of its neutral).
+pub const EYE_HOLD_TURN_DEG_S: f64 = 40.0;
+pub const EYE_HOLD_CLOSED: f64 = 0.35;
+
 pub struct Pipeline {
     pub fitter: Fitter,
     smoother: LandmarkSmoother,
@@ -112,6 +119,10 @@ pub struct Pipeline {
     frame_smoother: FrameSmoother,
     faces: usize,
     window: Option<Vec<(Vec<P3>, Extras, FaceFrame)>>,
+    /// last yaw (degrees) and its time, the smoothed turn speed and the openness before the turn
+    turn: Option<(f64, i64)>,
+    turn_speed: f64,
+    open_before_turn: [f64; 2],
 }
 
 impl Pipeline {
@@ -123,12 +134,17 @@ impl Pipeline {
             frame_smoother: FrameSmoother::default(),
             faces: 0,
             window: None,
+            turn: None,
+            turn_speed: 0.0,
+            open_before_turn: [f64::MAX; 2],
         }
     }
 
     /// No face this frame.
     pub fn lost(&mut self) {
         self.smoother.reset();
+        self.turn = None;
+        self.turn_speed = 0.0;
     }
 
     /// Ask for a new neutral (the app's calibrate command): a window starts with the next face.
@@ -171,10 +187,23 @@ impl Pipeline {
                     open[far] = open[near] * n[far] / n[near];
                 }
             }
-            let yaw = rotation_to_ypr(&rot)[0].to_degrees().abs();
+            let signed_yaw = rotation_to_ypr(&rot)[0].to_degrees();
+            let yaw = signed_yaw.abs();
             let trust = ((EYE_TRUST_NONE_DEG - yaw) / (EYE_TRUST_NONE_DEG - EYE_TRUST_FULL_DEG)).clamp(0.0, 1.0);
             for i in 0..2 {
                 open[i] = trust * open[i] + (1.0 - trust) * n[i];
+            }
+            if let Some((last, at)) = self.turn {
+                let dt = ((timestamp_ms - at) as f64 / 1000.0).max(1e-3);
+                self.turn_speed = 0.5 * self.turn_speed + 0.5 * (signed_yaw - last).abs() / dt;
+            }
+            self.turn = Some((signed_yaw, timestamp_ms));
+            for i in 0..2 {
+                if self.turn_speed <= EYE_HOLD_TURN_DEG_S {
+                    self.open_before_turn[i] = open[i];
+                } else if open[i] > EYE_HOLD_CLOSED * n[i] {
+                    open[i] = open[i].max(self.open_before_turn[i]);
+                }
             }
             extra.eye_open = Some(open);
         }

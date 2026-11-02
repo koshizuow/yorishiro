@@ -44,11 +44,13 @@ fn check(name: &str, own_landmarks: bool) -> bool {
     let mut calibrations = vec![];
     let mut same_found = 0;
     let lm_g = g.f64s("landmarks").unwrap().0;
-    // since 2026-11-02 the eye model's reading fades to open on a turned head (pipeline::EYE_TRUST_FULL_DEG), which
-    // the Python tracker did not do: the eye values are not compared there and for a second after (smoothing)
+    // since 2026-11-02 the eye model's reading fades to open on a turned head (pipeline::EYE_TRUST_FULL_DEG) and holds on
+    // a quick turn, which the Python tracker did not do: the eye values are not compared there and for a second after
     let eye_names = ["eyeBlinkLeft", "eyeBlinkRight", "eyeWideLeft", "eyeWideRight"];
     let eye_bs: Vec<usize> = eye_names.iter().map(|n| yorishiro_tracking::frame::ARKIT52.iter().position(|a| a == n).unwrap()).collect();
     let mut last_turned: Option<usize> = None;
+    // and the hold on a quick turn (pipeline::EYE_HOLD_TURN_DEG_S), the turn speed worked out as the pipeline does
+    let (mut last_yaw, mut turn_speed): (Option<(f64, i64)>, f64) = (None, 0.0);
     for i in 0..found.len() {
         let img = Image::load(&frames.join(format!("{i:05}.png"))).unwrap();
         let out = if own_landmarks {
@@ -67,7 +69,12 @@ fn check(name: &str, own_landmarks: bool) -> bool {
         }
         let f = &out.frame;
         let fin = &out.final_frame;
-        if f.head_rotation[0].to_degrees().abs() > yorishiro_tracking::pipeline::EYE_TRUST_FULL_DEG {
+        let yaw = f.head_rotation[0].to_degrees();
+        if let Some((y, t)) = last_yaw {
+            turn_speed = 0.5 * turn_speed + 0.5 * (yaw - y).abs() / ((ts[i] as i64 - t) as f64 / 1000.0).max(1e-3);
+        }
+        last_yaw = Some((yaw, ts[i] as i64));
+        if yaw.abs() > yorishiro_tracking::pipeline::EYE_TRUST_FULL_DEG || turn_speed > yorishiro_tracking::pipeline::EYE_HOLD_TURN_DEG_S {
             last_turned = Some(i);
         }
         let eyes_differ = last_turned.is_some_and(|t| i - t <= 30);
