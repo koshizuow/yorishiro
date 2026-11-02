@@ -46,7 +46,7 @@
   （glibc 2.38）。
 - 網路攝影機。
 - 想透過 PipeWire 傳到 OBS 的話：編譯和執行都需要 PipeWire 1.4 以上，並使用 Vulkan 渲染器（預設就是），OBS 要 31 以上，
-  並裝好 [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) 外掛。Ubuntu 26.04（PipeWire 1.6）、25.10 和
+  並裝好 [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) 外掛（這是另一個專案，要配合你的 OBS 版本：請下載對應版本的編譯檔或自行編譯，OBS 不會載入給較新版本編的外掛）。Ubuntu 26.04（PipeWire 1.6）、25.10 和
   Debian 13 內建的版本就夠，所以要用透明背景直播的話建議用 Ubuntu 26.04。Ubuntu 24.04 和 Linux Mint 22 內建的是
   PipeWire 1.0，app 可以執行，但除非自行更新 PipeWire，否則不能用 OBS 輸出。
 
