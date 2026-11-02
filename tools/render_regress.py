@@ -4,7 +4,7 @@
 # dependencies = ["numpy", "pillow"]
 # ///
 """Render regression over every test model: 13 poses, each expression hotkey and each expression on its own,
-compared to a baseline.
+and the parameter groups in the model folder's regress_params.json if it has one, compared to a baseline.
 
     tools/render_regress.py              run all models, compare, write a report
     tools/render_regress.py --accept     same, then make this run the new baseline
@@ -51,6 +51,10 @@ def render(model: Path, out: Path):
     cmd = [str(ROOT / "run.sh"), "--disable-vsync", "--fixed-fps", "60", "--",
            f"--model={model}", f"--screenshot={out / 'main.png'}", "--wait-frames=60",
            f"--poses={ROOT / 'tools/poses.json'}", "--pose-frames=40", "--hotkeys", "--expressions-all", "--fixed-clock", "--quit"]
+    # effects driven by model parameters (a hologram switch...): groups in regress_params.json beside the model
+    params = model.parent / "regress_params.json"
+    if params.exists():
+        cmd.insert(-1, f"--model-params={params.read_text()}")
     # a fresh data folder per model: default settings, whatever earlier runs or tests saved does not count
     data = out / "userdata"
     shutil.rmtree(data, ignore_errors=True)

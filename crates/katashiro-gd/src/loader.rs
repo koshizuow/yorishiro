@@ -13,7 +13,6 @@ use godot::classes::{
 use godot::prelude::*;
 
 use katashiro_core::core::{ArtMesh, Collection, Item, Model};
-use katashiro_core::driver::DrawNode;
 
 use crate::expression::{KatashiroExpression, KatashiroExpressionMutator, KatashiroExpressionTrack};
 use crate::importer::EXPRESSION_EXTENSION;
@@ -90,10 +89,9 @@ impl KatashiroLoader {
         let origin = m.canvas_properties().center;
 
         // make all the art meshes
-        for node in md.driver.draw_nodes(None).unwrap().into_iter() {
-            let DrawNode::ArtMesh(uid) = node else {
-                continue;
-            };
+        // every art mesh, also those inside offscreen parts (the draw order is the renderer's business)
+        let uids: Vec<u32> = md.model.artmeshes().into_iter().map(|a| a.uid()).collect();
+        for uid in uids.iter() {
 
             let artmesh = md.model.artmeshes().get(*uid).unwrap();
             // TODO get mesh state when parameters are at defaults

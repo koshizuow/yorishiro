@@ -18,7 +18,7 @@ use godot::classes::{
     RdTextureView, RdUniform, RdVertexAttribute, RenderingDevice, RenderingServer, Texture2D, Texture2Drd,
 };
 use godot::prelude::*;
-use katashiro_core::core::{ArtMesh, BlendMode, Collection, Item, Model};
+use katashiro_core::core::{ArtMesh, BlendMode, Collection, Item, Model, Part};
 use katashiro_core::driver::{DrawNode, Driver};
 
 use crate::gpu_deform::{GpuDeform, MeshLayout};
@@ -108,6 +108,118 @@ void main() {
 }
 "#;
 
+/// Composites a source image (an advanced-blend mesh drawn alone, or an offscreen part's contents, both
+/// premultiplied) onto a copy of what is under it, written back over the whole target. Cubism 5.3's blend modes
+/// as the editor manual describes them: color blends are the W3C Compositing and Blending ones on straight
+/// colors, alpha blends are Porter-Duff source-over, source-atop, destination-out (the object cuts the canvas)
+/// and XRender's conjoint and disjoint over (larger alpha, added alphas).
+const COMPOSITE_VERTEX: &str = r#"
+#version 450
+void main() {
+    vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+    gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+"#;
+
+const COMPOSITE_FRAGMENT: &str = r#"
+#version 450
+layout(push_constant, std430) uniform Params {
+    vec4 inv0;     // model local x = inv0.x * px.x + inv0.y * px.y + inv0.z (for masks)
+    vec4 inv1;     // local y
+    vec4 multiply; // rgb, opacity
+    vec4 screen;   // rgb, mask mode (0 none, 1 mask, 2 inverted)
+    vec4 mask;     // mask index
+    vec4 tile;     // the mask's tile in the atlas
+    vec4 modes;    // color blend, alpha blend
+} p;
+layout(set = 0, binding = 0) uniform sampler2D src;
+layout(set = 0, binding = 1) uniform sampler2D backdrop;
+layout(set = 0, binding = 2) uniform sampler2D mask_atlas;
+layout(set = 0, binding = 3, std430) readonly buffer Boxes { vec4 boxes[]; };
+layout(location = 0) out vec4 frag;
+
+float lum(vec3 c) { return dot(c, vec3(0.3, 0.59, 0.11)); }
+vec3 clip_color(vec3 c) {
+    float l = lum(c), n = min(min(c.r, c.g), c.b), x = max(max(c.r, c.g), c.b);
+    if (n < 0.0) c = l + (c - l) * l / (l - n);
+    if (x > 1.0) c = l + (c - l) * (1.0 - l) / (x - l);
+    return c;
+}
+vec3 set_lum(vec3 c, float l) { return clip_color(c + (l - lum(c))); }
+float sat(vec3 c) { return max(max(c.r, c.g), c.b) - min(min(c.r, c.g), c.b); }
+vec3 set_sat(vec3 c, float s) {
+    float mx = max(max(c.r, c.g), c.b), mn = min(min(c.r, c.g), c.b);
+    if (mx <= mn) return vec3(0.0);
+    return (c - mn) * s / (mx - mn);
+}
+float burn(float b, float s) { return b >= 1.0 ? 1.0 : (s <= 0.0 ? 0.0 : 1.0 - min(1.0, (1.0 - b) / s)); }
+float dodge(float b, float s) { return b <= 0.0 ? 0.0 : (s >= 1.0 ? 1.0 : min(1.0, b / (1.0 - s))); }
+float hard(float b, float s) { return s <= 0.5 ? b * 2.0 * s : b + (2.0 * s - 1.0) - b * (2.0 * s - 1.0); }
+float soft(float b, float s) {
+    if (s <= 0.5) return b - (1.0 - 2.0 * s) * b * (1.0 - b);
+    float d = b <= 0.25 ? ((16.0 * b - 12.0) * b + 4.0) * b : sqrt(b);
+    return b + (2.0 * s - 1.0) * (d - b);
+}
+vec3 blend(vec3 b, vec3 s, int mode) {
+    switch (mode) {
+        case 1: case 3: return min(b + s, vec3(1.0));
+        case 4: return b + s;
+        case 5: return min(b, s);
+        case 2: case 6: return b * s;
+        case 7: return vec3(burn(b.r, s.r), burn(b.g, s.g), burn(b.b, s.b));
+        case 8: return max(b + s - 1.0, vec3(0.0));
+        case 9: return max(b, s);
+        case 10: return b + s - b * s;
+        case 11: return vec3(dodge(b.r, s.r), dodge(b.g, s.g), dodge(b.b, s.b));
+        case 12: return vec3(hard(s.r, b.r), hard(s.g, b.g), hard(s.b, b.b));
+        case 13: return vec3(soft(b.r, s.r), soft(b.g, s.g), soft(b.b, s.b));
+        case 14: return vec3(hard(b.r, s.r), hard(b.g, s.g), hard(b.b, s.b));
+        case 15: return clamp(b + 2.0 * s - 1.0, 0.0, 1.0);
+        case 16: return set_lum(set_sat(s, sat(b)), lum(b));
+        case 17: return set_lum(s, lum(b));
+    }
+    return s;
+}
+void main() {
+    ivec2 px = ivec2(gl_FragCoord.xy);
+    vec4 s = texelFetch(src, px, 0);
+    vec4 b = texelFetch(backdrop, px, 0);
+    float m = 1.0;
+    if (p.screen.w > 0.5) {
+        vec2 local = vec2(dot(p.inv0.xy, gl_FragCoord.xy) + p.inv0.z, dot(p.inv1.xy, gl_FragCoord.xy) + p.inv1.z);
+        vec4 box = boxes[uint(p.mask.x)];
+        vec2 v = (local - box.xy) / (box.zw - box.xy);
+        bool inside = all(greaterThanEqual(v, vec2(0.0))) && all(lessThanEqual(v, vec2(1.0)));
+        float mv = inside ? texture(mask_atlas, p.tile.xy + v * p.tile.zw).r : 0.0;
+        m = p.screen.w > 1.5 ? 1.0 - mv : mv;
+    }
+    float as = s.a * p.multiply.a * m;
+    vec3 cs = s.a > 0.0 ? s.rgb / s.a : vec3(0.0);
+    cs = cs * p.multiply.rgb + p.screen.rgb;
+    float ab = b.a;
+    vec3 cb = ab > 0.0 ? b.rgb / ab : vec3(0.0);
+    vec3 mixed = (1.0 - ab) * cs + ab * blend(cb, cs, int(p.modes.x));
+    vec3 co;
+    float ao;
+    int alpha_mode = int(p.modes.y);
+    if (alpha_mode == 1) {
+        co = as * ab * mixed + b.rgb * (1.0 - as);
+        ao = ab;
+    } else if (alpha_mode == 2) {
+        co = b.rgb * (1.0 - as);
+        ao = ab * (1.0 - as);
+    } else if (alpha_mode == 3 || alpha_mode == 4) {
+        float fb = ab > 0.0 ? (alpha_mode == 3 ? max(1.0 - as / ab, 0.0) : min(1.0, (1.0 - as) / ab)) : 0.0;
+        co = as * mixed + b.rgb * fb;
+        ao = as + ab * fb;
+    } else {
+        co = as * mixed + b.rgb * (1.0 - as);
+        ao = as + ab * (1.0 - as);
+    }
+    frag = clamp(vec4(co, ao), 0.0, 1.0);
+}
+"#;
+
 const PARAMS_SIZE: usize = 7 * 16;
 
 struct MeshDraw {
@@ -116,9 +228,30 @@ struct MeshDraw {
     vertex_offset: usize,
     vertex_count: usize,
     texture: usize,
-    blend: BlendMode,
+    /// Normal, or the pre-5.3 additive and multiply with Over: one of the fixed blend pipelines
+    simple: Option<BlendMode>,
+    /// advanced (Cubism 5.3): color and alpha blend, composited through the backdrop
+    blend: (u8, u8),
     mask: Option<usize>,
     invert: bool,
+}
+
+/// An offscreen part: its contents are drawn into their own image and composited as one
+struct PartDraw {
+    blend: (u8, u8),
+    mask: Option<usize>,
+    invert: bool,
+}
+
+/// Images for the advanced paths (all one sample, the target's size): one per offscreen nesting level
+/// (level 0 is the target itself), the backdrop copy, and an advanced mesh drawn alone
+struct Layers {
+    levels: Vec<(Rid, Rid)>,
+    backdrop: Rid,
+    single: (Rid, Rid),
+    /// composite uniform sets: the single image's, then each level's (index 1..)
+    sets: Vec<Rid>,
+    owned: Vec<Rid>,
 }
 
 /// the meshes that make up one mask (the same clip list), and where it went this frame
@@ -157,6 +290,19 @@ pub struct RdRenderer {
     mesh_shader: Rid,
     view: Gd<Texture2Drd>,
     deform: GpuDeform,
+    /// offscreen parts by uid, how deep they nest, and whether the model needs the advanced paths (then the
+    /// target has one sample, the composite reads it back)
+    parts: HashMap<u32, PartDraw>,
+    depth: usize,
+    advanced: bool,
+    composite_shader: Rid,
+    composite_pipeline: Rid,
+    layers: Option<Layers>,
+    atlas: Rid,
+    sampler: Rid,
+    mask_sampler: Rid,
+    /// pipeline and texture bound in the open draw list
+    bound: (usize, usize),
     params: PackedByteArray,
     /// each mask's box (min.xy, max.xy) as last read back from the GPU, for the tile sizes
     boxes: Rc<RefCell<Vec<f32>>>,
@@ -316,12 +462,41 @@ impl RdRenderer {
                 vertex_offset,
                 vertex_count: count,
                 texture: a.texture() as usize,
-                blend: a.blend_config().simple().unwrap_or(BlendMode::Normal),
+                simple: a.blend_config().simple(),
+                blend: (a.blend_config().color as u8, a.blend_config().alpha as u8),
                 mask,
                 invert: a.invert_mask(),
             });
             vertex_offset += count;
         }
+        let mut parts = HashMap::new();
+        let mut depth = 0;
+        for part in model.parts() {
+            if !part.offscreen() {
+                continue;
+            }
+            let mut nesting = 1;
+            let mut up = part.parent().map(|p| p.uid());
+            while let Some(u) = up {
+                let p = model.parts().get(u).unwrap();
+                nesting += p.offscreen() as usize;
+                up = p.parent().map(|q| q.uid());
+            }
+            depth = depth.max(nesting);
+            let clips: Vec<u32> = part.clips().map(|c| c.into_iter().map(|m| m.uid()).collect()).unwrap_or_default();
+            let mask = if clips.is_empty() {
+                None
+            } else {
+                let n = masks.len();
+                Some(*mask_keys.entry(clips).or_insert_with(|| {
+                    masks.push(MaskSet { meshes: vec![], tile: Rect2::default(), drawn: false });
+                    n
+                }))
+            };
+            let cfg = part.blend_config().unwrap_or_default();
+            parts.insert(part.uid(), PartDraw { blend: (cfg.color as u8, cfg.alpha as u8), mask, invert: part.invert_mask().unwrap_or(false) });
+        }
+        let advanced = !parts.is_empty() || meshes.iter().any(|m| m.simple.is_none());
         let by_uid: HashMap<u32, usize> = meshes.iter().enumerate().map(|(i, m)| (m.uid, i)).collect();
         for (key, &set) in mask_keys.iter() {
             masks[set].meshes = key.iter().filter_map(|uid| by_uid.get(uid).copied()).collect();
@@ -355,7 +530,8 @@ impl RdRenderer {
 
         let mesh_shader = compile(&mut rd, VERTEX_SHADER, MESH_FRAGMENT)?;
         let mask_shader = compile(&mut rd, VERTEX_SHADER, MASK_FRAGMENT)?;
-        rids.extend([mesh_shader, mask_shader]);
+        let composite_shader = compile(&mut rd, COMPOSITE_VERTEX, COMPOSITE_FRAGMENT)?;
+        rids.extend([mesh_shader, mask_shader, composite_shader]);
 
         // the canvas default: linear with mipmaps, clamped
         let mut ss = RdSamplerState::new_gd();
@@ -431,6 +607,16 @@ impl RdRenderer {
             mesh_sets,
             mask_sets,
             mesh_pipelines: [Rid::Invalid; 3],
+            parts,
+            depth,
+            advanced,
+            composite_shader,
+            composite_pipeline: Rid::Invalid,
+            layers: None,
+            atlas,
+            sampler,
+            mask_sampler,
+            bound: (usize::MAX, usize::MAX),
             mask_pipeline,
             atlas_framebuffer,
             target: None,
@@ -452,6 +638,8 @@ impl RdRenderer {
     }
 
     fn ensure_target(&mut self, size: Vector2i, samples: TextureSamples) {
+        // the advanced paths read the target back: one sample
+        let samples = if self.advanced { TextureSamples::SAMPLES_1 } else { samples };
         if self.target.as_ref().is_some_and(|t| t.size == size && t.samples == samples) {
             return;
         }
@@ -494,6 +682,77 @@ impl RdRenderer {
         }
         self.view.set_texture_rd_rid(texture);
         self.target = Some(Target { size, samples, texture, msaa, framebuffer });
+        if self.advanced {
+            self.make_layers(size, texture, framebuffer);
+        }
+    }
+
+    /// The images and composite sets for offscreen parts and advanced blends, at the target's size
+    fn make_layers(&mut self, size: Vector2i, target: Rid, framebuffer: Rid) {
+        let rd = &mut self.rd;
+        if let Some(old) = self.layers.take() {
+            for rid in old.sets.into_iter().chain(old.owned.into_iter().rev()) {
+                rd.free_rid(rid);
+            }
+        }
+        let mut owned = vec![];
+        let image = |rd: &mut Gd<RenderingDevice>, owned: &mut Vec<Rid>| {
+            let t = color_texture(rd, size, DataFormat::R8G8B8A8_UNORM, TextureSamples::SAMPLES_1);
+            let fb = rd.framebuffer_create(&array![t]);
+            owned.push(t);
+            (t, fb)
+        };
+        let mut levels = vec![(target, framebuffer)];
+        for _ in 0..self.depth {
+            levels.push(image(rd, &mut owned));
+        }
+        let single = image(rd, &mut owned);
+        let mut tf = RdTextureFormat::new_gd();
+        tf.set_format(DataFormat::R8G8B8A8_UNORM);
+        tf.set_width(size.x as u32);
+        tf.set_height(size.y as u32);
+        tf.set_texture_type(TextureType::TYPE_2D);
+        tf.set_usage_bits(TextureUsageBits::SAMPLING_BIT | TextureUsageBits::CAN_COPY_TO_BIT);
+        let backdrop = rd.texture_create(&tf, &RdTextureView::new_gd());
+        owned.push(backdrop);
+        if !self.composite_pipeline.is_valid() {
+            let format = rd.framebuffer_get_format(framebuffer);
+            // replaces the target: the shader has already composited
+            let mut state = RdPipelineColorBlendState::new_gd();
+            state.set_attachments(&array![&RdPipelineColorBlendStateAttachment::new_gd()]);
+            self.composite_pipeline = rd.render_pipeline_create(
+                self.composite_shader,
+                format,
+                -1,
+                RenderPrimitive::TRIANGLES,
+                &RdPipelineRasterizationState::new_gd(),
+                &RdPipelineMultisampleState::new_gd(),
+                &RdPipelineDepthStencilState::new_gd(),
+                &state,
+            );
+        }
+        let boxes = self.deform.boxes;
+        let set_for = |rd: &mut Gd<RenderingDevice>, src: Rid| {
+            let mut b = RdUniform::new_gd();
+            b.set_uniform_type(UniformType::STORAGE_BUFFER);
+            b.set_binding(3);
+            b.add_id(boxes);
+            rd.uniform_set_create(
+                &array![
+                    &sampler_uniform(0, self.sampler, src),
+                    &sampler_uniform(1, self.sampler, backdrop),
+                    &sampler_uniform(2, self.mask_sampler, self.atlas),
+                    &b
+                ],
+                self.composite_shader,
+                0,
+            )
+        };
+        let mut sets = vec![set_for(rd, single.0)];
+        for l in levels.iter().skip(1) {
+            sets.push(set_for(rd, l.0));
+        }
+        self.layers = Some(Layers { levels, backdrop, single, sets, owned });
     }
 
     fn set_params(&mut self, values: [[f32; 4]; 7]) {
@@ -675,87 +934,208 @@ impl RdRenderer {
             self.rd.draw_list_end();
         }
 
-        // the model, in draw order
-        let target = self.target.as_ref().unwrap();
-        let (fb, tsize) = (target.framebuffer, target.size);
-        let clear = PackedColorArray::from(&[Color::from_rgba(0.0, 0.0, 0.0, 0.0)][..]);
-        let list = self.rd.draw_list_begin_ex(fb).draw_flags(DrawFlags::CLEAR_COLOR_0).clear_color_values(&clear).done();
-        self.rd.draw_list_bind_vertex_array(list, self.vertex_array);
+        // the model, in draw order: offscreen parts and advanced blends composite through the layers
+        let tsize = self.target.as_ref().unwrap().size;
         let t = to_target;
-        let (xf0, xf1) = ([t.a.x, t.b.x, t.origin.x, 0.0], [t.a.y, t.b.y, t.origin.y, 0.0]);
-        let target_scale = [2.0 / tsize.x as f32, 2.0 / tsize.y as f32, ATLAS_SIZE as f32, 0.0];
-        let (mut bound_pipeline, mut bound_set) = (usize::MAX, usize::MAX);
-        let draw_order: Vec<usize> = driver
-            .draw_nodes(None)
-            .map(|nodes| {
-                nodes
-                    .iter()
-                    .filter_map(|n| if let DrawNode::ArtMesh(uid) = n { self.by_uid.get(uid).copied() } else { None })
-                    .collect()
-            })
-            .unwrap_or_default();
-        for mi in draw_order {
-            let m = &self.meshes[mi];
-            let Some(ia) = m.index_array else { continue };
-            let Some(st) = driver.artmesh_state(m.uid) else { continue };
-            if !st.visual.visible || st.forms.is_empty() {
-                continue;
-            }
-            let (multiply, screen) = match self.color_overrides.get(&m.uid) {
-                Some((mul, scr)) => ([mul.r, mul.g, mul.b], [scr.r, scr.g, scr.b]),
-                None => (st.visual.multiply_color.to_array(), st.visual.screen_color.to_array()),
-            };
-            let (mode, mask, tile) = match m.mask.map(|i| (i, &self.masks[i])) {
-                Some((i, set)) if set.drawn => (
-                    if m.invert { 2.0 } else { 1.0 },
-                    [i as f32, 0.0, 0.0, 0.0],
-                    [set.tile.position.x, set.tile.position.y, set.tile.size.x, set.tile.size.y],
-                ),
-                // a mask whose meshes have no vertices covers nothing
-                Some(_) => (if m.invert { 0.0 } else { -1.0 }, [0.0; 4], [0.0; 4]),
-                None => (0.0, [0.0; 4], [0.0; 4]),
-            };
-            if mode < 0.0 {
-                continue;
-            }
-            let pipeline = match m.blend {
-                BlendMode::Normal => 0,
-                BlendMode::Add => 1,
-                BlendMode::Multiply => 2,
-            };
-            let values = [
-                xf0,
-                xf1,
-                [multiply[0], multiply[1], multiply[2], st.visual.opacity],
-                [screen[0], screen[1], screen[2], mode],
-                mask,
-                tile,
-                target_scale,
-            ];
-            let texture = m.texture;
-            self.set_params(values);
-            if pipeline != bound_pipeline {
-                bound_pipeline = pipeline;
-                self.rd.draw_list_bind_render_pipeline(list, self.mesh_pipelines[pipeline]);
-                // a new pipeline needs its sets bound again
-                bound_set = usize::MAX;
-            }
-            if texture != bound_set {
-                bound_set = texture;
-                self.rd.draw_list_bind_uniform_set(list, self.mesh_sets[texture], 0);
-            }
-            self.rd.draw_list_bind_index_array(list, ia);
-            self.rd.draw_list_set_push_constant(list, &self.params, PARAMS_SIZE as u32);
-            self.rd.draw_list_draw(list, true, 1);
+        let inv = to_target.affine_inverse();
+        let ctx = DrawCtx {
+            xf: [[t.a.x, t.b.x, t.origin.x, 0.0], [t.a.y, t.b.y, t.origin.y, 0.0]],
+            inv: [[inv.a.x, inv.b.x, inv.origin.x, 0.0], [inv.a.y, inv.b.y, inv.origin.y, 0.0]],
+            target: [2.0 / tsize.x as f32, 2.0 / tsize.y as f32, ATLAS_SIZE as f32, 0.0],
+            size: tsize,
+        };
+        let root: Vec<DrawNode<u32>> = driver.draw_nodes(None).map(|n| n.to_vec()).unwrap_or_default();
+        let mut list = Some(self.begin(0, true));
+        self.draw_tree(driver, &root, 0, &mut list, &ctx);
+        if list.is_some() {
+            self.rd.draw_list_end();
         }
-        self.rd.draw_list_end();
         self.request_readbacks();
+    }
+}
+
+
+/// What every draw in a frame shares
+struct DrawCtx {
+    /// model local pixels -> target pixels, and back (for part masks)
+    xf: [[f32; 4]; 2],
+    inv: [[f32; 4]; 2],
+    target: [f32; 4],
+    size: Vector2i,
+}
+
+impl RdRenderer {
+    /// A draw list on a level (0: the target), cleared or loading what is there
+    fn begin(&mut self, level: usize, clear: bool) -> i64 {
+        let fb = match &self.layers {
+            Some(l) => l.levels[level].1,
+            None => self.target.as_ref().unwrap().framebuffer,
+        };
+        self.begin_on(fb, clear)
+    }
+
+    fn begin_on(&mut self, fb: Rid, clear: bool) -> i64 {
+        let colors = PackedColorArray::from(&[Color::from_rgba(0.0, 0.0, 0.0, 0.0)][..]);
+        let list = if clear {
+            self.rd.draw_list_begin_ex(fb).draw_flags(DrawFlags::CLEAR_COLOR_0).clear_color_values(&colors).done()
+        } else {
+            self.rd.draw_list_begin(fb)
+        };
+        self.rd.draw_list_bind_vertex_array(list, self.vertex_array);
+        self.bound = (usize::MAX, usize::MAX);
+        list
+    }
+
+    fn end(&mut self, list: &mut Option<i64>) {
+        if list.take().is_some() {
+            self.rd.draw_list_end();
+        }
+    }
+
+    fn draw_tree(&mut self, driver: &Driver<ParsedModel>, nodes: &[DrawNode<u32>], level: usize, list: &mut Option<i64>, ctx: &DrawCtx) {
+        for node in nodes {
+            match node {
+                DrawNode::ArtMesh(uid) => {
+                    let Some(&mi) = self.by_uid.get(uid) else { continue };
+                    let simple = self.meshes[mi].simple;
+                    match simple {
+                        Some(mode) => {
+                            let l = *list.get_or_insert_with(|| self.begin(level, false));
+                            self.draw_mesh(driver, mi, mode, l, ctx);
+                        }
+                        None => self.draw_advanced_mesh(driver, mi, level, list, ctx),
+                    }
+                }
+                DrawNode::OffscreenPart(uid) => self.draw_offscreen(driver, *uid, level, list, ctx),
+            }
+        }
+    }
+
+    /// One mesh with a fixed blend pipeline into the open list; false when it is not drawn
+    fn draw_mesh(&mut self, driver: &Driver<ParsedModel>, mi: usize, mode: BlendMode, list: i64, ctx: &DrawCtx) -> bool {
+        let m = &self.meshes[mi];
+        let Some(ia) = m.index_array else { return false };
+        let Some(st) = driver.artmesh_state(m.uid) else { return false };
+        if !st.visual.visible || st.forms.is_empty() {
+            return false;
+        }
+        let (multiply, screen) = match self.color_overrides.get(&m.uid) {
+            Some((mul, scr)) => ([mul.r, mul.g, mul.b], [scr.r, scr.g, scr.b]),
+            None => (st.visual.multiply_color.to_array(), st.visual.screen_color.to_array()),
+        };
+        let Some((mask_mode, mask, tile)) = self.mask_params(m.mask, m.invert) else { return false };
+        let pipeline = match mode {
+            BlendMode::Normal => 0,
+            BlendMode::Add => 1,
+            BlendMode::Multiply => 2,
+        };
+        let values = [
+            ctx.xf[0],
+            ctx.xf[1],
+            [multiply[0], multiply[1], multiply[2], st.visual.opacity],
+            [screen[0], screen[1], screen[2], mask_mode],
+            mask,
+            tile,
+            ctx.target,
+        ];
+        let texture = m.texture;
+        self.set_params(values);
+        if pipeline != self.bound.0 {
+            self.bound = (pipeline, usize::MAX);
+            self.rd.draw_list_bind_render_pipeline(list, self.mesh_pipelines[pipeline]);
+        }
+        if texture != self.bound.1 {
+            self.bound.1 = texture;
+            self.rd.draw_list_bind_uniform_set(list, self.mesh_sets[texture], 0);
+        }
+        self.rd.draw_list_bind_index_array(list, ia);
+        self.rd.draw_list_set_push_constant(list, &self.params, PARAMS_SIZE as u32);
+        self.rd.draw_list_draw(list, true, 1);
+        true
+    }
+
+    /// (mode, mask, tile) push values for a mask; None when a mask that covers nothing hides the object
+    fn mask_params(&self, mask: Option<usize>, invert: bool) -> Option<(f32, [f32; 4], [f32; 4])> {
+        match mask.map(|i| (i, &self.masks[i])) {
+            Some((i, set)) if set.drawn => Some((
+                if invert { 2.0 } else { 1.0 },
+                [i as f32, 0.0, 0.0, 0.0],
+                [set.tile.position.x, set.tile.position.y, set.tile.size.x, set.tile.size.y],
+            )),
+            Some(_) if !invert => None,
+            _ => Some((0.0, [0.0; 4], [0.0; 4])),
+        }
+    }
+
+    /// Copies a level into the backdrop and composites a source (0: the single image, n: level n) over it
+    fn composite(&mut self, level: usize, source: usize, values: [[f32; 4]; 7], list: &mut Option<i64>, ctx: &DrawCtx) {
+        self.end(list);
+        let layers = self.layers.as_ref().unwrap();
+        let (from, backdrop, set) = (layers.levels[level].0, layers.backdrop, layers.sets[source]);
+        let size = Vector3::new(ctx.size.x as f32, ctx.size.y as f32, 1.0);
+        self.rd.texture_copy(from, backdrop, Vector3::ZERO, Vector3::ZERO, size, 0, 0, 0, 0);
+        let l = self.begin(level, false);
+        self.rd.draw_list_bind_render_pipeline(l, self.composite_pipeline);
+        self.rd.draw_list_bind_uniform_set(l, set, 0);
+        self.set_params(values);
+        self.rd.draw_list_set_push_constant(l, &self.params, PARAMS_SIZE as u32);
+        self.rd.draw_list_draw_ex(l, false, 1).procedural_vertex_count(3).done();
+        // the mesh pipelines are bound again on the next mesh
+        self.bound = (usize::MAX, usize::MAX);
+        *list = Some(l);
+    }
+
+    /// A Cubism 5.3 blend mesh: drawn alone (its colors, opacity and mask), then composited with its blend
+    fn draw_advanced_mesh(&mut self, driver: &Driver<ParsedModel>, mi: usize, level: usize, list: &mut Option<i64>, ctx: &DrawCtx) {
+        self.end(list);
+        let single = self.layers.as_ref().unwrap().single.1;
+        let l = self.begin_on(single, true);
+        let drawn = self.draw_mesh(driver, mi, BlendMode::Normal, l, ctx);
+        self.rd.draw_list_end();
+        if drawn {
+            let (c, a) = self.meshes[mi].blend;
+            let values = [ctx.inv[0], ctx.inv[1], [1.0; 4], [0.0; 4], [0.0; 4], [0.0; 4], [c as f32, a as f32, 0.0, 0.0]];
+            self.composite(level, 0, values, list, ctx);
+        }
+    }
+
+    /// An offscreen part: its contents into the next level, then composited with the part's opacity, colors,
+    /// blend and mask
+    fn draw_offscreen(&mut self, driver: &Driver<ParsedModel>, uid: u32, level: usize, list: &mut Option<i64>, ctx: &DrawCtx) {
+        let Some(visual) = driver.part_state(uid).and_then(|p| p.visual) else { return };
+        if !visual.visible || visual.opacity <= 0.0 {
+            return;
+        }
+        let Some(part) = self.parts.get(&uid) else { return };
+        let (blend, mask, invert) = (part.blend, part.mask, part.invert);
+        let Some((mask_mode, mask, tile)) = self.mask_params(mask, invert) else { return };
+        let children: Vec<DrawNode<u32>> = driver.draw_nodes(Some(uid)).map(|n| n.to_vec()).unwrap_or_default();
+        self.end(list);
+        let mut inner = Some(self.begin(level + 1, true));
+        self.draw_tree(driver, &children, level + 1, &mut inner, ctx);
+        self.end(&mut inner);
+        let (m, sc) = (visual.multiply_color.to_array(), visual.screen_color.to_array());
+        let values = [
+            ctx.inv[0],
+            ctx.inv[1],
+            [m[0], m[1], m[2], visual.opacity],
+            [sc[0], sc[1], sc[2], mask_mode],
+            mask,
+            tile,
+            [blend.0 as f32, blend.1 as f32, 0.0, 0.0],
+        ];
+        self.composite(level, level + 1, values, list, ctx);
     }
 }
 
 impl Drop for RdRenderer {
     fn drop(&mut self) {
         self.view.set_texture_rd_rid(Rid::Invalid);
+        if let Some(l) = self.layers.take() {
+            for rid in l.sets.into_iter().chain(l.owned.into_iter().rev()) {
+                self.rd.free_rid(rid);
+            }
+        }
         if let Some(t) = self.target.take() {
             self.rd.free_rid(t.texture);
             if let Some(m) = t.msaa {

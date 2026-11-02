@@ -11,6 +11,8 @@
 ##   --expressions-all      after the screenshot, turn each of the model's expressions on alone (with or without a
 ##                          hotkey) and save <name>_expr_<expression>.png
 ##   --dump-meshes=<a,b>    after each pose or hotkey shot, print these art meshes' vertex box and visibility
+##   --model-params=<json>  after the screenshot, set each named group of model parameters ({"name": {"ParamX": 1}}),
+##                          save <name>_<group>.png after --pose-frames (default 90) frames, then set them back
 ##   --print-params=<a,b>   model parameters printed after each pose (default: angles, eyes, mouth open)
 ##   --fixed-clock          blink, breathing and smoothing count frames instead of wall time, random seed 1.
 ##                          With Godot's --fixed-fps 60 the same run gives the same screenshots
@@ -218,6 +220,8 @@ func _ready() -> void:
 				await _shoot_hotkeys(args, viewport, path)
 			if args.has("expressions-all"):
 				await _shoot_expressions(args, viewport, path)
+			if args.has("model-params"):
+				await _shoot_model_params(args, viewport, path)
 			for b in int(args.get("burst", "0")):
 				for i in int(args.get("burst-every", "60")):
 					await RenderingServer.frame_post_draw
@@ -1243,6 +1247,23 @@ func _shoot_hotkeys(args: Dictionary, viewport: Viewport, path: String):
 				await RenderingServer.frame_post_draw
 
 ## every expression of the model, one at a time, whether a hotkey uses it or not
+## model parameter groups held one after another (effects driven by parameters, e.g. a hologram switch)
+func _shoot_model_params(args: Dictionary, viewport: Viewport, path: String):
+	var groups: Dictionary = JSON.parse_string(args["model-params"])
+	var km = get_tree().get_first_node_in_group("system:stage").active_model.model
+	for group in groups:
+		var before := {}
+		for param in groups[group]:
+			before[param] = km.get("parameters/%s" % param)
+			km.set("parameters/%s" % param, float(groups[group][param]))
+		for i in int(args.get("pose-frames", "90")):
+			await RenderingServer.frame_post_draw
+		var shot = "%s_%s.png" % [path.get_basename(), group]
+		var err = viewport.get_texture().get_image().save_png(shot)
+		print("[automation] params %s -> %s" % [shot, error_string(err)])
+		for param in before:
+			km.set("parameters/%s" % param, before[param])
+
 func _shoot_expressions(args: Dictionary, viewport: Viewport, path: String):
 	var model = get_tree().get_first_node_in_group("system:stage").active_model
 	var controller = model.get_expression_controller()
