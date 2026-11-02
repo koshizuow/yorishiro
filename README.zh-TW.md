@@ -25,7 +25,7 @@
   追蹤不到臉時要怎麼處理，以及各部位的物理強度。
 - **熱鍵、表情和道具。** 熱鍵清單和畫面按鈕、切換表情、Live2D 姿勢群組、放圖片和動畫的道具庫，還有道具場景。
 - **透明背景直接進 OBS。** 舞台畫面會透過 PipeWire 帶著透明度傳到 OBS，不會拍到 app 的按鈕和選單。也可以用
-  v4l2loopback 虛擬攝影機，或是把視窗設成透明。
+  v4l2loopback 虛擬攝影機（沒有透明通道，所以會顯示 app 的背景），或是把視窗設成透明。
 - **追蹤資料也能給其他軟體用。** 追蹤器可以用常見的臉部追蹤協定送出資料，包括 iFacialMocap，以及其他 VTuber
   軟體支援的 iPhone 追蹤協定。
 - **外掛。** 提供本機的 WebSocket API（連接埠 8001，預設關閉），訊息格式和現有的 VTuber 外掛相同。外掛可以移動模型、
@@ -45,6 +45,7 @@
   tar.gz，由 `tools/make_release.sh` 產生）需要 Ubuntu 24.04、Linux Mint 22、Fedora 39、Debian 13 或更新的版本
   （glibc 2.38）。
 - 網路攝影機。
+- 鍵盤快捷鍵在 app 視窗有焦點時可以用。想在其他視窗也能用，要把使用者加進 `input` 群組（`sudo usermod -aG input $USER`，重新登入後生效）。這樣你執行的所有程式都能讀取鍵盤，有需要再加。
 - 想透過 PipeWire 傳到 OBS 的話：編譯和執行都需要 PipeWire 1.4 以上，並使用 Vulkan 渲染器（預設就是），OBS 要 31 以上，
   並裝好 [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) 外掛（這是另一個專案，要配合你的 OBS 版本：請下載對應版本的編譯檔或自行編譯，OBS 不會載入給較新版本編的外掛）。Ubuntu 26.04（PipeWire 1.6）、25.10 和
   Debian 13 內建的版本就夠，所以要用透明背景直播的話建議用 Ubuntu 26.04。Ubuntu 24.04 和 Linux Mint 22 內建的是
