@@ -81,7 +81,7 @@ func _process(_delta: float) -> void:
 		return
 	# A window that is fully covered, minimized or on another workspace gets no frame events on Wayland and Godot
 	# stops drawing, which froze the stage in OBS (usually the window behind OBS itself). OBS still needs frames.
-	if not DisplayServer.can_any_window_draw() and Time.get_ticks_msec() >= _next_draw:
+	if not DisplayServer.window_can_draw(get_window().get_window_id()) and Time.get_ticks_msec() >= _next_draw:
 		_next_draw = Time.get_ticks_msec() + HIDDEN_FRAME_MS
 		RenderingServer.force_draw(false)
 	var size := Vector2i(_viewport.get_texture().get_size())
