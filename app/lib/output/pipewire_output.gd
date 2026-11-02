@@ -39,7 +39,11 @@ func _start() -> void:
 	var stage = get_tree().get_first_node_in_group("system:stage")
 	_viewport = stage.capture_viewport if stage else get_viewport()
 	if not ClassDB.class_exists(&"PipeWireStageOut"):
-		_set_status(tr("The PipeWire output is not built (addons/yorishiro_pipewire). Run app/build_dependencies.sh."), false)
+		# a release always has the library: it did not load, the system's PipeWire is older than 1.4
+		if OS.has_feature("editor"):
+			_set_status(tr("The PipeWire output is not built (addons/yorishiro_pipewire). Run app/build_dependencies.sh."), false)
+		else:
+			_set_status(tr("The PipeWire output needs PipeWire 1.4 or newer. This system's PipeWire is older (Ubuntu 24.04 has 1.0)."), false)
 		return
 	if _out == null:
 		_out = ClassDB.instantiate(&"PipeWireStageOut")
