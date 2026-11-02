@@ -18,6 +18,10 @@ pub struct Tracker {
     blend: Blendshapes,
     eyes: Option<Eyes>,
     pub pipeline: Pipeline,
+    /// whole-frame times (ms) and the gaps between the frames' timestamps since the last flip decision
+    frame_times: Vec<f64>,
+    intervals: Vec<f64>,
+    last_timestamp: Option<i64>,
 }
 
 /// Where the models are: MediaPipe's (face_detector, face_landmarks, face_blendshapes .onnx), the fit data,
@@ -46,6 +50,9 @@ impl Tracker {
             blend: Blendshapes::open(&paths.mediapipe.join("face_blendshapes.onnx"))?,
             eyes: paths.eyes.map(Eyes::open).transpose()?,
             pipeline: Pipeline::new(Fitter::load(paths.fit).map_err(|e| e.to_string())?),
+            frame_times: Vec::new(),
+            intervals: Vec::new(),
+            last_timestamp: None,
         })
     }
 
@@ -68,11 +75,33 @@ impl Tracker {
 
     /// One picture: None when no face was found.
     pub fn process(&mut self, img: &Image, timestamp_ms: i64) -> Result<Option<Output>, Error> {
+        let start = std::time::Instant::now();
         let Some(lm) = self.mesh.process(img)? else {
             self.pipeline.lost();
             return Ok(None);
         };
-        self.process_landmarks(img, &lm.points, timestamp_ms).map(Some)
+        let out = self.process_landmarks(img, &lm.points, timestamp_ms)?;
+        self.note_frame(start.elapsed().as_secs_f64() * 1000.0, timestamp_ms);
+        Ok(Some(out))
+    }
+
+    /// Frame times against the time between frames, for adaptive flip averaging
+    fn note_frame(&mut self, ms: f64, timestamp_ms: i64) {
+        if let Some(last) = self.last_timestamp.replace(timestamp_ms) {
+            if timestamp_ms > last {
+                self.intervals.push((timestamp_ms - last) as f64);
+            }
+        }
+        self.frame_times.push(ms);
+        if self.frame_times.len() >= 30 && !self.intervals.is_empty() {
+            let frame = crate::fit::median(&mut self.frame_times);
+            // the shortest gap between frames the tracker took: about the camera's interval while it keeps up,
+            // about its own frame time when it does not (it never waits then)
+            let interval = self.intervals.iter().copied().fold(f64::MAX, f64::min);
+            self.frame_times.clear();
+            self.intervals.clear();
+            self.mesh.adapt(frame, interval);
+        }
     }
 
     /// Everything after the landmarks, for landmarks found elsewhere (tests feed the Python tracker's).

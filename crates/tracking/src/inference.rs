@@ -185,8 +185,7 @@ impl FaceMesh {
         })
     }
 
-    /// Lets flip averaging follow the pass times while tracking (after 60 warm-up passes): off when the median
-    /// of 30 passes is over FLIP_MAX_PASS_MS by a quarter, on again when it is under by a quarter. The one measurement at open runs
+    /// Lets flip averaging follow the pass and frame times while tracking (after 60 warm-up passes, see adapt). The one measurement at open runs
     /// passes back to back on a warm GPU; tracking at 30 fps leaves the GPU idle between frames, and a slow
     /// GPU then stays at low clocks (the low-end reference: 5.2 ms at open, 11.4 ms while tracking).
     pub fn adapt_flip(&mut self, mirror: Vec<usize>) {
@@ -199,17 +198,27 @@ impl FaceMesh {
             self.warmup -= 1;
             return;
         }
+        let _ = mirror;
         self.pass_times.push(ms);
-        if self.pass_times.len() < 30 {
+    }
+
+    /// Decides flip averaging again (adaptive only, called every 30 frames with the median time of a whole
+    /// frame through the tracker and the shortest time between frames): off when a pass is over
+    /// FLIP_MAX_PASS_MS by a quarter or a frame takes nearly all the time between frames (the tracker never
+    /// waits, e.g. a 60 fps camera on a slow PC), on again when a pass is under it by a quarter and a frame
+    /// with the second pass would still leave a quarter of that time.
+    pub fn adapt(&mut self, frame_ms: f64, interval_ms: f64) {
+        let Some(mirror) = self.adaptive.as_ref() else { return };
+        if self.pass_times.is_empty() {
             return;
         }
-        let median = crate::fit::median(&mut self.pass_times);
+        let pass = crate::fit::median(&mut self.pass_times);
         self.pass_times.clear();
-        self.tracking_pass_ms = median;
+        self.tracking_pass_ms = pass;
         let max = crate::tracker::FLIP_MAX_PASS_MS;
-        if self.flip_mirror.is_some() && median > max * 1.25 {
+        if self.flip_mirror.is_some() && (pass > max * 1.25 || frame_ms > interval_ms * 0.95) {
             self.flip_mirror = None;
-        } else if self.flip_mirror.is_none() && median < max * 0.75 {
+        } else if self.flip_mirror.is_none() && pass < max * 0.75 && frame_ms + pass < interval_ms * 0.75 {
             self.flip_mirror = Some(mirror.clone());
         }
     }
