@@ -43,7 +43,14 @@ func _init() -> void:
 	calibrate.tooltip_text = "Guides you through a few expressions and sets the ranges to how your face moves."
 	calibrate.pressed.connect(calibrate_guided)
 	top.add_child(calibrate)
+	var reset := Button.new()
+	reset.name = "ResetBtn"
+	reset.text = "Reset to defaults..."
+	reset.tooltip_text = "Puts this model's ranges, smoothing, eye options, physics and follow-the-face back to how the model came."
+	reset.pressed.connect(func (): _reset_confirm.visible = true)
+	top.add_child(reset)
 	add_child(top)
+	_build_reset_confirm()
 	_build_guide()
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -253,9 +260,9 @@ func _part(tracker_param: String) -> String:
 	return "Other"
 
 ## [{graph, output, param, tracker, tracker_param, smoothing, rangemap, first (tracker -> next link), last (link into the output)}]
-func chains() -> Array[Dictionary]:
+func chains(graphs: Array = []) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for graph in model.blueprints:
+	for graph in (graphs if not graphs.is_empty() else model.blueprints):
 		for output in graph.get_children():
 			if not output.has_method("get_type") or output.get_type() != &"model_output":
 				continue
@@ -377,13 +384,15 @@ func _display_names() -> Dictionary:
 
 #region guided calibration
 
-## [id, instruction, seconds]. Samples from the last 60% of each step, after the face has changed
+## [id, instruction, seconds]. Each step waits for its Start button (the user asked for one at a time: the steps ran
+## on their own and with the eyes closed the screen could not be read); a tone ends each one. Samples from the
+## last 60% of each step, after the face has changed
 const STEPS = [
-	["neutral", "Relax your face and look at the camera", 3.0],
-	["eyes_closed", "Close both eyes", 2.5],
-	["mouth_open", "Open your mouth as wide as is comfortable", 3.0],
-	["smile", "Smile broadly", 3.0],
-	["brows_up", "Raise your eyebrows", 3.0],
+	["neutral", "Relax your face, look at the camera and press Start", 3.0],
+	["eyes_closed", "Press Start, then close both eyes. Open them at the tone", 3.0],
+	["mouth_open", "Press Start, then open your mouth as wide as is comfortable", 3.0],
+	["smile", "Press Start, then smile broadly", 3.0],
+	["brows_up", "Press Start, then raise your eyebrows", 3.0],
 ]
 const MEASURED = ["EyeOpenLeft", "EyeOpenRight", "MouthOpen", "MouthSmile", "Brows"]
 
@@ -391,7 +400,11 @@ var _guide := PanelContainer.new()
 var _guide_text := Label.new()
 var _guide_bar := ProgressBar.new()
 var _guide_step := Label.new()
+var _guide_start := Button.new()
+var _tone := AudioStreamPlayer.new()
 var _cancelled := false
+signal _step_go
+var _reset_confirm := PanelContainer.new()
 ## the result of the last calibration, for the summary and tests
 var last_calibration := {}
 
@@ -409,13 +422,102 @@ func _build_guide() -> void:
 	_guide_bar.show_percentage = false
 	_guide_bar.max_value = 1.0
 	box.add_child(_guide_bar)
+	var buttons := HBoxContainer.new()
+	buttons.alignment = BoxContainer.ALIGNMENT_END
+	buttons.add_theme_constant_override("separation", 12)
+	_guide_start.name = "CalibrationStart"
+	_guide_start.text = "Start"
+	_guide_start.theme_type_variation = &"AccentButton"
+	_guide_start.pressed.connect(func (): _step_go.emit())
+	buttons.add_child(_guide_start)
 	var cancel := Button.new()
 	cancel.text = "Cancel"
-	cancel.size_flags_horizontal = Control.SIZE_SHRINK_END
-	cancel.pressed.connect(func (): _cancelled = true)
-	box.add_child(cancel)
+	cancel.pressed.connect(func ():
+		_cancelled = true
+		_step_go.emit())
+	buttons.add_child(cancel)
+	box.add_child(buttons)
 	_guide.add_child(box)
 	add_child(_guide)
+	_tone.stream = _make_tone()
+	add_child(_tone)
+
+## a short 880 Hz beep that ends each step
+func _make_tone() -> AudioStreamWAV:
+	var rate := 22050
+	var n := int(rate * 0.2)
+	var data := PackedByteArray()
+	data.resize(n * 2)
+	for i in n:
+		var envelope := minf(1.0, minf(i, n - i) / (rate * 0.01))
+		data.encode_s16(i * 2, int(sin(TAU * 880.0 * i / rate) * envelope * 12000.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.data = data
+	return wav
+
+func _build_reset_confirm() -> void:
+	_reset_confirm.name = "ResetConfirm"
+	_reset_confirm.theme_type_variation = &"SubPanelContainer"
+	_reset_confirm.visible = false
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	var text := Label.new()
+	text.text = "Put this model's ranges, smoothing, eye options, physics and follow-the-face back to their defaults? Calibration and your changes on this page are lost."
+	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(text)
+	var yes := Button.new()
+	yes.name = "ResetYes"
+	yes.text = "Reset"
+	yes.theme_type_variation = &"AccentButton"
+	yes.pressed.connect(func ():
+		_reset_confirm.visible = false
+		reset_defaults())
+	row.add_child(yes)
+	var no := Button.new()
+	no.text = "Cancel"
+	no.pressed.connect(func (): _reset_confirm.visible = false)
+	row.add_child(no)
+	_reset_confirm.add_child(row)
+	add_child(_reset_confirm)
+
+## the model's own defaults (its .vtube.json, else the standard bindings) for every row of this page, and its
+## physics and follow-the-face settings; the saved graph's other parts (hotkeys) stay
+func reset_defaults() -> void:
+	if model == null:
+		return
+	var graphs: Array = []
+	for f in BlueprintManager.formats:
+		if f.id() == &"yori":
+			continue
+		graphs = await f.load_graph(model)
+		if not graphs.is_empty():
+			break
+	var defaults := {}
+	for c in chains(graphs):
+		defaults["%s|%s" % [c.tracker_param, c.param]] = c
+	for chain in chains():
+		var d = defaults.get("%s|%s" % [chain.tracker_param, chain.param])
+		var domain: Vector2 = Registry.get(chain.tracker_param).range if Registry.get(chain.tracker_param) else Vector2(0, 1)
+		var band: Vector2 = d.rangemap.a if d and d.rangemap else domain
+		if chain.rangemap or band != domain:
+			_set_range(chain, band)
+		_set_smoothing(chain, d.smoothing.smoothing if d and d.smoothing else 0.0)
+		chain.tracker.link_eyes = d.tracker.link_eyes if d else false
+		chain.tracker.auto_blink = d.tracker.auto_blink if d else 0
+	for g in graphs:
+		g.queue_free()
+	if model.has_method("reset_tuning"):
+		model.reset_tuning()
+	for i in 2:
+		await get_tree().process_frame
+	await Preferences.save_data()
+	refresh()
+	var alert = get_tree().get_first_node_in_group("system:alert")
+	if alert:
+		alert.alert(tr("Sensitivity set back to the model's defaults."))
 
 ## runs the steps, then narrows each measured parameter's band to the user's own movement
 func calibrate_guided() -> void:
@@ -429,6 +531,14 @@ func calibrate_guided() -> void:
 		var step: Array = STEPS[i]
 		_guide_step.text = tr("Step %d of %d") % [i + 1, STEPS.size()]
 		_guide_text.text = tr(step[1])
+		_guide_bar.value = 0.0
+		_guide_start.disabled = false
+		_guide_start.grab_focus()
+		await _step_go
+		if _cancelled:
+			_guide.visible = false
+			return
+		_guide_start.disabled = true
 		var per := {}
 		var start := Time.get_ticks_msec()
 		var length := int(step[2] * 1000)
@@ -442,6 +552,7 @@ func calibrate_guided() -> void:
 			if t >= 0.4:
 				for p in MEASURED:
 					per.get_or_add(p, []).append(float(tracking.parameters.get(p, 0.0)))
+		_tone.play()
 		samples[step[0]] = per
 	_guide.visible = false
 	last_calibration = _apply_calibration(samples)
@@ -461,6 +572,7 @@ func _pct(values: Array, q: float) -> float:
 ## {applied: [part names], bands: {tracker param: Vector2}}
 func _apply_calibration(samples: Dictionary) -> Dictionary:
 	var bands := {}
+	var rests := {}
 	var neutral: Dictionary = samples.get("neutral", {})
 	var span := func (p): return Registry.get(p).range.y - Registry.get(p).range.x
 	for eye in ["EyeOpenLeft", "EyeOpenRight"]:
@@ -473,10 +585,19 @@ func _apply_calibration(samples: Dictionary) -> Dictionary:
 		var peak := _pct(samples.get(pair[1], {}).get(pair[0], []), 0.9)
 		if peak - rest > 0.15 * span.call(pair[0]):
 			bands[pair[0]] = Vector2(rest + 0.05 * (peak - rest), rest + 0.95 * (peak - rest))
+			rests[pair[0]] = rest
 	var applied := []
 	for chain in chains():
 		if chain.tracker_param in bands:
-			_set_range(chain, bands[chain.tracker_param])
+			var band: Vector2 = bands[chain.tracker_param]
+			# a parameter whose rest is the middle of its range (brow height, mouth form: -1 to 1) keeps the resting
+			# face there: the band reaches as far below the rest as above it. From the rest up only, the resting face
+			# gave -1, lowered brows and a turned down mouth after calibrating (user 2026-11-02).
+			var out: Vector2 = chain.rangemap.b if chain.rangemap else _out_range(chain)
+			if out.x < 0.0 and out.y > 0.0 and chain.tracker_param in rests:
+				var rest: float = rests[chain.tracker_param]
+				band = Vector2(rest - (band.y - rest), band.y)
+			_set_range(chain, band)
 			var part := _part(chain.tracker_param)
 			if part not in applied:
 				applied.append(part)
@@ -494,12 +615,14 @@ func _set_range(chain: Dictionary, a: Vector2) -> void:
 		if chain.get("inserting_range", false):
 			return
 		chain.inserting_range = true
-		var out_range = model.get("parameters/%s/range" % chain.param)
-		var b: Vector2 = out_range if out_range is Vector2 else Vector2(0, 1)
 		var domain: Vector2 = Registry.get(chain.tracker_param).range
-		await _insert(chain, chain.last, &"rangemap", {"a": domain, "b": b})
+		await _insert(chain, chain.last, &"rangemap", {"a": domain, "b": _out_range(chain)})
 		chain.inserting_range = false
 	chain.rangemap.a = chain.want_range
+
+func _out_range(chain: Dictionary) -> Vector2:
+	var out_range = model.get("parameters/%s/range" % chain.param)
+	return out_range if out_range is Vector2 else Vector2(0, 1)
 
 func _set_smoothing(chain: Dictionary, amount: float) -> void:
 	chain.want_smoothing = amount

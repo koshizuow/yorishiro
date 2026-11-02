@@ -150,11 +150,17 @@ Always,Always,一直
 Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you.,Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you.,每隔幾秒自動眨一次眼。選「追蹤不到臉時」只在追蹤器看不到你時才自動眨。
 Auto calibrate...,Auto calibrate...,自動校正…
 Guides you through a few expressions and sets the ranges to how your face moves.,Guides you through a few expressions and sets the ranges to how your face moves.,引導你做幾個表情，依你的臉實際的動作範圍自動設定。
-Relax your face and look at the camera,Relax your face and look at the camera,放鬆臉部，看著鏡頭
-Close both eyes,Close both eyes,閉上雙眼
-Open your mouth as wide as is comfortable,Open your mouth as wide as is comfortable,嘴巴張到最大（不勉強）
-Smile broadly,Smile broadly,大大地笑
-Raise your eyebrows,Raise your eyebrows,抬起眉毛
+"Relax your face, look at the camera and press Start","Relax your face, look at the camera and press Start",放鬆臉部、看著鏡頭，然後按「開始」
+"Press Start, then close both eyes. Open them at the tone","Press Start, then close both eyes. Open them at the tone",按「開始」後閉上雙眼，聽到提示音再張開
+"Press Start, then open your mouth as wide as is comfortable","Press Start, then open your mouth as wide as is comfortable",按「開始」後把嘴巴張到最大（不勉強）
+"Press Start, then smile broadly","Press Start, then smile broadly",按「開始」後大大地笑
+"Press Start, then raise your eyebrows","Press Start, then raise your eyebrows",按「開始」後抬起眉毛
+Start,Start,開始
+Reset to defaults...,Reset to defaults...,回復預設值…
+"Puts this model's ranges, smoothing, eye options, physics and follow-the-face back to how the model came.","Puts this model's ranges, smoothing, eye options, physics and follow-the-face back to how the model came.",把這個模型的範圍、平滑、眼睛選項、物理和跟著臉移動恢復成模型原本的設定。
+"Put this model's ranges, smoothing, eye options, physics and follow-the-face back to their defaults? Calibration and your changes on this page are lost.","Put this model's ranges, smoothing, eye options, physics and follow-the-face back to their defaults? Calibration and your changes on this page are lost.",要把這個模型的範圍、平滑、眼睛選項、物理和跟著臉移動恢復成預設值嗎？校正結果和你在這頁的修改都會消失。
+Reset,Reset,重設
+Sensitivity set back to the model's defaults.,Sensitivity set back to the model's defaults.,靈敏度已恢復成模型的預設值。
 Step %d of %d,Step %d of %d,第 %d 步，共 %d 步
 Calibrated: %s,Calibrated: %s,已校正：%s
 "No clear movement measured, nothing changed.","No clear movement measured, nothing changed.",沒有量到明顯的動作，設定沒有改變。

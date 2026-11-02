@@ -319,6 +319,29 @@ func _save_to_vts():
 	
 	Files.write_json(modelmeta.studio_parameters, vtube_data)
 	
+## physics and follow-the-face as the model came: the .vtube.json's, else the app's defaults (the sensitivity
+## page's reset)
+func reset_tuning() -> void:
+	physics_groups.clear()
+	physics_enabled = true
+	physics_strength = 1.0
+	movement_enabled = false
+	movement_amount = Vector3(6, 8, 11)
+	movement_smoothing = 10.0
+	if not modelmeta.studio_parameters.is_empty() and FileAccess.file_exists(modelmeta.studio_parameters):
+		_load_vts_tuning(Files.read_json(modelmeta.studio_parameters))
+
+func _load_vts_tuning(vtube_data: Dictionary) -> void:
+	var physics_settings = vtube_data.get("PhysicsSettings", {})
+	if not physics_settings.is_empty():
+		physics_enabled = physics_settings.get("Use", true)
+		physics_strength = float(physics_settings.get("PhysicsStrength", 50)) / 50.0
+	var movement_settings = vtube_data.get("ModelPositionMovement", {})
+	if not movement_settings.is_empty():
+		movement_enabled = movement_settings.get("Use", false)
+		movement_amount = Vector3(movement_settings.get("X", 6), movement_settings.get("Y", 8), movement_settings.get("Z", 11))
+		movement_smoothing = movement_settings.get("SmoothingX", 10)
+
 ## load bidirectional vts compatible settings
 func _load_from_vts():
 	if modelmeta.studio_parameters.is_empty():
@@ -331,15 +354,7 @@ func _load_from_vts():
 		get_idle_animation_player().play(idle_animation)
 		
 	# the model's own .yori.json settings override these when it has them
-	var physics_settings = vtube_data.get("PhysicsSettings", {})
-	if not physics_settings.is_empty():
-		physics_enabled = physics_settings.get("Use", true)
-		physics_strength = float(physics_settings.get("PhysicsStrength", 50)) / 50.0
-	var movement_settings = vtube_data.get("ModelPositionMovement", {})
-	if not movement_settings.is_empty():
-		movement_enabled = movement_settings.get("Use", false)
-		movement_amount = Vector3(movement_settings.get("X", 6), movement_settings.get("Y", 8), movement_settings.get("Z", 11))
-		movement_smoothing = movement_settings.get("SmoothingX", 10)
+	_load_vts_tuning(vtube_data)
 
 	var mesh_details = vtube_data.get("ArtMeshDetails", {})
 	var pin_settings = mesh_details.get("ArtMeshesExcludedFromPinning", [])

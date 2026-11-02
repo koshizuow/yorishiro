@@ -1097,6 +1097,11 @@ func _calibration_test(args: Dictionary):
 		var current = page.STEPS.filter(func (st): return tr(st[1]) == page._guide_text.text)
 		if current:
 			tracker.update(faces[current[0][0]])
+			# each step waits for its Start button
+			if not page._guide_start.disabled:
+				if current[0][0] == "eyes_closed" and not shot_taken:
+					get_viewport().get_texture().get_image().save_png(String(args.get("screenshot-window", "/tmp/calibration.png")).get_basename() + "_start.png")
+				page._guide_start.pressed.emit()
 			if current[0][0] == "mouth_open" and not shot_taken and page._guide_bar.value > 0.5:
 				get_viewport().get_texture().get_image().save_png(String(args.get("screenshot-window", "/tmp/calibration.png")).get_basename() + "_guide.png")
 				shot_taken = true
@@ -1110,6 +1115,22 @@ func _calibration_test(args: Dictionary):
 	var mouth = page.chains().filter(func (c): return c.tracker_param == "MouthOpen")
 	check.call("mouth row rangemap %s" % (mouth[0].rangemap.a if mouth and mouth[0].rangemap else null), mouth and mouth[0].rangemap and mouth[0].rangemap.a.distance_to(expect.MouthOpen) < 0.03)
 	check.call("parts %s" % [page.last_calibration.get("applied")], page.last_calibration.get("applied", []).size() >= 3)
+	# two-sided parameters keep the resting face in the middle: brow height rest 0.5, raised 0.9 -> 0.12 to 0.88
+	for brow in page.chains().filter(func (c): return c.tracker_param == "Brows"):
+		var out: Vector2 = brow.rangemap.b if brow.rangemap else Vector2.ZERO
+		var band: Vector2 = brow.rangemap.a if brow.rangemap else Vector2(-1, -1)
+		var want := Vector2(0.12, 0.88) if out.x < 0.0 and out.y > 0.0 else Vector2(0.52, 0.88)
+		check.call("%s (output %s) band %s, expected %s" % [brow.param, out, band, want], band.distance_to(want) < 0.03)
+	# the reset puts every row back to the model's defaults
+	page.find_child("ResetBtn", true, false).pressed.emit()
+	await get_tree().process_frame
+	check.call("reset asks first", page._reset_confirm.visible)
+	page.find_child("ResetYes", true, false).pressed.emit()
+	for i in 10:
+		await get_tree().process_frame
+	mouth = page.chains().filter(func (c): return c.tracker_param == "MouthOpen")
+	var reset_band: Vector2 = mouth[0].rangemap.a if mouth and mouth[0].rangemap else Vector2(0, 1)
+	check.call("reset mouth band %s" % reset_band, reset_band.distance_to(Vector2(0, 1)) < 0.01)
 
 const RECORD_PARAMS = ["FaceAngleX", "FaceAngleY", "FaceAngleZ", "EyeOpenLeft", "EyeOpenRight", "MouthOpen", "MouthSmile", "Brows", "FacePositionX", "FacePositionY", "FacePositionZ"]
 
