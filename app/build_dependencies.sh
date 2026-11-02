@@ -149,8 +149,8 @@ build_virtualcamera () {
 	
 	cd $WORKDIR
 
-	# keeps the device open (v4l2loopback 0.13+), not upstream yet
-	git apply --reverse --check ../patches/gd-virtualcamera-keep-open.patch 2>/dev/null || git apply ../patches/gd-virtualcamera-keep-open.patch
+	# keeps the device open (v4l2loopback 0.13+) and sends YUYV, not upstream yet
+	git apply --reverse --check ../patches/gd-virtualcamera.patch 2>/dev/null || git apply ../patches/gd-virtualcamera.patch
 
 	make package
 	cp -r $WORKDIR/addons/virtualcamera $ADDONDIR
