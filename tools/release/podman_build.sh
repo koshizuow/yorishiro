@@ -18,6 +18,7 @@ out=$BUILD_DIR/out
 [ -d "$src/.git" ] || git clone -q "$REPO" "$src"
 git -C "$src" fetch -q --tags --force "$REPO" "+refs/heads/*:refs/remotes/origin/*"
 git -C "$src" checkout -q --detach "$REF"
+git -C "$src" submodule foreach -q git checkout -q .   # the build patches them
 git -C "$src" submodule update -q --init
 git -C "$src" clean -q -ffdx -e target/
 git -C "$src" submodule foreach -q git clean -q -ffdx -e target/
