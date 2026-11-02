@@ -38,6 +38,7 @@
 ##                          check the Hand* inputs
 ##   --pin-test             add an item over the model, pin it to the art mesh under it (as dropping it does), move
 ##                          the model and check the item follows the mesh (vertices read back from the GPU)
+##   --virtual-camera=<dev> send the stage to this v4l2loopback device, for --hold=<s> seconds before going on
 ##   --pipewire-test[=<s>]  send the stage to PipeWire, resize the window twice (s seconds per size, default 2, longer
 ##                          to watch it in OBS) and check the output keeps running
 ##   --core-test=<camera>   switch the tracker from the replayed recording to that camera (the development loopback
@@ -247,6 +248,9 @@ func _ready() -> void:
 			await _hand_test(str(args["hand-test"]))
 		if args.has("pin-test"):
 			await _pin_test()
+		if args.has("virtual-camera"):
+			get_tree().get_first_node_in_group("output:v4l2").set("loopback_device", str(args["virtual-camera"]))
+			await get_tree().create_timer(float(args.get("hold", 0))).timeout
 		if args.has("pipewire-test"):
 			await _pipewire_test(float(args["pipewire-test"]) if str(args["pipewire-test"]).is_valid_float() else 2.0)
 		if args.has("mic-test"):

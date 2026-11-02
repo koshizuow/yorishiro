@@ -69,7 +69,8 @@ func _ready() -> void:
 	_stage_size = Vector2(capture_viewport.size)
 	capture_viewport.size_changed.connect(_on_stage_resized)
 	if OS.has_feature("linux"):
-		add_child(PipeWireOutput.new())
+		_pipewire = PipeWireOutput.new()
+		add_child(_pipewire)
 	# allow items to be dropped onto the window to spawn instantly
 	get_window().files_dropped.connect(
 		func (paths):
@@ -91,6 +92,22 @@ func _on_stage_resized() -> void:
 				o.position *= k
 				o.scale *= k.y
 	_stage_size = new_size
+
+## the stage's pace while the window cannot draw (16 ms: 60 fps)
+const HIDDEN_FRAME_MS = 16
+var _next_hidden_draw := 0
+@onready var _vcam = capture_viewport.get_node_or_null("VirtualCamera")
+var _pipewire
+
+## A window that is fully covered, minimized or on another workspace gets no frame events on Wayland and Godot stops
+## drawing: the stage froze in OBS and the virtual camera, usually with OBS itself on top. They still need frames.
+func _process(_delta: float) -> void:
+	var outputs: bool = (_pipewire != null and _pipewire.running) or (_vcam != null and not _vcam.loopback_device.is_empty())
+	if not outputs or DisplayServer.window_can_draw(get_window().get_window_id()):
+		return
+	if Time.get_ticks_msec() >= _next_hidden_draw:
+		_next_hidden_draw = Time.get_ticks_msec() + HIDDEN_FRAME_MS
+		RenderingServer.force_draw(false)
 
 func spawn_model(model: VtModel):
 	if model == null:

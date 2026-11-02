@@ -25,11 +25,10 @@ var status_ok := true
 var _viewport: Viewport
 var _out: RefCounted
 var _running := false
+## frames are going out, the stage keeps drawing while the window cannot
+var running: bool:
+	get: return _running
 var _state := ""
-
-## the stage's pace while the window cannot draw (16 ms: 60 fps)
-const HIDDEN_FRAME_MS = 16
-var _next_draw := 0
 
 func _init() -> void:
 	name = "PipeWireOutput"
@@ -79,11 +78,6 @@ func _send_frame() -> void:
 func _process(_delta: float) -> void:
 	if not _running:
 		return
-	# A window that is fully covered, minimized or on another workspace gets no frame events on Wayland and Godot
-	# stops drawing, which froze the stage in OBS (usually the window behind OBS itself). OBS still needs frames.
-	if not DisplayServer.window_can_draw(get_window().get_window_id()) and Time.get_ticks_msec() >= _next_draw:
-		_next_draw = Time.get_ticks_msec() + HIDDEN_FRAME_MS
-		RenderingServer.force_draw(false)
 	var size := Vector2i(_viewport.get_texture().get_size())
 	var state: String = "%s %s" % [_out.state(), size]
 	if state == _state:
