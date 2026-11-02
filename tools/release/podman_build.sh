@@ -30,7 +30,7 @@ podman run --rm ${MEMORY:+--memory=$MEMORY} \
 	-v "$src:/build/src" -v "$MODELS:/build/models:ro" -v "$BUILD_DIR/cache:/build/cache" \
 	-v "$BUILD_DIR/cache/cargo-registry:/opt/cargo/registry" -v "$out:/build/out" \
 	-e MODELS_DIR=/build/models -e CACHE_DIR=/build/cache -e OUT_DIR=/build/out \
-	-e CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-}" \
+	${CARGO_BUILD_JOBS:+-e CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS} \
 	"$IMAGE" /build/src/tools/release/build.sh "$VERSION"
 
 # a stock Ubuntu 24.04 (PipeWire 1.0): every addon loads except the PipeWire output, which needs 1.4
