@@ -66,6 +66,8 @@ var objects: Array :
 		return canvas.get_children()
 
 func _ready() -> void:
+	_stage_size = Vector2(capture_viewport.size)
+	capture_viewport.size_changed.connect(_on_stage_resized)
 	if OS.has_feature("linux"):
 		add_child(PipeWireOutput.new())
 	# allow items to be dropped onto the window to spawn instantly
@@ -75,6 +77,20 @@ func _ready() -> void:
 			if item:
 				spawn_item(item)
 	)
+
+var _stage_size := Vector2.ZERO
+
+## the model and items keep their place and size relative to the stage when it is resized (the window, or the
+## display scale applied after start), as in VTube Studio
+func _on_stage_resized() -> void:
+	var new_size := Vector2(capture_viewport.size)
+	if _stage_size.x > 0 and _stage_size.y > 0 and new_size.x > 0 and new_size.y > 0 and new_size != _stage_size:
+		var k := new_size / _stage_size
+		for o in canvas.get_children():
+			if o is Node2D or o is Control:
+				o.position *= k
+				o.scale *= k.y
+	_stage_size = new_size
 
 func spawn_model(model: VtModel):
 	if model == null:
