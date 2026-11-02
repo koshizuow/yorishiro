@@ -39,7 +39,7 @@ log=$out/check-$VERSION.log
 podman run --rm -v "$out:/out:ro" -e APPIMAGE_EXTRACT_AND_RUN=1 docker.io/library/ubuntu:24.04 \
 	sh -c "apt-get update -qq && apt-get install -y -qq --no-install-recommends libpipewire-0.3-0t64 libvulkan1 libgbm1 libinput10 libfontconfig1 > /dev/null 2>&1
 		cd /tmp && /out/Yorishiro-$VERSION-x86_64.AppImage --headless --quit" > "$log" 2>&1 || true
-failed=$(grep -o 'res://addons/[a-z_]*' <(grep -i "can't open dynamic library\|GDExtension dynamic library not found" "$log") | sort -u | tr "\n" " " || true)
+failed=$(grep -o "Error loading extension: 'res://addons/[a-z_]*" "$log" | sed 's#.*res://##' | sort -u | tr "\n" " " || true)
 echo "addons that did not load: ${failed:-none}"
-[ "$failed" = "res://addons/yorishiro_pipewire " ] || { echo "expected only the PipeWire output to fail, see $log"; exit 1; }
+[ "$failed" = "addons/yorishiro_pipewire " ] || { echo "expected only the PipeWire output to fail, see $log"; exit 1; }
 echo "ok, release files in $out"
