@@ -50,8 +50,11 @@
   builds (AppImage, tar.gz from `tools/make_release.sh`) need Ubuntu 24.04, Linux Mint 22, Fedora 39, Debian 13
   or newer (glibc 2.38).
 - A webcam.
-- For the PipeWire output to OBS: PipeWire 1.4 or newer for building, 1.2 or newer at run time, the Vulkan
-  renderer (the default), OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin.
+- For the PipeWire output to OBS: PipeWire 1.4 or newer (building and running), the Vulkan renderer (the
+  default), OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin. Ubuntu 26.04
+  (PipeWire 1.6), 25.10 and Debian 13 have it out of the box, so we suggest Ubuntu 26.04 for streaming with a
+  transparent background. Ubuntu 24.04 and Linux Mint 22 ship PipeWire 1.0: the app runs there without the OBS
+  output unless PipeWire is updated.
 
 ## Build
 

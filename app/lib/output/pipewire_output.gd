@@ -43,7 +43,7 @@ func _start() -> void:
 		if OS.has_feature("editor"):
 			_set_status(tr("The PipeWire output is not built (addons/yorishiro_pipewire). Run app/build_dependencies.sh."), false)
 		else:
-			_set_status(tr("The PipeWire output needs PipeWire 1.4 or newer. This system's PipeWire is older (Ubuntu 24.04 has 1.0)."), false)
+			_set_status(tr("The PipeWire output needs PipeWire 1.4 or newer. This system's PipeWire is older (Ubuntu 24.04 has 1.0, Ubuntu 26.04 has 1.6)."), false)
 		return
 	if _out == null:
 		_out = ClassDB.instantiate(&"PipeWireStageOut")
