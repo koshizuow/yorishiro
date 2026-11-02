@@ -58,6 +58,7 @@
 ##   --model-transform=<x,y,scale> place the loaded model (stage pixels, scale factor), for fixed framing
 ##   --expressions=<a,b>    turn these expressions of the loaded model on (e.g. outfit toggles)
 ##   --play-motion=<name>   play this motion of the loaded model (looping) before the screenshot
+##   --motion-switch=<a,b>  play these motions in turn, print how the pose groups cross over at each switch
 ##   --physics=<strength>   physics strength of the loaded model (1 as simulated), or "off"
 ##   --follow-face=<x,y,z>  move the loaded model with the face, these amounts (VTS units), or "off"
 ##   --record=<dir>         after the screenshot, save the window as <dir>/00001.jpg ... at 30 fps for
@@ -201,6 +202,8 @@ func _ready() -> void:
 			var player: AnimationPlayer = placed.model.get_node("MotionController")
 			player.play(args["play-motion"])
 			print("[automation] playing %s: %s" % [args["play-motion"], player.current_animation])
+		if args.has("motion-switch") and placed:
+			await _motion_switch(placed, str(args["motion-switch"]).split(","))
 		for i in int(args.get("wait-frames", "90")):
 			await RenderingServer.frame_post_draw
 		if placed:
@@ -594,6 +597,30 @@ func _pin_test():
 		deformed = maxf(deformed, cpu[i].distance_to(loaded[i]))
 	check.call("read vertices match the CPU (%.3f px off, the mesh moved %.1f px from its loaded shape)" % [off, deformed], cpu.size() == now.size() and off < 0.5)
 	stage.remove_item(item)
+
+## plays each motion for 1.5 s and prints, per pose group, how the parts' opacities move across each switch: the part that
+## leaves and the one that comes in must cover each other (at least 90 % in the worst frame)
+func _motion_switch(model, motions: PackedStringArray) -> void:
+	var player: AnimationPlayer = model.model.get_node("MotionController")
+	var pose = model.model.get_node_or_null("Pose")
+	for m in motions:
+		player.play(m)
+		var worst := {}
+		var shown := {}
+		var start := Time.get_ticks_msec()
+		var fade_ms := {}
+		while Time.get_ticks_msec() - start < 1500:
+			await RenderingServer.frame_post_draw
+			for gi in pose._groups.size():
+				var g: Dictionary = pose._groups[gi]
+				var clear := 1.0
+				for o in g["opacity"]:
+					clear *= 1.0 - o
+				worst[gi] = minf(worst.get(gi, 1.0), 1.0 - clear)
+				if g["opacity"].count(1.0) != 1 or g["opacity"].filter(func (o): return o > 0.0).size() != 1:
+					fade_ms[gi] = Time.get_ticks_msec() - start
+				shown[gi] = g["parts"][g["shown"]]
+		print("[automation] motion %s: shown %s, lowest cover %s, fade ended at %s ms" % [m, shown.values(), worst.values(), fade_ms.values()])
 
 func _pipewire_test(seconds: float):
 	var check := func (what: String, ok: bool): print("[automation] pipewire %s: %s" % [what, "ok" if ok else "FAILED"])
