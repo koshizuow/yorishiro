@@ -47,6 +47,8 @@ if [ ! -f "$template" ]; then
 fi
 
 echo "== native addons"
+# make_release.sh strips the debug info anyway, without it rustc needs much less memory and time
+export CARGO_PROFILE_RELEASE_DEBUG=0
 export NCNN_DIR=$CACHE/ncnn-install
 [ -f "$NCNN_DIR/lib/libncnn.so.1" ] || "$ROOT/tools/build_ncnn.sh" "$NCNN_DIR"
 (cd "$ROOT/app" && ./build_dependencies.sh > "$CACHE/addons.log" 2>&1) || { tail -30 "$CACHE/addons.log"; exit 1; }
