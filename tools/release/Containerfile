@@ -1,0 +1,32 @@
+# The release build environment (D41): Ubuntu 24.04, so the release needs glibc 2.39 at most and runs on
+# Ubuntu 24.04, Linux Mint 22 and newer. Built once and reused by tools/release/build.sh.
+#   podman build -t yorishiro-release tools/release
+# Everything is pinned: the Rust toolchain, PipeWire (by commit) and what build.sh downloads (by sha).
+FROM docker.io/library/ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+		build-essential pkg-config cmake ninja-build meson git curl ca-certificates unzip binutils file \
+		libclang-dev clang libudev-dev libinput-dev libgbm-dev libdrm-dev libvulkan-dev \
+		libfontconfig1 \
+	&& rm -rf /var/lib/apt/lists/*
+
+# libpipewire 1.4 for building the PipeWire output (Ubuntu 24.04 has 1.0). Only the client library and its
+# headers, the system's PipeWire is used at run time. 1.4 on purpose: the oldest version we support, so the
+# build cannot pick up anything newer by accident.
+ARG PIPEWIRE_VERSION=1.4.11
+ARG PIPEWIRE_COMMIT=255541eac34370e312f0c5c8c18e46dc1911352f
+RUN git clone -q --depth 1 --branch $PIPEWIRE_VERSION https://gitlab.freedesktop.org/pipewire/pipewire.git /tmp/pw \
+	&& test "$(git -C /tmp/pw rev-parse HEAD)" = "$PIPEWIRE_COMMIT" \
+	&& meson setup /tmp/pw/build /tmp/pw --prefix=/opt/pipewire -Dauto_features=disabled -Ddbus=disabled \
+		-Dsession-managers=[] -Dexamples=disabled -Dtests=disabled -Dman=disabled -Ddocs=disabled > /dev/null \
+	&& ninja -C /tmp/pw/build install > /dev/null \
+	&& rm -rf /tmp/pw
+ENV PKG_CONFIG_PATH=/opt/pipewire/lib/x86_64-linux-gnu/pkgconfig
+
+# Rust through rustup (Ubuntu 24.04's 1.93 is too old for godot-rust)
+ARG RUST_VERSION=1.99.1
+ENV RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo PATH=/opt/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+		| sh -s -- -y --no-modify-path --profile minimal --default-toolchain $RUST_VERSION \
+	&& rustc --version

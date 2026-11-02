@@ -5,3 +5,4 @@
 /models/*
 !/models/README.md
 !/models/eye_openness.onnx
+!/models/SHA256SUMS

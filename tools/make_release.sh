@@ -21,7 +21,6 @@ APPIMAGETOOL_SHA256=46fdd785094c7f6e545b61afcfb0f3d98d8eab243f644b4b17698c01d060
 ver=$("$GODOT" --version | sed 's/\.stable.*//')
 template=$(dirname "$GODOT")/editor_data/export_templates/$ver.stable/linux_release.x86_64
 [ -f "$template" ] || { echo "no release template at $template"; exit 1; }
-[ -f "$ROOT/models/mediapipe/face_landmarks.ncnn.bin" ] || { echo "models/ is not filled (models/README.md)"; exit 1; }
 
 rm -rf "${DIR:?}"
 mkdir -p "$DIR"
@@ -30,14 +29,10 @@ mkdir -p "$DIR"
 # the Rust libraries are built with debug info (for perf and gdb): not in a release
 strip --strip-unneeded "$DIR"/*.so* "$DIR/yorishiro.x86_64"
 
-# the models the tracking core loads (models/README.md), not the conversion leftovers
+# the models the tracking core loads (models/SHA256SUMS lists them), not the conversion leftovers
 mkdir -p "$DIR/models"
-(cd "$ROOT/models" && cp --parents eye_openness.onnx core/fit.npz README.md \
-	mediapipe/face_detector.onnx mediapipe/face_blendshapes.onnx mediapipe/face_landmarks.onnx \
-	mediapipe/face_landmarks.ncnn.param mediapipe/face_landmarks.ncnn.bin \
-	mediapipe/hands/palm_detection_full.onnx mediapipe/hands/hand_landmark_full.onnx \
-	mediapipe/hands/hand_landmark_full.ncnn.param mediapipe/hands/hand_landmark_full.ncnn.bin \
-	mediapipe/hands/palm_detection_full.ncnn.param mediapipe/hands/palm_detection_full.ncnn.bin "$DIR/models/")
+(cd "$ROOT/models" && sha256sum -c --quiet SHA256SUMS && cp --parents README.md SHA256SUMS $(awk '{print $2}' SHA256SUMS) "$DIR/models/") \
+	|| { echo "models/ does not match models/SHA256SUMS"; exit 1; }
 
 mkdir -p "$DIR/licenses"
 cp "$ROOT/NOTICE" "$ROOT/README.md" "$DIR/"
