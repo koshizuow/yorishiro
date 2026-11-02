@@ -33,7 +33,7 @@ func _ready() -> void:
 ## everything is saved, but the process would stay. A small watcher ends it if it is still here after a few seconds.
 func _exit_tree() -> void:
 	if DisplayServer.get_name() == "Wayland":
-		OS.create_process("/bin/sh", ["-c", "sleep 5; kill -9 %d 2>/dev/null" % OS.get_process_id()])
+		OS.create_process("/bin/sh", ["-c", "exec 9>&-; sleep 5; kill -9 %d 2>/dev/null" % OS.get_process_id()])
 
 ## sizes are stored in logical pixels so they survive a change of display scale
 func save_settings(settings: Dictionary):

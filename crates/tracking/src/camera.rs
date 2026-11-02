@@ -63,6 +63,30 @@ fn decode_mjpg(data: &[u8]) -> Option<Image> {
     Some(Image { width: img.width() as usize, height: img.height() as usize, rgb: img.into_raw() })
 }
 
+/// The first real camera that opens: the ones another program holds are busy, loopback devices are outputs (Yorishiro's
+/// own virtual camera among them). With the /dev/video index. For a new copy of the app, several people on one computer.
+pub fn first_free(width: u32, height: u32, fps: u32) -> std::io::Result<(usize, Camera)> {
+    let mut last = std::io::Error::new(std::io::ErrorKind::NotFound, "no camera found");
+    let mut indices: Vec<usize> = std::fs::read_dir("/sys/class/video4linux")?
+        .flatten()
+        .filter_map(|e| e.file_name().to_string_lossy().strip_prefix("video")?.parse().ok())
+        .collect();
+    indices.sort();
+    for index in indices {
+        let Ok(dev) = Device::new(index) else { continue };
+        let Ok(caps) = dev.query_caps() else { continue };
+        if caps.driver.contains("loopback") || !caps.capabilities.contains(v4l::capability::Flags::VIDEO_CAPTURE) {
+            continue;
+        }
+        drop(dev);
+        match Camera::open(index, width, height, fps) {
+            Ok(c) => return Ok((index, c)),
+            Err(e) => last = e,
+        }
+    }
+    Err(last)
+}
+
 impl Camera {
     /// /dev/video<index>, asking for width x height at fps.
     pub fn open(index: usize, width: u32, height: u32, fps: u32) -> std::io::Result<Self> {

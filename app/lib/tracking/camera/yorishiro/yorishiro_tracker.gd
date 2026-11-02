@@ -24,7 +24,8 @@ const REST = {"FaceAngleX": 0.0, "FaceAngleY": 0.0, "FaceAngleZ": 0.0, "FacePosi
 ## time the model eases back to the resting pose
 const REST_EASE_SEC = 0.8
 
-var camera := 0
+## -1: not chosen yet, the core takes the first free one and that choice is kept
+var camera := -1
 ## FREEZE keeps the last pose, REST eases back to the resting pose after lost_delay seconds
 var when_lost := WhenLost.REST
 var lost_delay := 1.0
@@ -112,7 +113,7 @@ func _start_core():
 	_core.send_vts_iphone = send_vts_iphone
 	_core.ifacialmocap_host = "127.0.0.1" if send_ifacialmocap else ""
 	_core.track_hands = track_hands
-	var source := ("recording %s" % replay.trim_suffix("/").get_file()) if replay else ("camera %d" % camera)
+	var source := ("recording %s" % replay.trim_suffix("/").get_file()) if replay else ("camera %d" % camera if camera >= 0 else "the first free camera")
 	_append_log("tracking core: %s, %s, ONNX Runtime %s" % [source, runtime, _core.ort_library.get_file()])
 	_core.start()
 	_set_status({"state": "starting", "message": "starting tracker (first start loads models)"})
@@ -151,6 +152,9 @@ func _receive():
 	var latest_frame = null
 	for msg in _core.poll():
 		if msg.get("type", "frame") == "status":
+			if camera < 0 and int(msg.get("camera", -1)) >= 0:
+				camera = int(msg["camera"])
+				save_settings()
 			_set_status(msg)
 		else:
 			latest_frame = msg

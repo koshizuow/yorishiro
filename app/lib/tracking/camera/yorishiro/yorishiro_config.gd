@@ -17,6 +17,7 @@ var _details: Label
 var _preview: FacePreview
 var _camera: OptionButton
 var _runtime: OptionButton
+var _camera_shown := -2
 var _log: TextEdit
 var _glare_hint: Label
 
@@ -193,6 +194,10 @@ func _on_restart():
 	tracker.restart()
 
 func _on_status(s: Dictionary):
+	# the core chose the camera (new copy): show it, a pick the user is making stays
+	if tracker.camera != _camera_shown:
+		_camera_shown = tracker.camera
+		_select_id(_camera, tracker.camera)
 	var state = s.get("state", "")
 	_state.text = tr("%s: %s") % [tr(STATE_NAMES.get(state, state.capitalize())), translate_message(s.get("message", ""))]
 	_state.modulate = STATE_COLORS.get(state, Color.WHITE)

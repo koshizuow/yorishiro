@@ -71,9 +71,21 @@ cat > "$appdir/AppRun" <<'EOF'
 export FC_LANG="${FC_LANG:-en}"
 # --instance=N: another copy of the app (several people on one computer), with its own settings folder. The model, item
 # and background libraries stay the first copy's. lib/instance.gd has the rest.
+# Without the option a copy takes the lowest free number, held by a lock while it runs, so opening the app twice works.
 instance_setup() {
-	[ "${1:-1}" -gt 1 ] 2>/dev/null || return 0
 	base=${XDG_DATA_HOME:-$HOME/.local/share}
+	mkdir -p "$base/yorishiro-instances"
+	wanted=$1
+	[ "$wanted" -gt 0 ] 2>/dev/null || { wanted=0; set -- 1; }
+	if command -v flock > /dev/null; then
+		while :; do
+			exec 9> "$base/yorishiro-instances/$1.lock"
+			if flock -n 9 || [ "$wanted" -gt 0 ]; then break; fi
+			exec 9>&-
+			set -- $(($1 + 1))
+		done
+	fi
+	[ "$1" -gt 1 ] || return 0
 	export YORISHIRO_INSTANCE=$1 XDG_DATA_HOME="$base/yorishiro-instances/$1"
 	mkdir -p "$XDG_DATA_HOME/yorishiro" "$base/yorishiro/Live2DModels" "$base/yorishiro/Items" "$base/yorishiro/Backgrounds"
 	for shared in Live2DModels Items Backgrounds; do

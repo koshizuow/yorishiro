@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
 use yorishiro_tracking::backend::runtime as ort_runtime;
-use yorishiro_tracking::camera::{Camera, Frame};
+use yorishiro_tracking::camera::{first_free, Camera, Frame};
 use yorishiro_tracking::frame::ARKIT52;
 use yorishiro_tracking::hands::{hand_params, HandTracker};
 use yorishiro_tracking::image::Image;
@@ -133,7 +133,7 @@ impl Shared {
 #[derive(GodotClass)]
 #[class(init, base = Node)]
 pub struct YorishiroCore {
-    /// /dev/video<camera>
+    /// /dev/video<camera>, -1 for the first free one
     #[export]
     camera: i32,
     /// vulkan, vulkan-fp32, ncnn-cpu (when built with ncnn), ort-cpu
@@ -178,7 +178,7 @@ impl YorishiroCore {
         self.stop();
         let shared = Arc::new(Shared::default());
         let cfg = Config {
-            camera: self.camera.max(0) as usize,
+            camera: self.camera,
             replay: Some(self.replay.to_string()).filter(|s| !s.is_empty()).map(PathBuf::from),
             runtime: self.runtime.to_string(),
             models: PathBuf::from(self.models_dir.to_string()),
@@ -298,7 +298,7 @@ impl INode for YorishiroCore {
 }
 
 struct Config {
-    camera: usize,
+    camera: i32,
     replay: Option<PathBuf>,
     runtime: String,
     models: PathBuf,
@@ -393,6 +393,7 @@ fn run(cfg: Config, s: Arc<Shared>) {
         s.log(format!("flip averaging stays as decided at start: {e}"));
     }
     s.log(format!("tracker facemesh-core on {}", tracker.runtime_name()));
+    let mut camera_used = cfg.camera;
     let mut camera = match &cfg.replay {
         Some(dir) => match Recording::open(dir, true) {
             Ok(r) => {
@@ -401,9 +402,14 @@ fn run(cfg: Config, s: Arc<Shared>) {
             }
             Err(e) => return s.status("error", &format!("cannot replay: {e}"), vec![], texts(&[])),
         },
-        None => match Camera::open(cfg.camera, 1280, 720, 30) {
-            Ok(c) => {
-                s.log(format!("camera {}: {}", cfg.camera, c.mode));
+        None => match if cfg.camera < 0 {
+            first_free(1280, 720, 30).map(|(i, c)| (i as i32, c))
+        } else {
+            Camera::open(cfg.camera as usize, 1280, 720, 30).map(|c| (cfg.camera, c))
+        } {
+            Ok((i, c)) => {
+                s.log(format!("camera {i}: {}", c.mode));
+                camera_used = i;
                 Source::Camera(c)
             }
             Err(e) => {
@@ -504,7 +510,7 @@ fn run(cfg: Config, s: Arc<Shared>) {
                                ("face".into(), last_found as u8 as f64), ("calibrated".into(), calibrated as u8 as f64),
                                ("commercial_use".into(), 1.0)];
             s.status("running", if last_found { "tracking" } else { "no face in view" }, numbers,
-                     texts(&[("runtime", &format!("{} (Rust core)", tracker.runtime_name()))]));
+                     texts(&[("runtime", &format!("{} (Rust core)", tracker.runtime_name())), ("camera", &camera_used.to_string())]));
         }
     }
 }
