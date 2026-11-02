@@ -1,5 +1,6 @@
 use std::fs::OpenOptions;
 use std::io::Write;
+use std::sync::mpsc::{sync_channel, SyncSender, TrySendError};
 
 use godot::prelude::*;
 use godot::classes::RenderingServer;
@@ -10,26 +11,12 @@ use v4l::prelude::*;
 use v4l::v4l_sys::v4l2_format;
 use v4l::v4l_sys::v4l2_format__bindgen_ty_1;
 use v4l::v4l2;
+
+use crate::yuyv::Yuyv;
 use v4l::capability::Flags;
 
-/// YUYV (BT.601, limited range): the format camera readers take, AB24 was refused by ffmpeg. The node's viewport is
-/// opaque: the stage over the chosen background (stage.gd).
-fn rgba_to_yuyv(rgba: &[u8], width: usize) -> Vec<u8> {
-    let mut out = Vec::with_capacity(rgba.len() / 2);
-    for row in rgba.chunks_exact(width * 4) {
-        for px in row.chunks_exact(8) {
-            let (r0, g0, b0) = (px[0] as i32, px[1] as i32, px[2] as i32);
-            let (r1, g1, b1) = (px[4] as i32, px[5] as i32, px[6] as i32);
-            let y = |r: i32, g: i32, b: i32| (((66 * r + 129 * g + 25 * b + 128) >> 8) + 16) as u8;
-            let (r, g, b) = ((r0 + r1) / 2, (g0 + g1) / 2, (b0 + b1) / 2);
-            out.push(y(r0, g0, b0));
-            out.push((((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128) as u8);
-            out.push(y(r1, g1, b1));
-            out.push((((112 * r - 94 * g - 18 * b + 128) >> 8) + 128) as u8);
-        }
-    }
-    out
-}
+/// Frames waiting in the GPU readback. More would only add delay: a frame over this is dropped.
+const MAX_PENDING: u32 = 2;
 
 #[derive(GodotClass)]
 #[class(init, base=Node)]
@@ -38,8 +25,12 @@ pub struct VirtualCamera {
 	#[export]
 	pub loopback_device: GString,
     is_valid_device: bool,
-    /// stays open while the camera is on: on v4l2loopback 0.15.3 readers get EIO between a writer's close and open
-    output: Option<std::fs::File>,
+    /// the thread that writes frames to the device, which keeps it open while the camera is on: on v4l2loopback
+    /// 0.15.3 readers get EIO between a writer's close and open
+    writer: Option<SyncSender<Vec<u8>>>,
+    yuyv: Option<Yuyv>,
+    size: (u32, u32),
+    pending: u32,
 }
 
 #[godot_api]
@@ -58,17 +49,21 @@ impl VirtualCamera {
             return Err("device is not capable of video output (not a loopback device)");
         }
 
+        // YUYV holds pixels in pairs
+        let (width, height) = (rect.size.x as u32 & !1, rect.size.y as u32);
+        self.size = (width, height);
+
         // built in set_format on Devices is strictly set to be for type VideoCapture
         // so we have to manually replicate functionality and target VideoOutput instead
         let result = unsafe {
             let mut fmt = v4l::Format::new(
-                rect.size.x as u32,
-                rect.size.y as u32,
+                width,
+                height,
                 v4l::FourCC::new(b"YUYV"),
             );
             fmt.field_order = v4l::format::FieldOrder::Progressive;
-            fmt.stride = 2 * (rect.size.x as u32);
-            fmt.size = 2 * (rect.size.x as u32) * (rect.size.y as u32);
+            fmt.stride = 2 * width;
+            fmt.size = 2 * width * height;
             let mut v4l2_fmt = v4l2_format {
                 type_: v4l::buffer::Type::VideoOutput as u32,
                 fmt: v4l2_format__bindgen_ty_1 { 
@@ -89,36 +84,70 @@ impl VirtualCamera {
         Ok(())
     }
 
-    fn update_camera(&mut self) {
-        if !self.is_valid_device {
-            return;
-        }
-
-        let data = self.base().get_viewport()
-            .and_then(|vp| vp.get_texture())
-            .and_then(|tex| tex.get_image())
-            .map(|mut img| {
-                img.convert(godot::classes::image::Format::RGBA8);
-                rgba_to_yuyv(img.get_data().as_slice(), img.get_width() as usize)
-            });
-
-        if let Some(data) = data {
-            if self.output.is_none() {
-                match OpenOptions::new().write(true).open(self.loopback_device.to_string()) {
-                    Ok(f) => self.output = Some(f),
-                    Err(e) => {
-                        self.is_valid_device = false;
-                        godot_error!("{}", e);
-                        return;
-                    }
+    fn start_writer(&mut self) -> Result<(), String> {
+        let mut file = OpenOptions::new().write(true).open(self.loopback_device.to_string()).map_err(|e| e.to_string())?;
+        let (send, receive) = sync_channel::<Vec<u8>>(1);
+        std::thread::Builder::new().name("virtual camera".into()).spawn(move || {
+            while let Ok(frame) = receive.recv() {
+                if let Err(e) = file.write(&frame) {
+                    godot_print!("virtual camera: {e}");
+                    break;
                 }
             }
-            if let Err(e) = self.output.as_mut().unwrap().write(data.as_slice()) {
-                self.is_valid_device = false;
-                self.output = None;
+        }).map_err(|e| e.to_string())?;
+        self.writer = Some(send);
+        Ok(())
+    }
+
+    fn update_camera(&mut self) {
+        if !self.is_valid_device || self.pending >= MAX_PENDING {
+            return;
+        }
+        let Some(viewport) = self.base().get_viewport() else { return };
+        let Some(texture) = viewport.get_texture() else { return };
+        let mut server = RenderingServer::singleton();
+        let Some(mut rd) = server.get_rendering_device() else {
+            godot_error!("the virtual camera needs the Vulkan renderer");
+            self.is_valid_device = false;
+            return;
+        };
+        if self.writer.is_none() {
+            if let Err(e) = self.start_writer() {
                 godot_error!("{}", e);
+                self.is_valid_device = false;
+                return;
             }
-        }        
+        }
+        if self.yuyv.is_none() {
+            match Yuyv::new(rd.clone(), self.size.0, self.size.1) {
+                Ok(y) => self.yuyv = Some(y),
+                Err(e) => {
+                    godot_error!("{}", e);
+                    self.is_valid_device = false;
+                    return;
+                }
+            }
+        }
+        let source = server.texture_get_rd_texture(texture.get_rid());
+        let size = viewport.get_visible_rect().size;
+        let yuyv = self.yuyv.as_mut().unwrap();
+        yuyv.convert(source, size);
+        let out = yuyv.out;
+        let done = self.to_gd().callable("frame_read");
+        if rd.texture_get_data_async(out, 0, &done) == godot::global::Error::OK {
+            self.pending += 1;
+        }
+    }
+
+    #[func]
+    fn frame_read(&mut self, data: PackedByteArray) {
+        self.pending = self.pending.saturating_sub(1);
+        let Some(writer) = &self.writer else { return };
+        // a device that is slow only loses this frame
+        if let Err(TrySendError::Disconnected(_)) = writer.try_send(data.to_vec()) {
+            self.writer = None;
+            self.is_valid_device = false;
+        }
     }
 
     #[func]
@@ -168,7 +197,8 @@ impl INode for VirtualCamera {
         if property == "loopback_device" {
             let Ok(device) = value.try_to::<GString>() else { return false };
             self.loopback_device = device.clone();
-            self.output = None;
+            self.writer = None;
+            self.yuyv = None;
 
             // clear value
             if device.is_empty() {

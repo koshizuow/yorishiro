@@ -1,5 +1,6 @@
 use godot::prelude::*;
 
+mod yuyv;
 pub mod camera;
 
 struct VirtualCamExtension;
