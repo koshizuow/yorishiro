@@ -177,6 +177,13 @@ impl VirtualCamera {
 
 #[godot_api]
 impl INode for VirtualCamera {
+    /// while the render device is still there: dropped with the node at exit, these would free into a device that is gone
+    fn exit_tree(&mut self) {
+        self.is_valid_device = false;
+        self.yuyv = None;
+        self.writer = None;
+    }
+
     fn ready(&mut self) {
         if !self.loopback_device.is_empty() {
             let vp = self.base().get_viewport().expect("node is not within viewport");
