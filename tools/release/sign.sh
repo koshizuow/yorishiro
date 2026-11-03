@@ -3,7 +3,7 @@
 # list covers the AppImage, its .zsync and the tar.gz, so one signature covers them all.
 #   tools/release/sign.sh <dir with SHA256SUMS-<version>> <version>
 # MINISIGN_KEY: the secret key (default ~/.minisign/yorishiro.key). minisign asks for its password.
-# Checking a download (the public key is in the README):
+# Checking a download (the public key is tools/release/yorishiro.pub, also in the README):
 #   minisign -Vm SHA256SUMS-<version> -P <public key> && sha256sum -c --ignore-missing SHA256SUMS-<version>
 set -euo pipefail
 DIR=${1:?usage: sign.sh <dir> <version>}
@@ -15,4 +15,5 @@ command -v minisign > /dev/null || { echo "minisign is not installed"; exit 1; }
 [ -f "$KEY" ] || { echo "no secret key at $KEY"; exit 1; }
 (cd "$DIR" && sha256sum -c --quiet "SHA256SUMS-$VERSION") || { echo "the files do not match $sums"; exit 1; }
 minisign -S -s "$KEY" -m "$sums" -t "Yorishiro $VERSION"
+minisign -Vm "$sums" -p "$(dirname "$0")/yorishiro.pub" > /dev/null || { echo "the signature does not match tools/release/yorishiro.pub"; exit 1; }
 echo "signed: $sums.minisig"

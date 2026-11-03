@@ -74,8 +74,18 @@ From [Releases](https://github.com/koshizuow/yorishiro/releases), either:
   to the application menu and update it, downloading only the parts that changed.
 - **tar.gz**: unpack it and run `./yorishiro.x86_64` inside.
 
-The tracking models come with both. `SHA256SUMS-<version>` lists the files' checksums. Settings and the model
-library live in `~/.local/share/yorishiro/`.
+The tracking models come with both. Settings and the model library live in `~/.local/share/yorishiro/`.
+
+`SHA256SUMS-<version>` lists the files' checksums and, from 0.1.5, is signed with [minisign](https://jedisct1.github.io/minisign/)
+(`SHA256SUMS-<version>.minisig`). To check a download, put it in one folder with those two files and run:
+
+```
+minisign -Vm SHA256SUMS-<version> -P RWRyX8UU0kziEAs5Y8oGD0H65bYpzq/Jm0OhisWCRrlih/ldW/N9qgvi
+sha256sum -c --ignore-missing SHA256SUMS-<version>
+```
+
+Releases built on GitHub also carry a build provenance attestation: `gh attestation verify <file> -R koshizuow/yorishiro`
+shows the commit and workflow that built the file.
 
 ## Build
 

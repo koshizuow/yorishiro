@@ -63,7 +63,18 @@
   AppImageUpdate 這類 AppImage 工具可以把它加進應用程式選單，也能自動更新，只下載有變動的部分。
 - **tar.gz**：解壓後執行裡面的 `./yorishiro.x86_64`。
 
-兩種都已附上追蹤模型。`SHA256SUMS-<版本>` 列出各檔案的檢查碼。設定和模型庫存在 `~/.local/share/yorishiro/`。
+兩種都已附上追蹤模型。設定和模型庫存在 `~/.local/share/yorishiro/`。
+
+`SHA256SUMS-<版本>` 列出各檔案的檢查碼，從 0.1.5 起用 [minisign](https://jedisct1.github.io/minisign/) 簽章
+（`SHA256SUMS-<版本>.minisig`）。要確認下載的檔案，把它和這兩個檔案放在同一個資料夾，執行：
+
+```
+minisign -Vm SHA256SUMS-<版本> -P RWRyX8UU0kziEAs5Y8oGD0H65bYpzq/Jm0OhisWCRrlih/ldW/N9qgvi
+sha256sum -c --ignore-missing SHA256SUMS-<版本>
+```
+
+在 GitHub 上建置的版本另附建置來源證明：`gh attestation verify <檔案> -R koshizuow/yorishiro` 會顯示建置這個檔案的
+commit 和 workflow。
 
 ## 編譯
 

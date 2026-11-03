@@ -53,6 +53,9 @@
   </recommends>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.5" date="2026-11-04">
+      <description><p>The AppImage updates itself through AppImage tools such as Gear Lever, ships AppStream metadata, and adds one application menu entry. Release checksums are signed with minisign.</p></description>
+    </release>
     <release version="0.1.4" date="2026-11-03">
       <description><p>The sensitivity page draws its range handles inside the track when a model's input range is wider than the tracker's.</p></description>
     </release>
