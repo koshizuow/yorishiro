@@ -325,9 +325,11 @@ func _row(chain: Dictionary) -> Control:
 
 	var domain: Vector2 = Registry.get(chain.tracker_param).range if Registry.get(chain.tracker_param) else Vector2(0, 1)
 	var meter := RangeMeter.new()
-	meter.domain = domain
-	meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var band: Vector2 = chain.rangemap.a if chain.rangemap else domain
+	# a VTS model can set its input range past what the tracker gives (EyeOpen 0..1.3, EyeRightY -0.5..1.5): the track
+	# grows to hold it, or the handle was drawn over the smoothing slider
+	meter.domain = Vector2(minf(domain.x, minf(band.x, band.y)), maxf(domain.y, maxf(band.x, band.y)))
+	meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	meter.set_band(band.x, band.y)
 	meter.tooltip_text = tr("Input range %.2f to %.2f") % [band.x, band.y]
 	meter.range_changed.connect(func (l, h):
