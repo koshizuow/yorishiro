@@ -45,15 +45,28 @@ sudo usermod -aG input $USER
 - PipeWire 1.4 以上。Ubuntu 25.10、26.04 和 Debian 13 已內建。Ubuntu 24.04 和 Linux Mint 22 是 1.0，除非更新 PipeWire，否則
   app 能跑但沒有這個輸出。
 - Vulkan 繪圖，這是預設值。
-- OBS 31 以上，加上 [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin，這是獨立專案。**Plugin 要和你的 OBS
-  版本相符：** OBS 不接受比自己新的版本編譯的 plugin，請下載對應版本，或自己編譯。
+- OBS 32 以上，加上 [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin，這是獨立專案。OBS 不會載入給比自己新的
+  版本編譯的 plugin，而 plugin 的 Releases 是給 OBS 32 編的。Ubuntu 26.04 內建 OBS 32。Debian 13 和 Ubuntu 25.10 內建
+  OBS 30，請改用 Flatpak 版 OBS。
 
-只裝給目前使用者時，plugin 放在：
+從 [plugin 的 Releases](https://github.com/hoshinolina/obs-pwvideo/releases) 下載，依你用的 OBS 安裝：
 
-```text
-~/.config/obs-studio/plugins/obs-pwvideo/bin/64bit/obs-pwvideo.so
-~/.config/obs-studio/plugins/obs-pwvideo/data/
-```
+- **發行版內建的 OBS**（apt、dnf、pacman 裝的）：把 `obs-pwvideo-<版本>-x86_64-ubuntu-gnu.tar.xz` 解壓到 OBS 的設定目錄：
+
+  ```bash
+  mkdir -p ~/.config/obs-studio/plugins
+  tar xJf obs-pwvideo-<版本>-x86_64-ubuntu-gnu.tar.xz -C ~/.config/obs-studio/plugins
+  ```
+
+  Ubuntu 和 Debian 也可以用 `.deb`，會裝給所有使用者：`sudo apt install ./obs-pwvideo-<版本>-x86_64-linux-gnu.deb`。
+- **Flathub 的 OBS**（`com.obsproject.Studio`）：Flatpak 版的設定在別的地方，把同一個檔案解壓到那裡：
+
+  ```bash
+  mkdir -p ~/.var/app/com.obsproject.Studio/config/obs-studio/plugins
+  tar xJf obs-pwvideo-<版本>-x86_64-ubuntu-gnu.tar.xz -C ~/.var/app/com.obsproject.Studio/config/obs-studio/plugins
+  ```
+
+重新啟動 OBS。在「說明 > 記錄檔」裡會看到 `[obs-pwvideo] plugin loaded successfully`。
 
 接著：
 

@@ -53,16 +53,31 @@ You need:
 - PipeWire 1.4 or newer. Ubuntu 25.10 and 26.04 and Debian 13 have it. Ubuntu 24.04 and Linux Mint 22 ship 1.0, and the
   app runs there without this output unless PipeWire is updated.
 - The Vulkan renderer, which is the default.
-- OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin. It is a separate project.
-  **The plugin must match your OBS version:** OBS refuses a plugin built for a newer one, so take the build for your
-  version or build it yourself.
+- OBS 32 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin, a separate project.
+  OBS does not load a plugin built for a newer OBS, and the plugin's releases are built for OBS 32. Ubuntu 26.04 ships
+  OBS 32. Debian 13 and Ubuntu 25.10 ship OBS 30: use the Flatpak OBS there.
 
-For a per-user install, the plugin goes here:
+Download the plugin from [its releases](https://github.com/hoshinolina/obs-pwvideo/releases) and install it for the OBS you use:
 
-```text
-~/.config/obs-studio/plugins/obs-pwvideo/bin/64bit/obs-pwvideo.so
-~/.config/obs-studio/plugins/obs-pwvideo/data/
-```
+- **OBS from your distribution** (apt, dnf, pacman): unpack `obs-pwvideo-<version>-x86_64-ubuntu-gnu.tar.xz` into your
+  OBS settings:
+
+  ```bash
+  mkdir -p ~/.config/obs-studio/plugins
+  tar xJf obs-pwvideo-<version>-x86_64-ubuntu-gnu.tar.xz -C ~/.config/obs-studio/plugins
+  ```
+
+  On Ubuntu and Debian the `.deb` works too and installs it for every user:
+  `sudo apt install ./obs-pwvideo-<version>-x86_64-linux-gnu.deb`.
+- **OBS from Flathub** (`com.obsproject.Studio`): the Flatpak keeps its settings elsewhere, so unpack the same file
+  there:
+
+  ```bash
+  mkdir -p ~/.var/app/com.obsproject.Studio/config/obs-studio/plugins
+  tar xJf obs-pwvideo-<version>-x86_64-ubuntu-gnu.tar.xz -C ~/.var/app/com.obsproject.Studio/config/obs-studio/plugins
+  ```
+
+Restart OBS. Its log (Help, Log Files) then shows `[obs-pwvideo] plugin loaded successfully`.
 
 Then:
 

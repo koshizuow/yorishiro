@@ -57,8 +57,9 @@
   the `input` group (`sudo usermod -aG input $USER`, then log in again). Every program you run can then read the
   keyboard, so only do this if you need it.
 - For the PipeWire output to OBS: PipeWire 1.4 or newer (building and running), the Vulkan renderer (the
-  default), OBS 31 or newer with the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin (a separate project: it must
-  match your OBS version, so take the build for your version or build it yourself, OBS refuses a plugin built for a newer one). Ubuntu 26.04
+  default), OBS 32 or newer and the [obs-pwvideo](https://github.com/hoshinolina/obs-pwvideo) plugin, a separate project:
+  download it from [its releases](https://github.com/hoshinolina/obs-pwvideo/releases). The [guide](docs/guide.md#obs) shows where it goes for OBS from your
+  distribution and for the Flatpak. Ubuntu 26.04
   (PipeWire 1.6), 25.10 and Debian 13 have it out of the box, so we suggest Ubuntu 26.04 for streaming with a
   transparent background. Ubuntu 24.04 and Linux Mint 22 ship PipeWire 1.0: the app runs there without the OBS
   output unless PipeWire is updated.
