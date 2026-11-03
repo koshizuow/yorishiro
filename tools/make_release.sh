@@ -5,8 +5,11 @@
 # Needs: the native addons built (app/build_dependencies.sh), the models in models/, and Godot's Linux release
 # export template for this Godot version in <godot dir>/editor_data/export_templates/<version>.stable/
 # (official, or built with scons target=template_release). GODOT picks the editor as run.sh does.
-# Output in target/release/: yorishiro-<version>/ , yorishiro-<version>-linux-x86_64.tar.gz and
-# Yorishiro-<version>-x86_64.AppImage. appimagetool is downloaded once into target/tools/.
+# Output in target/release/: yorishiro-<version>/ , yorishiro-<version>-linux-x86_64.tar.gz,
+# Yorishiro-<version>-x86_64.AppImage and its .zsync (for AppImage updaters: upload it to the release beside the
+# AppImage). appimagetool is downloaded once into target/tools/.
+# The desktop entry, icon and AppStream metainfo come from app/branding/ (io.github.koshizuow.yorishiro.*), the one
+# source for the AppImage, the release folder and the About page's menu entry.
 set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 VERSION=${1:-$(git -C "$ROOT" describe --tags --always --dirty)}
@@ -16,6 +19,10 @@ NAME=yorishiro-$VERSION
 DIR=$OUT/$NAME
 APPIMAGETOOL_VERSION=1.9.0
 APPIMAGETOOL_SHA256=46fdd785094c7f6e545b61afcfb0f3d98d8eab243f644b4b17698c01d06083d1
+ID=io.github.koshizuow.yorishiro
+BRAND=$ROOT/app/branding
+# where AppImage updaters (Gear Lever, AppImageUpdate) look for a newer version: the latest GitHub release
+UPDATE_INFO="gh-releases-zsync|koshizuow|yorishiro|latest|Yorishiro-*-x86_64.AppImage.zsync"
 
 [ -x "$GODOT" ] || { echo "no Godot editor (GODOT)"; exit 1; }
 ver=$("$GODOT" --version | sed 's/\.stable.*//')
@@ -42,7 +49,9 @@ mkdir -p "$DIR/models"
 
 mkdir -p "$DIR/licenses"
 cp "$ROOT/NOTICE" "$ROOT/README.md" "$DIR/"
-cp "$ROOT/app/branding/icon.svg" "$DIR/yorishiro.svg"   # the About page installs it with the menu entry
+# the About page installs these as the menu entry (lib/desktop_entry.gd)
+cp "$BRAND/icon.svg" "$DIR/$ID.svg"
+cp "$BRAND/$ID.desktop" "$DIR/$ID.desktop"
 cp "$ROOT/app/LICENSE.txt" "$DIR/licenses/LICENSE.app.txt"
 cp "$ROOT/crates/tracking/LICENSE" "$DIR/licenses/LICENSE.tracking.txt"
 cp "$ROOT"/app/license/* "$DIR/licenses/"
@@ -61,16 +70,13 @@ appdir=$OUT/Yorishiro.AppDir
 rm -rf "${appdir:?}"
 mkdir -p "$appdir/usr"
 cp -a "$DIR" "$appdir/usr/bin"
-cp "$ROOT/app/branding/icon.svg" "$appdir/yorishiro.svg"
-cat > "$appdir/yorishiro.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Yorishiro
-Comment=Live2D VTuber app with face tracking
-Exec=yorishiro
-Icon=yorishiro
-Categories=AudioVideo;Video;
-EOF
+# the entry and icon at the top for appimagetool, and where desktop integration tools and software centres look
+cp "$BRAND/$ID.desktop" "$appdir/$ID.desktop"
+cp "$BRAND/icon.svg" "$appdir/$ID.svg"
+install -D -m 644 "$BRAND/$ID.desktop" "$appdir/usr/share/applications/$ID.desktop"
+install -D -m 644 "$BRAND/icon.svg" "$appdir/usr/share/icons/hicolor/scalable/apps/$ID.svg"
+# appimagetool 1.9.0 only looks for the older name (<id>.appdata.xml); Flathub takes the .metainfo.xml as it is
+install -D -m 644 "$BRAND/$ID.metainfo.xml" "$appdir/usr/share/metainfo/$ID.appdata.xml"
 # as run.sh: Wayland when the session has it (display scale), FC_LANG=en (a CJK locale made Godot's per-frame font
 # fallback take about 80 ms)
 cat > "$appdir/AppRun" <<'EOF'
@@ -109,6 +115,9 @@ if [ -n "$WAYLAND_DISPLAY" ]; then set -- --display-driver wayland "$@"; fi
 exec "$(dirname "$(readlink -f "$0")")/usr/bin/yorishiro.x86_64" "$@"
 EOF
 chmod +x "$appdir/AppRun"
-ARCH=x86_64 "$tool" --appimage-extract-and-run -n "$appdir" "$OUT/Yorishiro-$VERSION-x86_64.AppImage" > "$OUT/appimage.log" 2>&1 \
-	|| { tail -20 "$OUT/appimage.log"; exit 1; }
+# no -n: appimagetool checks the desktop entry and the AppStream metainfo (desktop-file-validate, appstreamcli).
+# -u writes the update information into the AppImage and makes the .zsync beside it.
+(cd "$OUT" && ARCH=x86_64 "$tool" --appimage-extract-and-run -u "$UPDATE_INFO" "$appdir" "Yorishiro-$VERSION-x86_64.AppImage") \
+	> "$OUT/appimage.log" 2>&1 || { tail -20 "$OUT/appimage.log"; exit 1; }
+[ -f "$OUT/Yorishiro-$VERSION-x86_64.AppImage.zsync" ] || { echo "no .zsync made"; tail -20 "$OUT/appimage.log"; exit 1; }
 ls -la "$OUT" | grep -E "$NAME|AppImage"

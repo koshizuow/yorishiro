@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata: read by software centres and AppImage tools (Gear Lever), and the same file a Flathub
+     package would use. Add a <release> for each version. -->
+<component type="desktop-application">
+  <id>io.github.koshizuow.yorishiro</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT AND Apache-2.0</project_license>
+  <name>Yorishiro</name>
+  <summary>Live2D VTuber app with face tracking</summary>
+  <developer id="io.github.koshizuow">
+    <name>Yorishiro contributors</name>
+  </developer>
+  <description>
+    <p>
+      Yorishiro moves a Live2D model with your face, from an ordinary webcam. Tracking runs on your GPU through
+      Vulkan, so it works with AMD, Intel and NVIDIA cards alike.
+    </p>
+    <ul>
+      <li>Face, eyes, mouth and optional hand tracking, with sensitivity and smoothing per model part</li>
+      <li>Expressions and animations on hotkeys</li>
+      <li>Items pinned to the model, backgrounds, several models in one library</li>
+      <li>Output to OBS through PipeWire with a transparent background, or a virtual camera</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.koshizuow.yorishiro.desktop</launchable>
+  <url type="homepage">https://github.com/koshizuow/yorishiro</url>
+  <url type="bugtracker">https://github.com/koshizuow/yorishiro/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Face tracking settings with the 3D preview head</caption>
+      <image>https://raw.githubusercontent.com/koshizuow/yorishiro/main/docs/images/tracking.jpg</image>
+    </screenshot>
+    <screenshot>
+      <caption>Models and items</caption>
+      <image>https://raw.githubusercontent.com/koshizuow/yorishiro/main/docs/images/models.jpg</image>
+    </screenshot>
+    <screenshot>
+      <caption>Sensitivity and physics per part</caption>
+      <image>https://raw.githubusercontent.com/koshizuow/yorishiro/main/docs/images/sensitivity.jpg</image>
+    </screenshot>
+    <screenshot>
+      <caption>The stage in OBS, transparent around the model</caption>
+      <image>https://raw.githubusercontent.com/koshizuow/yorishiro/main/docs/images/obs.jpg</image>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Video</category>
+  </categories>
+  <recommends>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </recommends>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.4" date="2026-11-03">
+      <description><p>The sensitivity page draws its range handles inside the track when a model's input range is wider than the tracker's.</p></description>
+    </release>
+    <release version="0.1.3" date="2026-11-03"/>
+    <release version="0.1.2" date="2026-11-03"/>
+    <release version="0.1.1" date="2026-11-03"/>
+    <release version="0.1.0" date="2026-11-02"/>
+  </releases>
+</component>

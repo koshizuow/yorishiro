@@ -1,12 +1,12 @@
-# The release build environment (D41): Ubuntu 24.04, so the release needs glibc 2.39 at most and runs on
-# Ubuntu 24.04, Linux Mint 22 and newer. Built once and reused by tools/release/build.sh.
+# The release build environment (D41): Ubuntu 24.04. build.sh still checks that nothing needs a newer glibc
+# than 2.38, so the release runs on Fedora 39, Ubuntu 24.04, Linux Mint 22 and newer. Built once and reused by tools/release/build.sh.
 #   podman build -t yorishiro-release tools/release
 # Everything is pinned: the Rust toolchain, PipeWire (by commit) and what build.sh downloads (by sha).
 FROM docker.io/library/ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-		build-essential pkg-config cmake ninja-build meson git curl ca-certificates unzip binutils file desktop-file-utils \
+		build-essential pkg-config cmake ninja-build meson git curl ca-certificates unzip binutils file desktop-file-utils appstream zsync \
 		libclang-dev clang libudev-dev libinput-dev libgbm-dev libdrm-dev libvulkan-dev \
 		libfontconfig1 \
 	&& rm -rf /var/lib/apt/lists/*

@@ -54,6 +54,13 @@ func _add_menu_entry(column: Container) -> void:
 	state.theme_type_variation = &"FieldLabel"
 	var refresh := func ():
 		var there: bool = DesktopEntry.installed()
+		# an AppImage tool (Gear Lever, AppImageLauncher) already put Yorishiro in the menu: a second entry would
+		# show it twice
+		var elsewhere: String = "" if there else DesktopEntry.integrated_elsewhere()
+		add.visible = elsewhere == ""
+		if elsewhere != "":
+			state.text = tr("Already in the application menu (added by another tool), nothing to add.")
+			state.tooltip_text = elsewhere
 		add.text = tr("Update application menu entry") if there else tr("Add to application menu")
 		remove.visible = there
 	add.pressed.connect(func ():

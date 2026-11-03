@@ -15,7 +15,9 @@ OUT=${OUT_DIR:-$ROOT/target/release}
 GODOT_VERSION=4.7.2
 GODOT_ZIP_SHA512=9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
 GODOT_TPZ_SHA512=ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079
-GLIBC_MAX=2.39
+# the README promises Fedora 39, the oldest supported glibc: nothing may need a newer one (libncnn's __isoc23_*
+# need 2.38 now)
+GLIBC_MAX=2.38
 
 echo "== models"
 (cd "$MODELS" && sha256sum -c --quiet "$ROOT/models/SHA256SUMS") || { echo "the models do not match models/SHA256SUMS"; exit 1; }
@@ -64,10 +66,10 @@ dir=$ROOT/target/release/yorishiro-$VERSION
 need=$(find "$dir" -type f \( -name '*.so*' -o -name '*.x86_64' \) -exec objdump -T {} + 2>/dev/null \
 	| grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -uV | tail -1)
 echo "needs glibc $need (at most $GLIBC_MAX)"
-[ "$(printf '%s\n%s\n' "$need" "$GLIBC_MAX" | sort -V | tail -1)" = "$GLIBC_MAX" ] || { echo "too new for Ubuntu 24.04"; exit 1; }
+[ "$(printf '%s\n%s\n' "$need" "$GLIBC_MAX" | sort -V | tail -1)" = "$GLIBC_MAX" ] || { echo "too new for glibc $GLIBC_MAX (Fedora 39)"; exit 1; }
 
 mkdir -p "$OUT"
-files="yorishiro-$VERSION-linux-x86_64.tar.gz Yorishiro-$VERSION-x86_64.AppImage"
+files="yorishiro-$VERSION-linux-x86_64.tar.gz Yorishiro-$VERSION-x86_64.AppImage Yorishiro-$VERSION-x86_64.AppImage.zsync"
 for f in $files; do
 	[ "$(realpath "$OUT")" = "$ROOT/target/release" ] || cp "$ROOT/target/release/$f" "$OUT/"
 done

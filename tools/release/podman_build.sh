@@ -1,5 +1,6 @@
 #!/bin/bash
-# Builds a release in the release container with podman, then checks the AppImage on a stock Ubuntu 24.04.
+# Builds a release in the release container with podman, then starts the AppImage on stock distributions
+# (tools/release/check_appimage.sh).
 #   MODELS_DIR=<models> tools/release/podman_build.sh <ref> [version]
 # <ref>: a tag, a commit or origin/<branch> of REPO (default the GitHub repository). Only committed code is
 # built: the ref is checked out in BUILD_DIR/src (default ~/yorishiro-build) and everything untracked except
@@ -34,13 +35,7 @@ podman run --rm ${MEMORY:+--memory=$MEMORY} \
 	${CARGO_BUILD_JOBS:+-e CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS} \
 	"$IMAGE" /build/src/tools/release/build.sh "$VERSION"
 
-# a stock Ubuntu 24.04 (PipeWire 1.0): every addon loads except the PipeWire output, which needs 1.4
-echo "== stock Ubuntu 24.04"
-log=$out/check-$VERSION.log
-podman run --rm -v "$out:/out:ro" -e APPIMAGE_EXTRACT_AND_RUN=1 docker.io/library/ubuntu:24.04 \
-	sh -c "apt-get update -qq && apt-get install -y -qq --no-install-recommends libpipewire-0.3-0t64 libvulkan1 libgbm1 libinput10 libfontconfig1 > /dev/null 2>&1
-		cd /tmp && /out/Yorishiro-$VERSION-x86_64.AppImage --headless --quit" > "$log" 2>&1 || true
-failed=$(grep -o "Error loading extension: 'res://addons/[a-z_]*" "$log" | sed 's#.*res://##' | sort -u | tr "\n" " " || true)
-echo "addons that did not load: ${failed:-none}"
-[ "$failed" = "addons/yorishiro_pipewire " ] || { echo "expected only the PipeWire output to fail, see $log"; exit 1; }
-echo "ok, release files in $out"
+# the AppImage as people start it (FUSE, a normal user, no libfuse2) on stock distributions
+echo "== stock distributions"
+"$src/tools/release/check_appimage.sh" "$out/Yorishiro-$VERSION-x86_64.AppImage"
+echo "ok, release files in $out (upload the AppImage, its .zsync, the tar.gz and SHA256SUMS-$VERSION)"

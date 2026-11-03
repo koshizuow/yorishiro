@@ -57,7 +57,10 @@
 
 到 [Releases](https://github.com/koshizuow/yorishiro/releases) 下載以下其中一種：
 
-- **AppImage**（單一檔案）：先執行 `chmod +x Yorishiro-<版本>-x86_64.AppImage`，再打開它。
+- **AppImage**（單一檔案）：先執行 `chmod +x Yorishiro-<版本>-x86_64.AppImage`，再打開它。不需要安裝 libfuse2：
+  它從系統用到的只有 fuse3 套件的 `fusermount3`，這些發行版的桌面版都已內建。每個版本都會在原裝的 Ubuntu 24.04、
+  Fedora 39、Arch 和 openSUSE Tumbleweed 上用這個方式實際啟動（`tools/release/check_appimage.sh`）。Gear Lever、
+  AppImageUpdate 這類 AppImage 工具可以把它加進應用程式選單，也能自動更新，只下載有變動的部分。
 - **tar.gz**：解壓後執行裡面的 `./yorishiro.x86_64`。
 
 兩種都已附上追蹤模型。`SHA256SUMS-<版本>` 列出各檔案的檢查碼。設定和模型庫存在 `~/.local/share/yorishiro/`。

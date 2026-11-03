@@ -67,7 +67,11 @@
 
 From [Releases](https://github.com/koshizuow/yorishiro/releases), either:
 
-- **AppImage** (one file): `chmod +x Yorishiro-<version>-x86_64.AppImage`, then run it.
+- **AppImage** (one file): `chmod +x Yorishiro-<version>-x86_64.AppImage`, then run it. It does not need libfuse2:
+  what it uses from the system is `fusermount3` from the fuse3 package, which desktop installs of these
+  distributions already have. Each release is started this way on stock Ubuntu 24.04, Fedora 39, Arch and openSUSE
+  Tumbleweed (`tools/release/check_appimage.sh`). AppImage tools such as Gear Lever and AppImageUpdate can add it
+  to the application menu and update it, downloading only the parts that changed.
 - **tar.gz**: unpack it and run `./yorishiro.x86_64` inside.
 
 The tracking models come with both. `SHA256SUMS-<version>` lists the files' checksums. Settings and the model

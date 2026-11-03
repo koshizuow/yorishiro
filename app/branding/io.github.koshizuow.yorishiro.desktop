@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Yorishiro
+Comment=Live2D VTuber app with face tracking
+Exec=yorishiro
+Icon=io.github.koshizuow.yorishiro
+StartupWMClass=Yorishiro
+Categories=AudioVideo;Video;
+Keywords=VTuber;Live2D;avatar;face tracking;
+Terminal=false
