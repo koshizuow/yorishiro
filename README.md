@@ -32,7 +32,7 @@
   groups, an item library for pictures and animations, item scenes.
 - **Into OBS with a transparent background.** The stage goes to OBS as a PipeWire video stream with alpha,
   without the app's buttons and menus. A v4l2loopback virtual camera, which has no alpha and so
-  shows the app's background, and a transparent window work too.
+  shows the app's background, and a transparent window work too. Setting it up: [OBS in the guide](docs/guide.md#obs).
 - **Tracking for other apps.** The tracker can also send its data in common face tracking protocols
   (iFacialMocap and the iPhone tracking protocol other VTuber apps read).
 - **Plugins.** A local WebSocket API (port 8001, off by default) in the message format VTuber plugins
@@ -132,7 +132,7 @@ Start the AppImage (or `./yorishiro.x86_64` from the tar.gz), or `./run.sh` when
 - Drag the model to move it, scroll (or pinch on a touchpad) to resize it, hold Shift and scroll to tilt it. The gear in the corner
   opens all settings.
 - **OBS:** turn on *Send the stage to OBS* in Settings, then add a *PipeWire video* source in OBS and pick
-  Yorishiro.
+  Yorishiro. OBS needs the obs-pwvideo plugin first: [OBS in the guide](docs/guide.md#obs) has the install steps.
 - App data (settings, model library, thumbnails) lives in `userdata/yorishiro/` while running from source.
 - **Several people on one computer:** open the app again. Each copy takes the next number (or choose one with `--instance=2`) and has its own settings, a free camera, its own OBS stream (`Yorishiro-2`) and plugin port (8002); the model library is shared. Two copies cannot read the same camera. Each copy does its own tracking and drawing, so plan for the extra CPU and graphics memory.
 - If the window takes about a minute to appear on Wayland, the desktop portal is not answering: Godot asks it at
