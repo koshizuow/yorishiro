@@ -91,6 +91,8 @@ const TRACKERS = {
 	"openseeface": "res://lib/tracking/camera/openseeface/osf_tracker.gd",
 	# the VTube Studio iPhone protocol input, asking 127.0.0.1 (the tracker's VTS iPhone output)
 	"vts-iphone": "res://lib/tracking/camera/vts_blendshapes/vts_tracker.gd",
+	# VTube Studio's own phone-to-PC link: the phone connects to this computer's TCP 25565 and sends its VTS inputs
+	"vts-wifi": "res://lib/tracking/camera/vts/vts_tracker.gd",
 	# the iFacialMocap input, asking 127.0.0.1:<--ifm-phone-port> (tools/fake_ifacialmocap.py plays the phone there:
 	# the real phone's port 49983 is the one this computer listens on)
 	"ifacialmocap": "res://lib/tracking/camera/ifacialmocap/ifm_tracker.gd",
@@ -150,6 +152,9 @@ func _ready() -> void:
 		tracking.activate_tracker(t)
 		if args["tracker"] == "vts-iphone":
 			t.server.client_host = args.get("phone-host", "127.0.0.1")
+			t.server.start()
+		if args["tracker"] == "vts-wifi":
+			t.server.host = "*"
 			t.server.start()
 		if args["tracker"] == "ifacialmocap":
 			t.server.client_host = "127.0.0.1"

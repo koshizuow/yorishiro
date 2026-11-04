@@ -36,8 +36,9 @@ func _listen():
 		
 	peer.poll()
 	var is_alive = peer.get_status()
-	if is_alive == StreamPeerTCP.Status.STATUS_NONE:
+	if is_alive == StreamPeerTCP.Status.STATUS_NONE or is_alive == StreamPeerTCP.Status.STATUS_ERROR:
 		peer = null
+		connection_status.emit(ConnectionStatus.WAIT)  # the phone left: wait for it to connect again
 		return
 	
 	if peer.get_available_bytes() <= 0:

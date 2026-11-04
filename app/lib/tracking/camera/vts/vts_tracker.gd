@@ -43,8 +43,8 @@ const Inputs = [
 	"HandLeftPositionY",
 	"HandLeftPositionZ",
 	"HandRightPositionX",
-	"HandRightPositionX",
-	"HandRightPositionX",
+	"HandRightPositionY",
+	"HandRightPositionZ",
 	"HandLeftAngleX",
 	"HandLeftAngleZ",
 	"HandRightAngleX",
@@ -88,15 +88,29 @@ func create_config() -> Node:
 	panel.tracker = server
 	return panel
 
+## The phone streams over TCP: each message is a 4 byte big-endian length, then that much JSON (about 1.1 kB, 57 a
+## second from an iPhone, 2026-11-04). TCP does not keep message boundaries, so one read can hold part of a message
+## or several: the bytes collect here until a whole message is in. Before, the length was read little-endian and each
+## read parsed as one message, which only worked while every read happened to be exactly one.
+var _pending := PackedByteArray()
+const MAX_MESSAGE = 1 << 20
+
 func _packet_received(packet: PackedByteArray):
-	# parse Telemetry message format
-	var header = packet.decode_u32(0)
-	var buffer = packet.slice(4, header)
-	var content = buffer.get_string_from_utf8()
-	if content:
-		var msg = JSON.parse_string(content)
-		if msg != null and "Data" in msg:
-			_data_received(msg.Data)
+	_pending.append_array(packet)
+	var latest = null
+	while _pending.size() >= 4:
+		var n := (_pending[0] << 24) | (_pending[1] << 16) | (_pending[2] << 8) | _pending[3]
+		if n <= 0 or n > MAX_MESSAGE:
+			_pending.clear()  # out of step with the stream, start over with the next read
+			return
+		if _pending.size() < 4 + n:
+			break
+		var msg = JSON.parse_string(_pending.slice(4, 4 + n).get_string_from_utf8())
+		_pending = _pending.slice(4 + n)
+		if msg is Dictionary and "Data" in msg:
+			latest = msg
+	if latest != null:
+		_data_received(latest.Data)
 
 func _data_received(data: Array):
 	var param = {}

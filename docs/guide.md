@@ -116,26 +116,39 @@ the right way round.
 
 ## iPhone tracking
 
-An iPhone with VTube Studio can track your face instead of the webcam. The app on the phone sends its tracking the way
-it does for VSeeFace, and that part is free.
+An iPhone with VTube Studio can track your face instead of the webcam. There are two ways to connect. Both were checked
+with an iPhone and turn the model like a mirror, as the webcam does.
 
-On the iPhone:
+**PC connection (recommended for models made for VTube Studio).** The phone works out the model's inputs (head angle,
+eyes, mouth) itself, with its own calibration, the same values VTube Studio on a computer would get. Models whose settings
+expect those values, for example eyes fully open at 0.5, look as they do there.
 
-1. Connect to the same Wi-Fi as the computer. Turn off mobile data if the IP below does not look like your other
+1. In Yorishiro, open the camera panel, choose **VTubeStudio (WiFi)** as the tracking source and press **Start Server**.
+   The panel shows this computer's address.
+2. On the iPhone, connect to the same Wi-Fi. In VTube Studio open the settings (the gear), and under the PC connection
+   (Wi-Fi) part enter that address and port 25565, then turn on **Connect to PC**.
+3. The panel switches to On once the phone is connected. If it stays on Listening, the computer's firewall may be
+   blocking TCP port 25565. With ufw: `sudo ufw allow 25565/tcp`.
+
+**VSeeFace mode.** The phone sends the raw face shapes (52 ARKit values) and Yorishiro works out the inputs itself.
+That part of the app is free.
+
+1. On the iPhone, connect to the same Wi-Fi. Turn off mobile data if the IP below does not look like your other
    devices' (for example `192.168.x.x`).
 2. In VTube Studio, tap the camera button once so tracking starts.
-3. Open the settings (the gear), scroll down to the **VSeeFace** part and turn on **Activate**.
+3. Open the settings, scroll down to the **VSeeFace** part and turn on **Activate**.
 4. Press **Show IP list** and note the IPv4 address. The port is always 21412.
-5. Optional: turn off **Streaming Mode** under the PC connection, or the screen darkens once the computer connects.
+5. In Yorishiro, choose **iOS BlendShapes (VTS)** as the tracking source, enter the phone's address as **Hostname
+   (Phone)** and press **Connect to Mobile**. The computer appears under **Connected VSF Clients** on the phone.
+6. If nothing arrives, the firewall may be blocking UDP port 50650, which the data comes in on:
+   `sudo ufw allow 50650/udp`.
 
-In Yorishiro, open the camera panel, choose **iOS BlendShapes (VTS)** as the tracking source, enter the phone's IPv4
-address as **Hostname (Phone)** and press **Connect to Mobile**. The computer appears under **Connected VSF Clients** on
-the phone.
+For both:
 
 - Keep VTube Studio open on the phone, with the screen on. The model stops while the app is in the background.
-- If nothing arrives, the computer's firewall may be blocking UDP port 50650, which the data comes in on. With ufw:
-  `sudo ufw allow 50650/udp`.
-- The model works like a mirror, as with the webcam.
+- **Streaming Mode** under the PC connection darkens the phone's screen once a computer connects. Turn it off if you want
+  to watch the phone.
+- Use one way at a time.
 
 ## Several people on one computer
 
@@ -155,5 +168,5 @@ Every copy runs its own tracking, so the limit depends on your computer.
 | Keyboard hotkeys do nothing | Click the app's window so it has focus. For other windows see [Hotkeys](#hotkeys). |
 | No Yorishiro source in OBS | Check that **Send the stage to OBS** is on, then check the plugin against your OBS version. |
 | No device in the virtual camera list | Run the `modprobe` line from [Virtual camera](#virtual-camera), then press **Check again**. It is needed again after a reboot. |
-| iPhone tracking stays on Listening | Check the phone's IP and that it is on the same Wi-Fi, see [iPhone tracking](#iphone-tracking). |
+| iPhone tracking stays on Listening | Check the address and that the phone is on the same Wi-Fi, then the firewall, see [iPhone tracking](#iphone-tracking). |
 | Camera busy | Another app or another copy has the camera. Close it, or choose another camera. |

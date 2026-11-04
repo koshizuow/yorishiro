@@ -34,7 +34,7 @@ text = "Hostname"
 
 [node name="Hostname" type="LineEdit" parent="HBoxContainer" unique_id=1386416110]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
+custom_minimum_size = Vector2(170, 0)
 layout_mode = 2
 placeholder_text = "0.0.0.0"
 alignment = 2
