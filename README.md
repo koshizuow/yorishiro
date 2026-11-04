@@ -153,7 +153,7 @@ Start the AppImage (or `./yorishiro.x86_64` from the tar.gz), or `./run.sh` when
 | `research/` | Python tools that make the tracking models, and the eye model's training | Apache-2.0, see `research/LICENSE` |
 | `tools/` | Development and test tools | Same as the part they belong to |
 
-Face recordings and models used for testing are kept outside the repository and never committed.
+The models in the screenshots are not part of this project or its license, see [Credits for the pictures](#credits-for-the-pictures).
 
 Yorishiro is an independent project. It is not the upstream OpenVT, Ayagami or libfunnel project and is not
 endorsed by their authors; please report problems here. Full licensing and the third-party list:
@@ -161,9 +161,10 @@ endorsed by their authors; please report problems here. Full licensing and the t
 
 ## Credits for the pictures
 
-The model in the screenshots is the Live2D sample model ずんだもん (illustration 坂本アヒル, modeling Live2D Inc.).
+The models in the screenshots are the Live2D sample models ずんだもん (illustration 坂本アヒル, modeling Live2D Inc.) and
+桃瀬ひより (Live2D Inc.).
 本作品のキャラクターには株式会社Live2Dの著作物であるサンプルデータが株式会社Live2Dの定める規約に従って用いられています。
 ずんだもん: 東北ずん子・ずんだもんプロジェクト. The model files are not part of this repository, get them from
-[Live2D's sample page](https://www.live2d.com/learn/sample/zundamon/).
+[Live2D's sample page](https://www.live2d.com/learn/sample/).
 
 "Live2D" and "Cubism" are trademarks of Live2D Inc. Yorishiro is not affiliated with Live2D Inc.

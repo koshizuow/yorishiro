@@ -136,16 +136,16 @@ commit 和 workflow。
 | `research/` | 產生追蹤模型的 Python 工具，以及眼睛模型的訓練 | Apache-2.0，見 `research/LICENSE` |
 | `tools/` | 開發和測試用的工具 | 依所屬的部分而定 |
 
-測試用的臉部錄影和模型都放在 repo 外面，不會被提交。
+截圖裡的模型不屬於這個專案，也不在它的授權範圍內，見[截圖素材](#截圖素材)。
 
 Yorishiro 是獨立的專案，和上游的 OpenVT、Ayagami、libfunnel 是不同的專案，也沒有經過它們作者的背書。遇到問題請在這裡回報。
 完整的授權和第三方元件清單請見 [NOTICE](NOTICE)。
 
 ## 截圖素材
 
-截圖裡的模型是 Live2D 官方的範例模型ずんだもん（插畫：坂本アヒル，建模：Live2D Inc.）。
+截圖裡的模型是 Live2D 官方的範例模型ずんだもん（插畫：坂本アヒル，建模：Live2D Inc.）和桃瀬ひより（Live2D Inc.）。
 本作品のキャラクターには株式会社Live2Dの著作物であるサンプルデータが株式会社Live2Dの定める規約に従って用いられています。
 ずんだもん：東北ずん子・ずんだもんプロジェクト。模型檔案沒有放在這個 repo 裡，請到
-[Live2D 的範例頁面](https://www.live2d.com/learn/sample/zundamon/)下載。
+[Live2D 的範例頁面](https://www.live2d.com/learn/sample/)下載。
 
 「Live2D」和「Cubism」是 Live2D Inc. 的商標。Yorishiro 和 Live2D Inc. 沒有任何關係。
