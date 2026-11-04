@@ -6,11 +6,15 @@ extends "../blendshape_tracker.gd"
 
 const BidirectionalTracker = preload("res://lib/tracking/net/bidirectional_tracker.gd")
 const Serializers = preload("res://lib/utils/serializers.gd")
+const ArkitToVts = preload("../arkit_to_vts.gd")
 
 
 class TrackingData:
 	@export var Position: Vector3 = Vector3.ZERO
 	@export var Rotation: Vector3 = Vector3.ZERO
+	# x nods, y turns (degrees)
+	@export var EyeLeft: Vector3 = Vector3.ZERO
+	@export var EyeRight: Vector3 = Vector3.ZERO
 	
 	# dict = { k: str, v: float }
 	@export var BlendShapes: Array = []
@@ -80,5 +84,7 @@ func _data_received(data: TrackingData):
 		# VTS uses different names for each blendshape
 		var key = parameter.k.replace("_L", "Left").replace("_R", "Right").to_pascal_case()
 		parameters[key] = parameter.v
-		
+	# the inputs models are bound to (only the raw blendshapes reached the model before, so it did not move)
+	parameters.merge(ArkitToVts.params(parameters.duplicate(), [data.Rotation.y, data.Rotation.x, data.Rotation.z], data.Position,
+		Vector2(data.EyeLeft.y, data.EyeLeft.x), Vector2(data.EyeRight.y, data.EyeRight.x)))
 	update(parameters)

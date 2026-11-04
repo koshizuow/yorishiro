@@ -32,6 +32,10 @@ func _ready() -> void:
 	# appended last so saved selections (stored by index) keep pointing at the same tracker
 	face_trackers.add_item("Yorishiro tracker")
 	face_trackers.set_item_metadata(face_trackers.item_count - 1, preload("res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd"))
+
+	# after the Yorishiro tracker for the same reason: an iPhone with the iFacialMocap app
+	face_trackers.add_item("iFacialMocap (iPhone)")
+	face_trackers.set_item_metadata(face_trackers.item_count - 1, preload("res://lib/tracking/camera/ifacialmocap/ifm_tracker.gd"))
 	
 	for tracker in tracking_system.get_children():
 		var config = tracker.create_config()

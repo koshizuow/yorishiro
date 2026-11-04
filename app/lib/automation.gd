@@ -87,6 +87,9 @@ const TRACKERS = {
 	"openseeface": "res://lib/tracking/camera/openseeface/osf_tracker.gd",
 	# the VTube Studio iPhone protocol input, asking 127.0.0.1 (the tracker's VTS iPhone output)
 	"vts-iphone": "res://lib/tracking/camera/vts_blendshapes/vts_tracker.gd",
+	# the iFacialMocap input, asking 127.0.0.1:<--ifm-phone-port> (tools/fake_ifacialmocap.py plays the phone there:
+	# the real phone's port 49983 is the one this computer listens on)
+	"ifacialmocap": "res://lib/tracking/camera/ifacialmocap/ifm_tracker.gd",
 }
 
 func _ready() -> void:
@@ -133,6 +136,16 @@ func _ready() -> void:
 		if args["tracker"] == "vts-iphone":
 			t.server.client_host = "127.0.0.1"
 			t.server.start()
+		if args["tracker"] == "ifacialmocap":
+			t.server.client_host = "127.0.0.1"
+			t.server.client_port = int(args.get("ifm-phone-port", "49984"))
+			t.server.start()
+			# what came in, for the test to compare with what the fake phone sent
+			get_tree().create_timer(3.0).timeout.connect(func ():
+				var shown := []
+				for k in ["JawOpen", "EyeBlinkLeft", "MouthSmileRight", "MouthOpen", "EyeOpenRight", "FaceAngleX", "FaceAngleY", "FaceAngleZ"]:
+					shown.append("%s=%.2f" % [k, t.last_parameters.get(k, -1.0)])
+				print("[automation] ifacialmocap %s head=%s" % [" ".join(shown), t.tracker.get_joint_transform(XRBodyTracker.JOINT_HEAD).basis.get_euler() * 180.0 / PI]))
 		print("[automation] tracker %s" % args["tracker"])
 
 	if args.has("screenshot") or args.has("screenshot-window"):
