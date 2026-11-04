@@ -75,6 +75,9 @@
 ##   --gpu-check            after the screenshot, compare the model's GPU-deformed vertices with the CPU path
 ##   --render-stats=<s>     after the screenshot, measure that long: GPU and CPU render time summed over every viewport
 ##                          (the stage, each mask viewport), draw calls and objects per frame, the number of viewports
+##   --send-outputs         turn on the Yorishiro tracker's outputs to other apps (VTS iPhone, iFacialMocap to 127.0.0.1)
+##   --trace=<seconds>      print the tracked head, eye and mouth inputs every 0.1 s with the wall clock in ms, for
+##                          comparing two copies (one sending, one receiving: --instance=2 --tracker=ifacialmocap)
 ##   --quit                 exit after the screenshot
 extends Node
 
@@ -126,6 +129,17 @@ func _ready() -> void:
 		# hold the model still from the start, the saved tracker could still be feeding it otherwise
 		_pose_tracker = get_tree().get_first_node_in_group("system:tracking").activate_tracker(CameraTracker.new())
 
+	if args.has("send-outputs"):
+		for i in 10:
+			await get_tree().process_frame
+		var face = get_tree().get_first_node_in_group("system:tracking").get_node("FaceTracker")
+		face.send_vts_iphone = true
+		face.send_ifacialmocap = true
+		face.restart()
+		print("[automation] outputs on")
+	if args.has("trace"):
+		# not awaited: runs beside the rest of the sequence
+		_trace(float(args["trace"]))
 	if args.has("tracker"):
 		# the settings panel restores the saved tracker a frame after startup, go after it
 		for i in 10:
@@ -547,6 +561,17 @@ func _expression_editor_test(shot: String):
 	await wait.call(15)
 	names = model.get_expression_controller().expressions.map(func (e): return e.get_name())
 	check.call("deleted", not FileAccess.file_exists(file) and not ("yori_test" in names))
+
+func _trace(seconds: float):
+	var tracking = get_tree().get_first_node_in_group("system:tracking")
+	var end_ms := Time.get_ticks_msec() + int(seconds * 1000)
+	while Time.get_ticks_msec() < end_ms:
+		var p: Dictionary = tracking.parameters
+		var line := "[trace] %d" % int(Time.get_unix_time_from_system() * 1000)
+		for k in ["FaceAngleX", "FaceAngleY", "FaceAngleZ", "EyeOpenLeft", "EyeOpenRight", "MouthOpen", "MouthSmile", "EyeLeftX", "EyeLeftY", "Brows"]:
+			line += " %s=%.3f" % [k, float(p.get(k, 0.0))]
+		print(line)
+		await get_tree().create_timer(0.1).timeout
 
 func _core_test(cam: int, runtime: String):
 	var check := func (what: String, ok: bool): print("[automation] core %s: %s" % [what, "ok" if ok else "FAILED"])
