@@ -7,6 +7,7 @@
 - [OBS](#obs)
 - [Virtual camera](#virtual-camera)
 - [Left and right](#left-and-right)
+- [iPhone tracking](#iphone-tracking)
 - [Several people on one computer](#several-people-on-one-computer)
 - [Troubleshooting](#troubleshooting)
 
@@ -30,8 +31,8 @@
 If the model comes with hotkeys, they are ready when it loads. To see or change them, open the **Hotkeys** page in
 Settings. A model must be loaded.
 
-- **Change the keys:** click the keys of a hotkey, then press the new keys together, up to three, such as Ctrl+M.
-  Esc cancels and Backspace clears.
+- **Change the keys:** click the keys of a hotkey, then hold the new keys together, up to three, such as Ctrl+M or
+  Tab+F1. They are set when you let go. Esc cancels and Backspace clears.
 - **Add one:** press **Add hotkey**, then choose what it does: an expression, an animation or an app action.
 - **Hold:** with Hold on, the hotkey is active only while you keep the keys down.
 
@@ -113,6 +114,29 @@ OBS, your stream and the people in a call see the same picture as the app's wind
 usually flip **your own preview** only, so your preview can look reversed compared to the app while everyone else sees it
 the right way round.
 
+## iPhone tracking
+
+An iPhone with VTube Studio can track your face instead of the webcam. The app on the phone sends its tracking the way
+it does for VSeeFace, and that part is free.
+
+On the iPhone:
+
+1. Connect to the same Wi-Fi as the computer. Turn off mobile data if the IP below does not look like your other
+   devices' (for example `192.168.x.x`).
+2. In VTube Studio, tap the camera button once so tracking starts.
+3. Open the settings (the gear), scroll down to the **VSeeFace** part and turn on **Activate**.
+4. Press **Show IP list** and note the IPv4 address. The port is always 21412.
+5. Optional: turn off **Streaming Mode** under the PC connection, or the screen darkens once the computer connects.
+
+In Yorishiro, open the camera panel, choose **iOS BlendShapes (VTS)** as the tracking source, enter the phone's IPv4
+address as **Hostname (Phone)** and press **Connect to Mobile**. The computer appears under **Connected VSF Clients** on
+the phone.
+
+- Keep VTube Studio open on the phone, with the screen on. The model stops while the app is in the background.
+- If nothing arrives, the computer's firewall may be blocking UDP port 50650, which the data comes in on. With ufw:
+  `sudo ufw allow 50650/udp`.
+- The model works like a mirror, as with the webcam.
+
 ## Several people on one computer
 
 Open the app again. Each copy takes the next number, or choose one with `--instance=2`.
@@ -131,4 +155,5 @@ Every copy runs its own tracking, so the limit depends on your computer.
 | Keyboard hotkeys do nothing | Click the app's window so it has focus. For other windows see [Hotkeys](#hotkeys). |
 | No Yorishiro source in OBS | Check that **Send the stage to OBS** is on, then check the plugin against your OBS version. |
 | No device in the virtual camera list | Run the `modprobe` line from [Virtual camera](#virtual-camera), then press **Check again**. It is needed again after a reboot. |
+| iPhone tracking stays on Listening | Check the phone's IP and that it is on the same Wi-Fi, see [iPhone tracking](#iphone-tracking). |
 | Camera busy | Another app or another copy has the camera. Close it, or choose another camera. |

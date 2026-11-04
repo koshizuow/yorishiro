@@ -67,8 +67,8 @@ func _data_received(data: TrackingData):
 	tracker.set_joint_transform(XRBodyTracker.JOINT_HEAD, Transform3D(
 		Basis(
 			Quaternion.from_euler(Vector3(
-				deg_to_rad(data.Rotation.y),
-				deg_to_rad(data.Rotation.x),
+				deg_to_rad(-data.Rotation.y),
+				deg_to_rad(-data.Rotation.x),
 				deg_to_rad(data.Rotation.z),
 			))
 		),
@@ -84,7 +84,11 @@ func _data_received(data: TrackingData):
 		# VTS uses different names for each blendshape
 		var key = parameter.k.replace("_L", "Left").replace("_R", "Right").to_pascal_case()
 		parameters[key] = parameter.v
-	# the inputs models are bound to (only the raw blendshapes reached the model before, so it did not move)
-	parameters.merge(ArkitToVts.params(parameters.duplicate(), [data.Rotation.y, data.Rotation.x, data.Rotation.z], data.Position,
-		Vector2(data.EyeLeft.y, data.EyeLeft.x), Vector2(data.EyeRight.y, data.EyeRight.x)))
+	# the inputs models are bound to (only the raw blendshapes reached the model before, so it did not move).
+	# The phone sends what its front camera sees, already mirrored: Left/Right names are the image's sides (closing
+	# the right eye raises EyeBlinkLeft), turning to your left is a positive x and looking up a negative y, the tilt as
+	# is. So the data goes in unmirrored with the nod and tilt negated (checked with a real iPhone, 2026-11-04; the
+	# example receiver in DenchiSoft's VTubeStudioBlendshapeUDPReceiverTest negates x and y the same way).
+	parameters.merge(ArkitToVts.params(parameters.duplicate(), [-data.Rotation.y, data.Rotation.x, -data.Rotation.z],
+		data.Position, Vector2(data.EyeLeft.y, data.EyeLeft.x), Vector2(data.EyeRight.y, data.EyeRight.x), false))
 	update(parameters)

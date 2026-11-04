@@ -3,7 +3,26 @@
 //! for value (the timestamp aside). Golden: testdata/core-golden/sinks.json from the retired Python tracker's export_core.py,
 //! or SINK_GOLDEN; skipped without either.
 use yorishiro_tracking::frame::FaceFrame;
-use yorishiro_tracking::sinks::{IFacialMocapSink, VtsIphoneSink};
+use yorishiro_tracking::sinks::{swap_sides, IFacialMocapSink, VtsIphoneSink};
+
+/// The Python sink sent our own directions; the phone's are mirrored (see VtsIphoneSink::payload): the golden
+/// payload turned into what the phone would send for the same face.
+fn phone_sides(v: &serde_json::Value) -> serde_json::Value {
+    let mut v = v.clone();
+    let neg = |x: &mut serde_json::Value| { if let Some(f) = x.as_f64() { *x = serde_json::json!(if f == 0.0 { 0.0 } else { -f }); } };
+    neg(&mut v["Rotation"]["x"]);
+    neg(&mut v["Rotation"]["y"]);
+    neg(&mut v["Position"]["x"]);
+    let (l, r) = (v["EyeLeft"].clone(), v["EyeRight"].clone());
+    v["EyeLeft"] = r;
+    v["EyeRight"] = l;
+    neg(&mut v["EyeLeft"]["y"]);
+    neg(&mut v["EyeRight"]["y"]);
+    for s in v["BlendShapes"].as_array_mut().unwrap() {
+        s["k"] = serde_json::json!(swap_sides(s["k"].as_str().unwrap()));
+    }
+    v
+}
 
 #[test]
 fn sinks_match_python() {
@@ -31,7 +50,7 @@ fn sinks_match_python() {
             println!("iFacialMocap differs:\n  ours   {ours}\n  python {}", g["ifm"].as_str().unwrap());
         }
         let mut a: serde_json::Value = serde_json::from_str(&vts.payload(Some(&f))).unwrap();
-        let mut b = g["vts"].clone();  // Python's payload() is the dict before json.dumps
+        let mut b = phone_sides(&g["vts"]);  // Python's payload() is the dict before json.dumps
         a.as_object_mut().unwrap().remove("Timestamp");
         b.as_object_mut().unwrap().remove("Timestamp");
         if a == b {

@@ -27,6 +27,11 @@ pub struct VtsIphoneSink {
     pub sign: [f64; 3],
 }
 
+/// eyeBlinkLeft -> eyeBlinkRight and back
+pub fn swap_sides(name: &str) -> String {
+    name.replace("Left", "\0").replace("Right", "Left").replace('\0', "Right")
+}
+
 pub const VTS_REQUEST_PORT: u16 = 21412;
 const VTS_MAX_SECONDS: f64 = 10.0;
 
@@ -76,18 +81,21 @@ impl VtsIphoneSink {
         let vec = |x: f64, y: f64, z: f64| {
             format!("{{\"x\":{},\"y\":{},\"z\":{}}}", json_number(round_to(x, 3)), json_number(round_to(y, 3)), json_number(round_to(z, 3)))
         };
+        // As the phone sends it (checked against a real iPhone, 2026-11-04): what its front camera sees, so the
+        // Left/Right names are the image's sides (swapped from ours), turning to your left is a positive x, looking up
+        // a negative y, the tilt and the eyes' nod as ours, the eyes' turn and the sideways position negated.
         let d = f.head_rotation.map(f64::to_degrees); // yaw, pitch, roll
         let t = f.head_translation.map(|v| v * 100.0); // cm
-        let eye = |e: [f64; 3]| vec(e[1].to_degrees(), e[0].to_degrees(), 0.0);
+        let eye = |e: [f64; 3]| vec(e[1].to_degrees(), -e[0].to_degrees(), 0.0);
         let shapes: Vec<String> = ARKIT52.iter().zip(f.blendshapes).map(|(n, v)| {
-            let mut name = n.to_string();
+            let mut name = swap_sides(n);
             name[..1].make_ascii_uppercase();
             format!("{{\"k\":\"{name}\",\"v\":{}}}", json_number(round_to(v, 4)))
         }).collect();
         format!(
             "{{\"Timestamp\":{ms},\"Hotkey\":-1,\"FaceFound\":true,\"Rotation\":{},\"Position\":{},\"EyeLeft\":{},\"EyeRight\":{},\"BlendShapes\":[{}]}}",
-            vec(self.sign[0] * d[0], self.sign[1] * d[1], self.sign[2] * d[2]), vec(t[0], t[1], t[2]),
-            eye(f.left_eye_rotation), eye(f.right_eye_rotation), shapes.join(",")
+            vec(-self.sign[0] * d[0], -self.sign[1] * d[1], self.sign[2] * d[2]), vec(-t[0], t[1], t[2]),
+            eye(f.right_eye_rotation), eye(f.left_eye_rotation), shapes.join(",")
         )
     }
 

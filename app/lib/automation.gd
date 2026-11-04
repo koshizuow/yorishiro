@@ -76,7 +76,8 @@
 ##   --render-stats=<s>     after the screenshot, measure that long: GPU and CPU render time summed over every viewport
 ##                          (the stage, each mask viewport), draw calls and objects per frame, the number of viewports
 ##   --send-outputs         turn on the Yorishiro tracker's outputs to other apps (VTS iPhone, iFacialMocap to 127.0.0.1)
-##   --trace=<seconds>      print the tracked head, eye and mouth inputs every 0.1 s with the wall clock in ms, for
+##   --phone-host=<ip>      with --tracker=vts-iphone: ask a real phone running VTube Studio there instead of 127.0.0.1
+##   --trace=<seconds>     print the tracked head, eye and mouth inputs every 0.1 s with the wall clock in ms, for
 ##                          comparing two copies (one sending, one receiving: --instance=2 --tracker=ifacialmocap)
 ##   --quit                 exit after the screenshot
 extends Node
@@ -148,7 +149,7 @@ func _ready() -> void:
 		var t = load(TRACKERS[args["tracker"]]).new()
 		tracking.activate_tracker(t)
 		if args["tracker"] == "vts-iphone":
-			t.server.client_host = "127.0.0.1"
+			t.server.client_host = args.get("phone-host", "127.0.0.1")
 			t.server.start()
 		if args["tracker"] == "ifacialmocap":
 			t.server.client_host = "127.0.0.1"
