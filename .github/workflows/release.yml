@@ -69,10 +69,23 @@ jobs:
       - name: Draft release
         env:
           GH_TOKEN: ${{ github.token }}
+        # GitHub's API can answer 502 now and then (v0.1.6 got an empty draft that way): try a few times, and when an
+        # earlier try or run already made the draft, upload the files to it instead of failing on "already exists"
         run: |
-          gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" \
-            --notes "Draft from CI: write the notes, sign SHA256SUMS-$GITHUB_REF_NAME (tools/release/sign.sh), upload the .minisig, publish." \
-            "out/Yorishiro-$GITHUB_REF_NAME-x86_64.AppImage" \
-            "out/Yorishiro-$GITHUB_REF_NAME-x86_64.AppImage.zsync" \
-            "out/yorishiro-$GITHUB_REF_NAME-linux-x86_64.tar.gz" \
-            "out/SHA256SUMS-$GITHUB_REF_NAME"
+          files=("out/Yorishiro-$GITHUB_REF_NAME-x86_64.AppImage" "out/Yorishiro-$GITHUB_REF_NAME-x86_64.AppImage.zsync"
+                 "out/yorishiro-$GITHUB_REF_NAME-linux-x86_64.tar.gz" "out/SHA256SUMS-$GITHUB_REF_NAME")
+          for try in 1 2 3 4 5; do
+            draft=$(gh release view "$GITHUB_REF_NAME" --json isDraft -q .isDraft 2>/dev/null || true)
+            if [ "$draft" = false ]; then
+              echo "$GITHUB_REF_NAME is already published, its files stay as they are"; exit 1
+            elif [ "$draft" = true ]; then
+              gh release upload "$GITHUB_REF_NAME" --clobber "${files[@]}" && exit 0
+            else
+              gh release create "$GITHUB_REF_NAME" --draft --title "$GITHUB_REF_NAME" \
+                --notes "Draft from CI: write the notes, sign SHA256SUMS-$GITHUB_REF_NAME (tools/release/sign.sh), upload the .minisig, publish." \
+                "${files[@]}" && exit 0
+            fi
+            echo "try $try failed, again in $((try * 20)) s"
+            sleep $((try * 20))
+          done
+          exit 1
