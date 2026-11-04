@@ -4,7 +4,7 @@
 
 <p align="center">Live2D VTubing for Linux, with its own GPU face tracker.</p>
 
-<p align="center"><a href="README.zh-TW.md">繁體中文</a></p>
+<p align="center"><a href="README.zh-TW.md">繁體中文</a> · <a href="README.ja.md">日本語</a></p>
 
 ![A bald 3D head with glasses winks and turns on the left, the Live2D model does the same on the right](docs/images/hero.gif)
 
@@ -38,7 +38,7 @@
 - **Plugins.** A local WebSocket API (port 8001, off by default) in the message format VTuber plugins
   already use: move the model, trigger hotkeys and expressions, send tracking values. Each plugin asks you
   once before it may connect.
-- **English and Traditional Chinese** interface.
+- **English, Traditional Chinese and Japanese** interface.
 
 | | |
 |---|---|

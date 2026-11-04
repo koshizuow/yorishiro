@@ -1,6 +1,6 @@
 # Yorishiro guide
 
-[繁體中文](guide.zh-TW.md)
+[繁體中文](guide.zh-TW.md) · [日本語](guide.ja.md)
 
 - [Getting started](#getting-started)
 - [Hotkeys](#hotkeys)

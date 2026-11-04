@@ -1,431 +1,431 @@
-keys,en,zh_TW
-auto,auto,自動（顯示卡較快且結果正確時用顯示卡）
-checking the GPU against the CPU,checking the GPU against the CPU,正在比較顯示卡和 CPU
-Models & Items,Models & Items,模型與道具
-Hotkeys,Hotkeys,熱鍵
-Settings,Settings,設定
-Close (Esc),Close (Esc),關閉 (Esc)
-Load Model...,Load Model...,載入模型…
-Load a model first.,Load a model first.,請先載入模型。
-Application Settings,Application Settings,應用程式設定
-Tracking,Tracking,追蹤
-Profile,Profile,設定檔
-UI Theme,UI Theme,介面主題
-Application FPS Limit,Application FPS Limit,畫面更新率上限
-Application Scaling,Application Scaling,介面縮放
-Background,Background,背景
-Camera FOV,Camera FOV,攝影機視角
-Virtual Webcam,Virtual Webcam,虛擬攝影機
-Face Tracking,Face Tracking,臉部追蹤
-Default Grid,Default Grid,預設格線
-Image,Image,圖片
-Color,Color,純色
-Transparent,Transparent,透明
-Dark,Dark,深色
-Max,Max,最高
-Open,Open,開啟
-Load Default Profile,Load Default Profile,載入預設設定檔
-Save,Save,儲存
-Save as...,Save as...,另存為…
-Clear Settings,Clear Settings,清除設定
-Item Scene,Item Scene,道具場景
-Items are ordered background to foreground,Items are ordered background to foreground,道具依序由背景排到前景
-Transform,Transform,位置與大小
-Position,Position,位置
-Scale,Scale,縮放
-Rotation,Rotation,旋轉
-Expression,Expression,表情
-Model Settings,Model Settings,模型設定
-Add Item,Add Item,新增道具
-Clear All Items,Clear All Items,清除所有道具
-Lock transform,Lock transform,鎖定位置
-Toggle Locks,Toggle Locks,切換鎖定
-Recenter,Recenter,置中
-Fit to Screen,Fit to Screen,符合畫面
-Reset Scale,Reset Scale,重設縮放
-Reset Rotation,Reset Rotation,重設旋轉
-Rotate Left 90 Degrees,Rotate Left 90 Degrees,向左轉 90 度
-Rotate Right 90 Degrees,Rotate Right 90 Degrees,向右轉 90 度
-Set Expression,Set Expression,設定表情
-Fade (sec),Fade (sec),淡入淡出（秒）
-Pin to Model,Pin to Model,釘在模型上
-Pin to Mesh,Pin to Mesh,釘在網格上
-Pinned To,Pinned To,釘在
-Flip,Flip,翻轉
-Layer,Layer,圖層
-Remove,Remove,移除
-Delete,Delete,刪除
-Cancel,Cancel,取消
-Rename,Rename,重新命名
-Export,Export,匯出
-Name,Name,名稱
-Model,Model,模型
-Items,Items,道具
-Enabled,Enabled,啟用
-Animation,Animation,動畫
-Animation Frame Rate,Animation Frame Rate,動畫幀率
-Frame Rate,Frame Rate,幀率
-Smoothing,Smoothing,平滑
-Preview,Preview,預覽
-Scene Preview,Scene Preview,場景預覽
-Confirm Load,Confirm Load,確認載入
-Change the active model,Change the active model,更換模型
-Compose your scene with extra items,Compose your scene with extra items,用道具佈置畫面
-Configure Application and Hardware Settings,Configure Application and Hardware Settings,應用程式與硬體設定
-Open a File,Open a File,開啟檔案
-Open File(s),Open File(s),開啟檔案
-Preview Background Color,Preview Background Color,預覽背景色
-Tracker log,Tracker log,追蹤器紀錄
-Waiting...,Waiting...,等待中…
-On,On,開
-Off,Off,關
-"If the Scene has Pinned Items, they will be excluded if the active model does not match","If the Scene has Pinned Items, they will be excluded if the active model does not match",場景裡釘在模型上的道具，如果目前的模型不同就不會載入
-Night Sakura (Default),Night Sakura (Default),夜櫻（預設）
-Language,Language,語言
-Load,Load,載入
-Models,Models,模型
-Import...,Import...,匯入…
-Load a model from a folder on this computer,Load a model from a folder on this computer,從這台電腦的資料夾載入模型
-Unable to load model,Unable to load model,無法載入模型
-Musubi,Musubi,結繩
-New Musubi,New Musubi,新增結繩
-Import Musubi,Import Musubi,匯入結繩
-Edit Musubi,Edit Musubi,編輯結繩
-Advanced: Musubi node editor,Advanced: Musubi node editor,進階：結繩（節點編輯器）
-Reimport VTS Bindings,Reimport VTS Bindings,重新匯入 VTS 綁定
-The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now.,The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now.,熱鍵清單製作中。目前可以先在結繩（節點編輯器）設定熱鍵。
-About,About,關於
-Version %s,Version %s,版本 %s
-Open source components,Open source components,開源元件
-Show full license texts,Show full license texts,顯示授權全文
-"Yorishiro is a VTubing app with its own face tracker. Its app started as a fork of OpenVT by erodozer, released under the MIT license. Yorishiro is not the OpenVT project, please send problems with Yorishiro to Yorishiro.","Yorishiro is a VTubing app with its own face tracker. Its app started as a fork of OpenVT by erodozer, released under the MIT license. Yorishiro is not the OpenVT project, please send problems with Yorishiro to Yorishiro.",Yorishiro 是一套附自製臉部追蹤的 VTuber 軟體。它的 app 一開始 fork 自 erodozer 的 OpenVT（MIT 授權）。Yorishiro 不是 OpenVT 專案，Yorishiro 的問題請回報給 Yorishiro。
-"""Live2D"" and ""Cubism"" are trademarks of Live2D Inc. ""VTube Studio"" is a trademark of its respective owner. Yorishiro is not affiliated with them and does not include the Live2D Cubism SDK.","""Live2D"" and ""Cubism"" are trademarks of Live2D Inc. ""VTube Studio"" is a trademark of its respective owner. Yorishiro is not affiliated with them and does not include the Live2D Cubism SDK.",「Live2D」和「Cubism」是 Live2D Inc. 的商標，「VTube Studio」是其所有者的商標。Yorishiro 與他們沒有關係，也不包含 Live2D Cubism SDK。
-The app this one was forked from,The app this one was forked from,本 app 的 fork 來源
-Game engine the app runs on,Game engine the app runs on,app 使用的遊戲引擎
-Live2D renderer,Live2D renderer,Live2D 繪製
-Virtual webcam output,Virtual webcam output,虛擬攝影機輸出
-Global hotkeys,Global hotkeys,全域熱鍵
-Native addons,Native addons,原生擴充
-Interface font,Interface font,介面字型
-Face and hand tracking models,Face and hand tracking models,臉部和手部追蹤模型
-Expression shapes for face tracking and the 3D head of the tracking preview,Expression shapes for face tracking and the 3D head of the tracking preview,臉部追蹤用的表情形狀，以及追蹤預覽的 3D 頭部
-Runs the tracking models on the GPU (Vulkan),Runs the tracking models on the GPU (Vulkan),在顯示卡上執行追蹤模型（Vulkan）
-Runs the tracking models on the CPU,Runs the tracking models on the CPU,在 CPU 上執行追蹤模型
-Show screen buttons on the stage,Show screen buttons on the stage,在舞台上顯示畫面按鈕
-Clickable buttons in the corner of the stage for hotkeys that have one. Off: keyboard hotkeys only.,Clickable buttons in the corner of the stage for hotkeys that have one. Off: keyboard hotkeys only.,舞台角落可以用滑鼠點的按鈕，對應有設定畫面按鈕的熱鍵。關掉就只用鍵盤熱鍵。
-Action,Action,動作
-Keys,Keys,按鍵
-Hold,Hold,按住
-Screen button,Screen button,畫面按鈕
-None,None,無
-No hotkeys yet. Add one to switch an expression or play an animation with a key.,No hotkeys yet. Add one to switch an expression or play an animation with a key.,還沒有熱鍵。新增一個，就能用按鍵切換表情或播放動畫。
-Add hotkey,Add hotkey,新增熱鍵
-"Click, then press the keys. Esc cancels, Backspace clears.","Click, then press the keys. Esc cancels, Backspace clears.",點一下再按下按鍵。Esc 取消，Backspace 清除。
-On: active only while the keys are held. Off: each press toggles.,On: active only while the keys are held. Off: each press toggles.,勾選：按住時才有效。不勾：每按一次切換一次。
-Delete hotkey,Delete hotkey,刪除熱鍵
-Expression: %s,Expression: %s,表情：%s
-Animation: %s,Animation: %s,動畫：%s
-Set keys,Set keys,設定按鍵
-Press keys...,Press keys...,請按下按鍵…
-This model has no expressions or animations.,This model has no expressions or animations.,這個模型沒有表情或動畫。
-Sensitivity,Sensitivity,靈敏度
-Eyes: open and close,Eyes: open and close,眼睛：開合
-Eyes: gaze,Eyes: gaze,眼睛：視線
-Eyebrows,Eyebrows,眉毛
-Mouth: smile,Mouth: smile,嘴巴：笑
-Mouth: open,Mouth: open,嘴巴：張開
-Mouth: other,Mouth: other,嘴巴：其他
-Cheeks,Cheeks,臉頰
-Head: angle,Head: angle,頭部：角度
-Head: position,Head: position,頭部：位置
-Other,Other,其他
-The dot is your face right now. Drag the two handles to the range you actually move: a narrower range reacts more. Smoothing steadies the motion but adds delay.,The dot is your face right now. Drag the two handles to the range you actually move: a narrower range reacts more. Smoothing steadies the motion but adds delay.,圓點是你現在的臉。把兩個把手拉到你實際會動到的範圍：範圍越窄，反應越大。平滑會讓動作更穩，但會稍微延遲。
-from %s,from %s,來自 %s
-Input range %.2f to %.2f,Input range %.2f to %.2f,輸入範圍 %.2f 到 %.2f
-Smoothing %d%%,Smoothing %d%%,平滑 %d%%
-%s from %s,%s from %s,%s，來自 %s
-Blink both eyes together,Blink both eyes together,兩眼一起眨
-"Both eyes follow the more closed one. Steadier blinks, but no winks.","Both eyes follow the more closed one. Steadier blinks, but no winks.",兩眼都跟著閉得比較多的那隻眼睛。眨眼更穩定，但不能眨單眼。
-Automatic blinking,Automatic blinking,自動眨眼
-When the face is lost,When the face is lost,追蹤不到臉時
-Always,Always,一直
-Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you.,Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you.,每隔幾秒自動眨一次眼。選「追蹤不到臉時」只在追蹤器看不到你時才自動眨。
-Auto calibrate...,Auto calibrate...,自動校正…
-Guides you through a few expressions and sets the ranges to how your face moves.,Guides you through a few expressions and sets the ranges to how your face moves.,引導你做幾個表情，依你的臉實際的動作範圍自動設定。
-"Relax your face, look at the camera and press Start","Relax your face, look at the camera and press Start",放鬆臉部、看著鏡頭，然後按「開始」
-"Press Start, then close both eyes. Open them at the tone","Press Start, then close both eyes. Open them at the tone",按「開始」後閉上雙眼，聽到提示音再張開
-"Press Start, then open your mouth as wide as is comfortable","Press Start, then open your mouth as wide as is comfortable",按「開始」後把嘴巴張到最大（不勉強）
-"Press Start, then smile broadly","Press Start, then smile broadly",按「開始」後大大地笑
-"Press Start, then raise your eyebrows","Press Start, then raise your eyebrows",按「開始」後抬起眉毛
-Start,Start,開始
-Reset to defaults...,Reset to defaults...,回復預設值…
-"Puts this model's ranges, smoothing, eye options, physics and follow-the-face back to how the model came.","Puts this model's ranges, smoothing, eye options, physics and follow-the-face back to how the model came.",把這個模型的範圍、平滑、眼睛選項、物理和跟著臉移動恢復成模型原本的設定。
-"Put this model's ranges, smoothing, eye options, physics and follow-the-face back to their defaults? Calibration and your changes on this page are lost.","Put this model's ranges, smoothing, eye options, physics and follow-the-face back to their defaults? Calibration and your changes on this page are lost.",要把這個模型的範圍、平滑、眼睛選項、物理和跟著臉移動恢復成預設值嗎？校正結果和你在這頁的修改都會消失。
-Reset,Reset,重設
-Sensitivity set back to the model's defaults.,Sensitivity set back to the model's defaults.,靈敏度已恢復成模型的預設值。
-Step %d of %d,Step %d of %d,第 %d 步，共 %d 步
-Calibrated: %s,Calibrated: %s,已校正：%s
-"No clear movement measured, nothing changed.","No clear movement measured, nothing changed.",沒有量到明顯的動作，設定沒有改變。
-Move with your face,Move with your face,跟著臉移動
-Move the model with your face,Move the model with your face,模型跟著臉移動
-"Lean left or right and the model slides along, come closer and it grows.","Lean left or right and the model slides along, come closer and it grows.",往左右移動時模型跟著滑動，靠近鏡頭時模型變大。
-Left and right,Left and right,左右
-Up and down,Up and down,上下
-Closer and farther,Closer and farther,遠近
-Head %+.1f / %+.1f / %+.1f cm,Head %+.1f / %+.1f / %+.1f cm,頭部 %+.1f / %+.1f / %+.1f 公分
-Return to the resting pose,Return to the resting pose,回到正面姿勢
-Freeze in the last pose,Freeze in the last pose,停在最後的姿勢
-after,after,延遲
-"Your glasses reflect the screen, so blinks and winks can be missed. Turn the screen brightness down, light the room a little more, or tilt your glasses slightly.","Your glasses reflect the screen, so blinks and winks can be missed. Turn the screen brightness down, light the room a little more, or tilt your glasses slightly.",眼鏡反射了螢幕的光，眨眼可能偵測不到。可以調低螢幕亮度、讓房間亮一點，或稍微調整眼鏡角度。
-Glasses,Glasses,眼鏡
-Detect from reflections,Detect from reflections,依反光自動偵測
-I wear glasses,I wear glasses,有戴眼鏡
-No glasses,No glasses,沒戴眼鏡
-Shown on the preview head. Detection only notices glasses that reflect the screen.,Shown on the preview head. Detection only notices glasses that reflect the screen.,會顯示在預覽頭上。自動偵測只認得出有反光的眼鏡。
-Blink,Blink,眨眼
-Frequency,Frequency,頻率
-Min,Min,最小
-Speed,Speed,速度
-Breathe,Breathe,呼吸
-Hotkey Input,Hotkey Input,熱鍵輸入
-Pressed,Pressed,按下
-Released,Released,放開
-Read from Store,Read from Store,從暫存讀取
-On-screen Button,On-screen Button,畫面按鈕
-Value,Value,數值
-Trigger,Trigger,觸發
-XR Tracker,XR Tracker,XR 追蹤
-Arithmetic,Arithmetic,運算
-Output,Output,輸出
-Compose,Compose,組合
-Decompose,Decompose,拆分
-Eval,Eval,算式
-Solution,Solution,結果
-Remap,Remap,範圍轉換
-From,From,從
-Clamp,Clamp,限制範圍
-To,To,到
-Weight,Weight,權重
-In,In,進
-Out,Out,出
-Toggle Group,Toggle Group,切換群組
-Slots,Slots,欄位
-Inactive,Inactive,未啟用
-Toggle,Toggle,切換
-State,State,狀態
-Tween,Tween,補間
-Duration,Duration,時間長度
-Easing,Easing,緩動
-InOut,InOut,進出
-OutIn,OutIn,出進
-Transition,Transition,過渡曲線
-Linear,Linear,線性
-Sine,Sine,正弦
-Quintic,Quintic,五次方
-Quartic,Quartic,四次方
-Quadratic,Quadratic,二次方
-Exponential,Exponential,指數
-Elastic,Elastic,彈性
-Cubic,Cubic,三次方
-Circ,Circ,圓弧
-Bounce,Bounce,彈跳
-Back,Back,回彈
-Spring,Spring,彈簧
-Write to Store,Write to Store,寫入暫存
-Var,Var,變數
-Output Model Parameters,Output Model Parameters,輸出模型參數
-Fade,Fade,淡入淡出
-Play,Play,播放
-Stop,Stop,停止
-Completed,Completed,完成
-Skeleton Driver,Skeleton Driver,骨架驅動
-Toggle Expression,Toggle Expression,切換表情
-Clear Expressions,Clear Expressions,清除表情
-Active,Active,啟用
-FPS: %d,FPS: %d,FPS：%d
-Link Eye Blinking,Link Eye Blinking,雙眼一起眨
-OSF Port,OSF Port,OSF 連接埠
-Auto Connect,Auto Connect,自動連線
-Connect,Connect,連線
-Disconnect,Disconnect,中斷連線
-Listening,Listening,等待連線
-Hostname,Hostname,主機名稱
-Port,Port,連接埠
-Start Server,Start Server,啟動伺服器
-Hostname (Phone),Hostname (Phone),主機名稱（手機）
-Connect to Mobile,Connect to Mobile,連線到手機
-no camera found,no camera found,找不到攝影機
-Gamepad,Gamepad,遊戲手把
-Keyboard,Keyboard,鍵盤
-Map DPad to Left Stick,Map DPad to Left Stick,方向鍵當作左搖桿
-Keyboard Mapping,Keyboard Mapping,鍵盤對應
-Sample Microphone,Sample Microphone,測試麥克風
-Input Device,Input Device,輸入裝置
-Edit Blueprint Properties,Edit Blueprint Properties,編輯節點圖屬性
-Default,Default,預設
-Auto-Setup,Auto-Setup,自動設定
-Move Left,Move Left,往左移
-Move Right,Move Right,往右移
-Add %s Tracker,Add %s Tracker,新增 %s 追蹤
-Add XR Tracker,Add XR Tracker,新增 XR 追蹤
-Add Hotkey Binding,Add Hotkey Binding,新增熱鍵綁定
-Add Onscreen Button Binding,Add Onscreen Button Binding,新增畫面按鈕綁定
-Add Breathe,Add Breathe,新增呼吸
-Add Blink,Add Blink,新增眨眼
-Add Arithmetic,Add Arithmetic,新增運算
-Add Smoothing,Add Smoothing,新增平滑
-Add Toggle State,Add Toggle State,新增切換狀態
-Single Toggle,Single Toggle,單一切換
-Change Expression,Change Expression,切換表情
-Set Model Parameter,Set Model Parameter,設定模型參數
-OpenSeeFace (Webcam),OpenSeeFace (Webcam),OpenSeeFace（網路攝影機）
-VTubeStudio (WiFi),VTubeStudio (WiFi),VTube Studio（Wi-Fi）
-iOS BlendShapes (VTS),iOS BlendShapes (VTS),iOS 表情形狀（VTS）
-iFacialMocap (iPhone),iFacialMocap (iPhone),iFacialMocap（iPhone）
-Yorishiro tracker,Yorishiro tracker,Yorishiro 追蹤器
-Yorishiro (Controls),Yorishiro (Controls),Yorishiro（控制）
-Action Palette,Action Palette,動作面板
-Waiting for Input...,Waiting for Input...,等待輸入…
-Press ESCAPE to clear binding,Press ESCAPE to clear binding,按 Esc 清除綁定
-Set Expression [%s],Set Expression [%s],設定表情［%s］
-Model Settings [%s],Model Settings [%s],模型設定［%s］
-Z-Order,Z-Order,前後順序
-Model Name,Model Name,模型名稱
-Group,Group,群組
-Group Name,Group Name,群組名稱
-Action Controller,Action Controller,動作控制
-Section,Section,區段
-Search...,Search...,搜尋…
-Functions,Functions,函式
-%s: %s,%s: %s,%s：%s
-Running,Running,執行中
-Starting,Starting,啟動中
-Error,Error,錯誤
-waiting for the tracker,waiting for the tracker,等待追蹤器
-loading tracker %s,loading tracker %s,載入追蹤模型 %s
-the tracking core is not built (addons/yorishiro_tracking). Run app/build_dependencies.sh.,the tracking core is not built (addons/yorishiro_tracking). Run app/build_dependencies.sh.,追蹤核心還沒建置（addons/yorishiro_tracking），請執行 app/build_dependencies.sh。
-starting tracker (first start loads models),starting tracker (first start loads models),啟動追蹤器中（第一次啟動要載入模型）
-tracking,tracking,追蹤中
-no face in view,no face in view,畫面裡沒有臉
-calibrated,calibrated,已校正
-"calibrating, keep a neutral face","calibrating, keep a neutral face",校正中，請保持自然表情
-NON-COMMERCIAL model,NON-COMMERCIAL model,非商用模型
-Welcome to Yorishiro,Welcome to Yorishiro,歡迎使用 Yorishiro
-Add your model,Add your model,加入你的模型
-Choose a model...,Choose a model...,選擇模型…
-Your models,Your models,我的模型
-Face tracking,Face tracking,臉部追蹤
-Tracking settings,Tracking settings,追蹤設定
-Place it,Place it,擺好位置
-"Drag the model to move it, scroll to resize, Shift + scroll to tilt. The gear in the corner opens all settings.","Drag the model to move it, scroll to resize, Shift + scroll to tilt. The gear in the corner opens all settings.",拖曳模型可以移動，滾輪調整大小，Shift + 滾輪旋轉。角落的齒輪可以打開所有設定。
-No face tracking input is selected.,No face tracking input is selected.,還沒有選擇臉部追蹤來源。
-"Another tracking input is selected, see the tracking settings.","Another tracking input is selected, see the tracking settings.",目前用的是其他追蹤來源，詳情請看追蹤設定。
-Ready: your face is in view.,Ready: your face is in view.,準備好了：已經看到你的臉。
-"Running, but no face is in view. Sit in front of the camera with some light on your face.","Running, but no face is in view. Sit in front of the camera with some light on your face.",追蹤器在執行，但畫面裡沒有臉。請坐到攝影機前，讓臉上有一點光。
-Not working: %s,Not working: %s,無法使用：%s
-Starting the tracker. The first start takes a little longer.,Starting the tracker. The first start takes a little longer.,正在啟動追蹤器，第一次啟動會久一點。
-Camera,Camera,攝影機
-Compute,Compute,運算
-%s (non-commercial),%s (non-commercial),%s（非商用）
-Go back,Go back,返回
-Expression Settings,Expression Settings,表情設定
-Parts Settings,Parts Settings,部件設定
-Meshes Settings,Meshes Settings,網格設定
-Filter Mode,Filter Mode,縮放濾鏡
-Bilinear,Bilinear,平滑
-Nearest,Nearest,像素
-Idle Animation,Idle Animation,待機動畫
-Opacity,Opacity,不透明度
-Visible,Visible,顯示
-Color Override,Color Override,覆蓋顏色
-Multiply Color,Multiply Color,色彩相乘
-Screen Color,Screen Color,色彩濾色
-Pinnable,Pinnable,可釘選道具
-Send tracking to other apps on this computer,Send tracking to other apps on this computer,把追蹤資料傳給這台電腦上的其他軟體
-VTube Studio (as an iPhone),VTube Studio (as an iPhone),VTube Studio（當作 iPhone）
-"VSeeFace, Warudo, VNyan (iFacialMocap)","VSeeFace, Warudo, VNyan (iFacialMocap)",VSeeFace、Warudo、VNyan（iFacialMocap）
-In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT.,In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT.,在 VTube Studio 選擇 iPhone 當作追蹤來源，輸入 127.0.0.1。OpenVT 也讀得到。
-In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,在那個軟體選擇 iFacialMocap 當作追蹤來源，輸入 127.0.0.1。
-Add item...,Add item...,加入道具…
-Pictures in the Items folder show up here. Add one from anywhere on this computer.,Pictures in the Items folder show up here. Add one from anywhere on this computer.,Items 資料夾裡的圖片會出現在這裡，也可以從這台電腦的任何地方加入。
-"No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:","No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:",還沒有虛擬攝影機裝置。請在終端機執行一次下面的指令（需要輸入密碼），再按「重新檢查」：
-Copy,Copy,複製
-Check again,Check again,重新檢查
-"Send the stage to OBS (PipeWire, transparent)","Send the stage to OBS (PipeWire, transparent)",把舞台傳到 OBS（PipeWire，透明背景）
-"In OBS add a ""PipeWire video"" source (obs-pwvideo plugin) and pick Yorishiro. Only the stage is sent, without buttons or settings.","In OBS add a ""PipeWire video"" source (obs-pwvideo plugin) and pick Yorishiro. Only the stage is sent, without buttons or settings.",在 OBS 新增「PipeWire video」來源（obs-pwvideo 外掛），選 Yorishiro。只會傳送舞台，不含按鈕和設定畫面。
-"The PipeWire output is not built (addons/yorishiro_pipewire). Run app/build_dependencies.sh.","The PipeWire output is not built (addons/yorishiro_pipewire). Run app/build_dependencies.sh.",PipeWire 輸出還沒建置（addons/yorishiro_pipewire），請執行 app/build_dependencies.sh。
-"The PipeWire output needs PipeWire 1.4 or newer. This system's PipeWire is older (Ubuntu 24.04 has 1.0, Ubuntu 26.04 has 1.6).","The PipeWire output needs PipeWire 1.4 or newer. This system's PipeWire is older (Ubuntu 24.04 has 1.0, Ubuntu 26.04 has 1.6).",PipeWire 輸出需要 PipeWire 1.4 以上，這台系統的版本較舊（Ubuntu 24.04 是 1.0，Ubuntu 26.04 是 1.6）。
-"PipeWire refused the stream. It needs PipeWire 1.2 or newer, and OBS 31 or newer on NVIDIA.","PipeWire refused the stream. It needs PipeWire 1.2 or newer, and OBS 31 or newer on NVIDIA.",PipeWire 拒絕了這個串流。需要 PipeWire 1.2 以上，NVIDIA 顯示卡還需要 OBS 31 以上。
-Sending to OBS needs the Vulkan renderer (Forward+ or Mobile).,Sending to OBS needs the Vulkan renderer (Forward+ or Mobile).,傳到 OBS 需要 Vulkan 渲染器（Forward+ 或 Mobile）。
-Starting...,Starting...,啟動中…
-"Sending %sx%s, waiting for OBS","Sending %sx%s, waiting for OBS",正在傳送 %sx%s，等待 OBS 接收
-Sending to OBS,Sending to OBS,正在傳送到 OBS
-PipeWire is not running or not reachable.,PipeWire is not running or not reachable.,PipeWire 沒有在執行，或連不上。
-Sending the stage to OBS over PipeWire,Sending the stage to OBS over PipeWire,透過 PipeWire 把舞台傳到 OBS
-Physics,Physics,物理
-Use physics,Use physics,使用物理
-"Hair, clothes and accessories swing with the movement, as the model's maker set them up.","Hair, clothes and accessories swing with the movement, as the model's maker set them up.",頭髮、衣服和配件會隨動作擺動，依模型作者的設定。
-This model has no physics.,This model has no physics.,這個模型沒有物理設定。
-Overall strength,Overall strength,整體強度
-Each part (%d),Each part (%d),各部位（%d）
-A Live2D model folder (with a .model3.json file).,A Live2D model folder (with a .model3.json file).,Live2D 模型資料夾（裡面有 .model3.json 檔）。
-Save here,Save here,存在這裡
-"Remember where the model is now, this hotkey moves it back here.","Remember where the model is now, this hotkey moves it back here.",記住模型現在的位置，按這個熱鍵就會移回來。
-Saved,Saved,已儲存
-Move to saved position %d,Move to saved position %d,移到存好的位置 %d
-Background: %s,Background: %s,背景：%s
-Change model: %s,Change model: %s,切換模型：%s
-Toggle item: %s,Toggle item: %s,開關道具：%s
-Reload model,Reload model,重新載入模型
-Take a screenshot,Take a screenshot,截圖
-App Action,App Action,App 動作
-Move to saved position,Move to saved position,移到存好的位置
-Change background,Change background,切換背景
-Change model,Change model,切換模型
-Toggle item,Toggle item,開關道具
-Position %s,Position %s,位置 %s
-Reload,Reload,重新載入
-Screenshot,Screenshot,截圖
-Add picture...,Add picture...,加入圖片…
-Pictures in the Backgrounds folder show up here. Add one from anywhere on this computer.,Pictures in the Backgrounds folder show up here. Add one from anywhere on this computer.,Backgrounds 資料夾裡的圖片會出現在這裡，也可以從這台電腦的任何地方加入。
-Allow plugins (port %d),Allow plugins (port %d),允許外掛（連接埠 %d）
-"Plugins on this computer can connect over WebSocket. Each one asks once, here in the main window.","Plugins on this computer can connect over WebSocket. Each one asks once, here in the main window.",這台電腦上的外掛可以透過 WebSocket 連線。每個外掛第一次連線時，會在主視窗詢問你。
-The plugin has to ask again next time.,The plugin has to ask again next time.,下次外掛要重新詢問。
-Port %d is in use by another program.,Port %d is in use by another program.,連接埠 %d 被其他程式使用中。
-"This plugin wants to control Yorishiro: read and move the model, trigger hotkeys and expressions, send tracking values. Allow it?","This plugin wants to control Yorishiro: read and move the model, trigger hotkeys and expressions, send tracking values. Allow it?",這個外掛想要控制 Yorishiro：讀取與移動模型、觸發熱鍵和表情、送出追蹤數值。要允許嗎？
-Deny,Deny,拒絕
-Allow,Allow,允許
-by %s,by %s,作者：%s
-New expression,New expression,新增表情
-Edit,Edit,編輯
-Edit expression,Edit expression,編輯表情
-Search parameters,Search parameters,搜尋參數
-Only the ones in use,Only the ones in use,只顯示有用到的
-Part of this expression,Part of this expression,這個表情有用到
-Add: on top of tracking. Multiply: scales tracking. Overwrite: replaces tracking.,Add: on top of tracking. Multiply: scales tracking. Overwrite: replaces tracking.,相加：加在追蹤數值上。相乘：放大縮小追蹤數值。覆寫：取代追蹤數值。
-Add,Add,相加
-Multiply,Multiply,相乘
-Overwrite,Overwrite,覆寫
-Delete my version,Delete my version,刪除我的版本
-"The model's own expression of this name comes back, if it has one.","The model's own expression of this name comes back, if it has one.",如果模型本身有同名的表情，會恢復成原本的。
-The expression needs a name.,The expression needs a name.,表情需要一個名稱。
-"The name cannot contain / \ : * ? "" < > |","The name cannot contain / \ : * ? "" < > |","名稱不能有 / \ : * ? "" < > |"
-The model already has an expression with this name.,The model already has an expression with this name.,模型已經有同名的表情。
-Lip sync from the microphone,Lip sync from the microphone,用麥克風對嘴型
-"Microphone level. The line is the noise gate: quieter than it, the mouth stays closed.","Microphone level. The line is the noise gate: quieter than it, the mouth stays closed.",麥克風音量。那條線是噪音門檻，比它小聲時嘴巴不會動。
-Gain,Gain,增益
-Makes a quiet microphone louder.,Makes a quiet microphone louder.,把太小聲的麥克風放大。
-Noise gate,Noise gate,噪音門檻
-"Sounds quieter than this do not move the mouth, like a fan or keyboard.","Sounds quieter than this do not move the mouth, like a fan or keyboard.",比這個小聲的聲音（例如電扇、鍵盤）不會讓嘴巴動。
-"Higher is calmer, lower follows every syllable.","Higher is calmer, lower follows every syllable.",越高越穩定，越低越會跟著每個音節動。
-Track hands,Track hands,追蹤手部
-"Hand position, angle and fingers for models with hand parameters. Uses more CPU.","Hand position, angle and fingers for models with hand parameters. Uses more CPU.",給有手部參數的模型用：手的位置、角度和手指。會多用一些 CPU。
-Hands,Hands,手部
-"Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.","Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.",給有手部參數的模型用：手的位置、角度和手指。和臉部用同一個運算方式並行。
-Add to application menu,Add to application menu,加到應用程式選單
-Update application menu entry,Update application menu entry,更新應用程式選單項目
-Remove from application menu,Remove from application menu,從應用程式選單移除
-Removed.,Removed.,已移除。
-"Added. If the dock still shows the old icon, restart the app.","Added. If the dock still shows the old icon, restart the app.",已加入。如果 Dock 還是舊圖示，請重開 app。
-"Already in the application menu (added by another tool), nothing to add.","Already in the application menu (added by another tool), nothing to add.",已經在應用程式選單裡（由其他工具加入），不用再加。
-Adds Yorishiro to the application menu and shows its icon in the dock. Press it again if you move this file.,Adds Yorishiro to the application menu and shows its icon in the dock. Press it again if you move this file.,把 Yorishiro 加到應用程式選單，並在 Dock 顯示圖示。移動這個檔案後請再按一次。
+keys,en,zh_TW,ja
+auto,auto,自動（顯示卡較快且結果正確時用顯示卡）,自動（GPU のほうが速く、結果も正しければ GPU を使用）
+checking the GPU against the CPU,checking the GPU against the CPU,正在比較顯示卡和 CPU,GPU と CPU の結果を比較中
+Models & Items,Models & Items,模型與道具,モデルとアイテム
+Hotkeys,Hotkeys,熱鍵,ホットキー
+Settings,Settings,設定,設定
+Close (Esc),Close (Esc),關閉 (Esc),閉じる (Esc)
+Load Model...,Load Model...,載入模型…,モデルを読み込む…
+Load a model first.,Load a model first.,請先載入模型。,先にモデルを読み込んでください。
+Application Settings,Application Settings,應用程式設定,アプリ設定
+Tracking,Tracking,追蹤,トラッキング
+Profile,Profile,設定檔,プロファイル
+UI Theme,UI Theme,介面主題,テーマ
+Application FPS Limit,Application FPS Limit,畫面更新率上限,フレームレート上限
+Application Scaling,Application Scaling,介面縮放,表示の拡大率
+Background,Background,背景,背景
+Camera FOV,Camera FOV,攝影機視角,カメラの視野角
+Virtual Webcam,Virtual Webcam,虛擬攝影機,仮想カメラ
+Face Tracking,Face Tracking,臉部追蹤,フェイストラッキング
+Default Grid,Default Grid,預設格線,デフォルトのグリッド
+Image,Image,圖片,画像
+Color,Color,純色,単色
+Transparent,Transparent,透明,透明
+Dark,Dark,深色,ダーク
+Max,Max,最高,最大
+Open,Open,開啟,開く
+Load Default Profile,Load Default Profile,載入預設設定檔,デフォルトのプロファイルを読み込む
+Save,Save,儲存,保存
+Save as...,Save as...,另存為…,名前を付けて保存…
+Clear Settings,Clear Settings,清除設定,設定をクリア
+Item Scene,Item Scene,道具場景,アイテムシーン
+Items are ordered background to foreground,Items are ordered background to foreground,道具依序由背景排到前景,アイテムは奥から手前の順に並びます
+Transform,Transform,位置與大小,位置とサイズ
+Position,Position,位置,位置
+Scale,Scale,縮放,サイズ
+Rotation,Rotation,旋轉,回転
+Expression,Expression,表情,表情
+Model Settings,Model Settings,模型設定,モデル設定
+Add Item,Add Item,新增道具,アイテムを追加
+Clear All Items,Clear All Items,清除所有道具,すべてのアイテムを削除
+Lock transform,Lock transform,鎖定位置,位置をロック
+Toggle Locks,Toggle Locks,切換鎖定,ロックの切り替え
+Recenter,Recenter,置中,中央に戻す
+Fit to Screen,Fit to Screen,符合畫面,画面に合わせる
+Reset Scale,Reset Scale,重設縮放,サイズをリセット
+Reset Rotation,Reset Rotation,重設旋轉,回転をリセット
+Rotate Left 90 Degrees,Rotate Left 90 Degrees,向左轉 90 度,左に 90 度回転
+Rotate Right 90 Degrees,Rotate Right 90 Degrees,向右轉 90 度,右に 90 度回転
+Set Expression,Set Expression,設定表情,表情を設定
+Fade (sec),Fade (sec),淡入淡出（秒）,フェード（秒）
+Pin to Model,Pin to Model,釘在模型上,モデルに固定
+Pin to Mesh,Pin to Mesh,釘在網格上,メッシュに固定
+Pinned To,Pinned To,釘在,固定先
+Flip,Flip,翻轉,反転
+Layer,Layer,圖層,レイヤー
+Remove,Remove,移除,外す
+Delete,Delete,刪除,削除
+Cancel,Cancel,取消,キャンセル
+Rename,Rename,重新命名,名前を変更
+Export,Export,匯出,エクスポート
+Name,Name,名稱,名前
+Model,Model,模型,モデル
+Items,Items,道具,アイテム
+Enabled,Enabled,啟用,有効
+Animation,Animation,動畫,アニメーション
+Animation Frame Rate,Animation Frame Rate,動畫幀率,アニメーションのフレームレート
+Frame Rate,Frame Rate,幀率,フレームレート
+Smoothing,Smoothing,平滑,スムージング
+Preview,Preview,預覽,プレビュー
+Scene Preview,Scene Preview,場景預覽,シーンのプレビュー
+Confirm Load,Confirm Load,確認載入,読み込みの確認
+Change the active model,Change the active model,更換模型,モデルを変更
+Compose your scene with extra items,Compose your scene with extra items,用道具佈置畫面,アイテムで画面を飾る
+Configure Application and Hardware Settings,Configure Application and Hardware Settings,應用程式與硬體設定,アプリとハードウェアの設定
+Open a File,Open a File,開啟檔案,ファイルを開く
+Open File(s),Open File(s),開啟檔案,ファイルを開く
+Preview Background Color,Preview Background Color,預覽背景色,プレビューの背景色
+Tracker log,Tracker log,追蹤器紀錄,トラッカーのログ
+Waiting...,Waiting...,等待中…,待機中…
+On,On,開,オン
+Off,Off,關,オフ
+"If the Scene has Pinned Items, they will be excluded if the active model does not match","If the Scene has Pinned Items, they will be excluded if the active model does not match",場景裡釘在模型上的道具，如果目前的模型不同就不會載入,シーンでモデルに固定したアイテムは、今のモデルと違う場合は読み込まれません
+Night Sakura (Default),Night Sakura (Default),夜櫻（預設）,夜桜（デフォルト）
+Language,Language,語言,言語
+Load,Load,載入,読み込む
+Models,Models,模型,モデル
+Import...,Import...,匯入…,インポート…
+Load a model from a folder on this computer,Load a model from a folder on this computer,從這台電腦的資料夾載入模型,このコンピューターのフォルダーからモデルを読み込む
+Unable to load model,Unable to load model,無法載入模型,モデルを読み込めません
+Musubi,Musubi,結繩,結び
+New Musubi,New Musubi,新增結繩,新しい結び
+Import Musubi,Import Musubi,匯入結繩,結びをインポート
+Edit Musubi,Edit Musubi,編輯結繩,結びを編集
+Advanced: Musubi node editor,Advanced: Musubi node editor,進階：結繩（節點編輯器）,詳細：結び（ノードエディター）
+Reimport VTS Bindings,Reimport VTS Bindings,重新匯入 VTS 綁定,VTS の設定を再インポート
+The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now.,The hotkey list is being built. Hotkeys can be set in the Musubi node editor for now.,熱鍵清單製作中。目前可以先在結繩（節點編輯器）設定熱鍵。,ホットキー一覧は準備中です。今は結び（ノードエディター）でホットキーを設定できます。
+About,About,關於,このアプリについて
+Version %s,Version %s,版本 %s,バージョン %s
+Open source components,Open source components,開源元件,オープンソースのコンポーネント
+Show full license texts,Show full license texts,顯示授權全文,ライセンス全文を表示
+"Yorishiro is a VTubing app with its own face tracker. Its app started as a fork of OpenVT by erodozer, released under the MIT license. Yorishiro is not the OpenVT project, please send problems with Yorishiro to Yorishiro.","Yorishiro is a VTubing app with its own face tracker. Its app started as a fork of OpenVT by erodozer, released under the MIT license. Yorishiro is not the OpenVT project, please send problems with Yorishiro to Yorishiro.",Yorishiro 是一套附自製臉部追蹤的 VTuber 軟體。它的 app 一開始 fork 自 erodozer 的 OpenVT（MIT 授權）。Yorishiro 不是 OpenVT 專案，Yorishiro 的問題請回報給 Yorishiro。,Yorishiro は独自のフェイストラッカーを持つ VTuber アプリです。アプリ部分は erodozer の OpenVT（MIT ライセンス）のフォークから始まりました。Yorishiro は OpenVT プロジェクトではありません。Yorishiro の問題は Yorishiro に報告してください。
+"""Live2D"" and ""Cubism"" are trademarks of Live2D Inc. ""VTube Studio"" is a trademark of its respective owner. Yorishiro is not affiliated with them and does not include the Live2D Cubism SDK.","""Live2D"" and ""Cubism"" are trademarks of Live2D Inc. ""VTube Studio"" is a trademark of its respective owner. Yorishiro is not affiliated with them and does not include the Live2D Cubism SDK.",「Live2D」和「Cubism」是 Live2D Inc. 的商標，「VTube Studio」是其所有者的商標。Yorishiro 與他們沒有關係，也不包含 Live2D Cubism SDK。,「Live2D」と「Cubism」は Live2D Inc. の商標です。「VTube Studio」はその所有者の商標です。Yorishiro はこれらと関係がなく、Live2D Cubism SDK も含みません。
+The app this one was forked from,The app this one was forked from,本 app 的 fork 來源,このアプリのフォーク元
+Game engine the app runs on,Game engine the app runs on,app 使用的遊戲引擎,アプリが動くゲームエンジン
+Live2D renderer,Live2D renderer,Live2D 繪製,Live2D の描画
+Virtual webcam output,Virtual webcam output,虛擬攝影機輸出,仮想カメラ出力
+Global hotkeys,Global hotkeys,全域熱鍵,グローバルホットキー
+Native addons,Native addons,原生擴充,ネイティブ拡張
+Interface font,Interface font,介面字型,UI フォント
+Face and hand tracking models,Face and hand tracking models,臉部和手部追蹤模型,顔と手のトラッキングモデル
+Expression shapes for face tracking and the 3D head of the tracking preview,Expression shapes for face tracking and the 3D head of the tracking preview,臉部追蹤用的表情形狀，以及追蹤預覽的 3D 頭部,フェイストラッキング用の表情シェイプと、トラッキングプレビューの 3D の頭
+Runs the tracking models on the GPU (Vulkan),Runs the tracking models on the GPU (Vulkan),在顯示卡上執行追蹤模型（Vulkan）,トラッキングモデルを GPU で実行（Vulkan）
+Runs the tracking models on the CPU,Runs the tracking models on the CPU,在 CPU 上執行追蹤模型,トラッキングモデルを CPU で実行
+Show screen buttons on the stage,Show screen buttons on the stage,在舞台上顯示畫面按鈕,ステージに画面ボタンを表示
+Clickable buttons in the corner of the stage for hotkeys that have one. Off: keyboard hotkeys only.,Clickable buttons in the corner of the stage for hotkeys that have one. Off: keyboard hotkeys only.,舞台角落可以用滑鼠點的按鈕，對應有設定畫面按鈕的熱鍵。關掉就只用鍵盤熱鍵。,画面ボタンを設定したホットキーを、ステージの隅のボタンからクリックで使えます。オフにするとキーボードのホットキーだけになります。
+Action,Action,動作,アクション
+Keys,Keys,按鍵,キー
+Hold,Hold,按住,長押し
+Screen button,Screen button,畫面按鈕,画面ボタン
+None,None,無,なし
+No hotkeys yet. Add one to switch an expression or play an animation with a key.,No hotkeys yet. Add one to switch an expression or play an animation with a key.,還沒有熱鍵。新增一個，就能用按鍵切換表情或播放動畫。,ホットキーはまだありません。追加すると、キーで表情を切り替えたりアニメーションを再生したりできます。
+Add hotkey,Add hotkey,新增熱鍵,ホットキーを追加
+"Click, then press the keys. Esc cancels, Backspace clears.","Click, then press the keys. Esc cancels, Backspace clears.",點一下再按下按鍵。Esc 取消，Backspace 清除。,クリックしてからキーを押してください。Esc でキャンセル、Backspace でクリア。
+On: active only while the keys are held. Off: each press toggles.,On: active only while the keys are held. Off: each press toggles.,勾選：按住時才有效。不勾：每按一次切換一次。,オン：キーを押している間だけ有効。オフ：押すたびに切り替え。
+Delete hotkey,Delete hotkey,刪除熱鍵,ホットキーを削除
+Expression: %s,Expression: %s,表情：%s,表情：%s
+Animation: %s,Animation: %s,動畫：%s,アニメーション：%s
+Set keys,Set keys,設定按鍵,キーを設定
+Press keys...,Press keys...,請按下按鍵…,キーを押してください…
+This model has no expressions or animations.,This model has no expressions or animations.,這個模型沒有表情或動畫。,このモデルには表情もアニメーションもありません。
+Sensitivity,Sensitivity,靈敏度,感度
+Eyes: open and close,Eyes: open and close,眼睛：開合,目：開閉
+Eyes: gaze,Eyes: gaze,眼睛：視線,目：視線
+Eyebrows,Eyebrows,眉毛,眉
+Mouth: smile,Mouth: smile,嘴巴：笑,口：笑顔
+Mouth: open,Mouth: open,嘴巴：張開,口：開き
+Mouth: other,Mouth: other,嘴巴：其他,口：その他
+Cheeks,Cheeks,臉頰,頬
+Head: angle,Head: angle,頭部：角度,頭：角度
+Head: position,Head: position,頭部：位置,頭：位置
+Other,Other,其他,その他
+The dot is your face right now. Drag the two handles to the range you actually move: a narrower range reacts more. Smoothing steadies the motion but adds delay.,The dot is your face right now. Drag the two handles to the range you actually move: a narrower range reacts more. Smoothing steadies the motion but adds delay.,圓點是你現在的臉。把兩個把手拉到你實際會動到的範圍：範圍越窄，反應越大。平滑會讓動作更穩，但會稍微延遲。,点は今のあなたの顔です。2 つのハンドルを実際に動かす範囲までドラッグしてください。範囲が狭いほど大きく反応します。スムージングを上げると動きが安定しますが、少し遅れます。
+from %s,from %s,來自 %s,入力：%s
+Input range %.2f to %.2f,Input range %.2f to %.2f,輸入範圍 %.2f 到 %.2f,入力範囲 %.2f ～ %.2f
+Smoothing %d%%,Smoothing %d%%,平滑 %d%%,スムージング %d%%
+%s from %s,%s from %s,%s，來自 %s,%s（入力：%s）
+Blink both eyes together,Blink both eyes together,兩眼一起眨,両目を一緒にまばたき
+"Both eyes follow the more closed one. Steadier blinks, but no winks.","Both eyes follow the more closed one. Steadier blinks, but no winks.",兩眼都跟著閉得比較多的那隻眼睛。眨眼更穩定，但不能眨單眼。,両目とも、より閉じているほうの目に合わせます。まばたきは安定しますが、ウインクはできません。
+Automatic blinking,Automatic blinking,自動眨眼,自動まばたき
+When the face is lost,When the face is lost,追蹤不到臉時,顔を見失ったとき
+Always,Always,一直,常に
+Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you.,Blinks every few seconds on its own. When the face is lost: only while the tracker cannot see you.,每隔幾秒自動眨一次眼。選「追蹤不到臉時」只在追蹤器看不到你時才自動眨。,数秒ごとに自動でまばたきします。「顔を見失ったとき」は、トラッカーが顔を見つけられない間だけです。
+Auto calibrate...,Auto calibrate...,自動校正…,自動キャリブレーション…
+Guides you through a few expressions and sets the ranges to how your face moves.,Guides you through a few expressions and sets the ranges to how your face moves.,引導你做幾個表情，依你的臉實際的動作範圍自動設定。,いくつかの表情をしてもらい、顔の実際の動きに合わせて範囲を設定します。
+"Relax your face, look at the camera and press Start","Relax your face, look at the camera and press Start",放鬆臉部、看著鏡頭，然後按「開始」,顔の力を抜いてカメラを見て、「開始」を押してください
+"Press Start, then close both eyes. Open them at the tone","Press Start, then close both eyes. Open them at the tone",按「開始」後閉上雙眼，聽到提示音再張開,「開始」を押したら両目を閉じて、合図の音で開けてください
+"Press Start, then open your mouth as wide as is comfortable","Press Start, then open your mouth as wide as is comfortable",按「開始」後把嘴巴張到最大（不勉強）,「開始」を押したら、無理のない範囲で口を大きく開けてください
+"Press Start, then smile broadly","Press Start, then smile broadly",按「開始」後大大地笑,「開始」を押したら、大きく笑ってください
+"Press Start, then raise your eyebrows","Press Start, then raise your eyebrows",按「開始」後抬起眉毛,「開始」を押したら、眉を上げてください
+Start,Start,開始,開始
+Reset to defaults...,Reset to defaults...,回復預設值…,デフォルトに戻す…
+"Puts this model's ranges, smoothing, eye options, physics and follow-the-face back to how the model came.","Puts this model's ranges, smoothing, eye options, physics and follow-the-face back to how the model came.",把這個模型的範圍、平滑、眼睛選項、物理和跟著臉移動恢復成模型原本的設定。,このモデルの範囲、スムージング、目の設定、物理演算、顔に合わせた移動を、モデル本来の設定に戻します。
+"Put this model's ranges, smoothing, eye options, physics and follow-the-face back to their defaults? Calibration and your changes on this page are lost.","Put this model's ranges, smoothing, eye options, physics and follow-the-face back to their defaults? Calibration and your changes on this page are lost.",要把這個模型的範圍、平滑、眼睛選項、物理和跟著臉移動恢復成預設值嗎？校正結果和你在這頁的修改都會消失。,このモデルの範囲、スムージング、目の設定、物理演算、顔に合わせた移動をデフォルトに戻しますか？キャリブレーションの結果とこのページでの変更は失われます。
+Reset,Reset,重設,リセット
+Sensitivity set back to the model's defaults.,Sensitivity set back to the model's defaults.,靈敏度已恢復成模型的預設值。,感度をモデルのデフォルトに戻しました。
+Step %d of %d,Step %d of %d,第 %d 步，共 %d 步,ステップ %d / %d
+Calibrated: %s,Calibrated: %s,已校正：%s,キャリブレーション完了：%s
+"No clear movement measured, nothing changed.","No clear movement measured, nothing changed.",沒有量到明顯的動作，設定沒有改變。,はっきりした動きが測れなかったため、何も変更していません。
+Move with your face,Move with your face,跟著臉移動,顔に合わせて移動
+Move the model with your face,Move the model with your face,模型跟著臉移動,顔に合わせてモデルを移動
+"Lean left or right and the model slides along, come closer and it grows.","Lean left or right and the model slides along, come closer and it grows.",往左右移動時模型跟著滑動，靠近鏡頭時模型變大。,左右に動くとモデルも動き、カメラに近づくと大きくなります。
+Left and right,Left and right,左右,左右
+Up and down,Up and down,上下,上下
+Closer and farther,Closer and farther,遠近,前後
+Head %+.1f / %+.1f / %+.1f cm,Head %+.1f / %+.1f / %+.1f cm,頭部 %+.1f / %+.1f / %+.1f 公分,頭 %+.1f / %+.1f / %+.1f cm
+Return to the resting pose,Return to the resting pose,回到正面姿勢,正面の姿勢に戻る
+Freeze in the last pose,Freeze in the last pose,停在最後的姿勢,最後の姿勢で止める
+after,after,延遲,待ち時間
+"Your glasses reflect the screen, so blinks and winks can be missed. Turn the screen brightness down, light the room a little more, or tilt your glasses slightly.","Your glasses reflect the screen, so blinks and winks can be missed. Turn the screen brightness down, light the room a little more, or tilt your glasses slightly.",眼鏡反射了螢幕的光，眨眼可能偵測不到。可以調低螢幕亮度、讓房間亮一點，或稍微調整眼鏡角度。,メガネに画面が映り込んでいるため、まばたきやウインクを見逃すことがあります。画面を暗くする、部屋を少し明るくする、メガネを少し傾けるなどを試してください。
+Glasses,Glasses,眼鏡,メガネ
+Detect from reflections,Detect from reflections,依反光自動偵測,映り込みから自動検出
+I wear glasses,I wear glasses,有戴眼鏡,メガネあり
+No glasses,No glasses,沒戴眼鏡,メガネなし
+Shown on the preview head. Detection only notices glasses that reflect the screen.,Shown on the preview head. Detection only notices glasses that reflect the screen.,會顯示在預覽頭上。自動偵測只認得出有反光的眼鏡。,プレビューの頭に表示されます。自動検出で分かるのは、画面が映り込むメガネだけです。
+Blink,Blink,眨眼,まばたき
+Frequency,Frequency,頻率,頻度
+Min,Min,最小,最小
+Speed,Speed,速度,速さ
+Breathe,Breathe,呼吸,呼吸
+Hotkey Input,Hotkey Input,熱鍵輸入,ホットキー入力
+Pressed,Pressed,按下,押した
+Released,Released,放開,離した
+Read from Store,Read from Store,從暫存讀取,ストアから読む
+On-screen Button,On-screen Button,畫面按鈕,画面ボタン
+Value,Value,數值,値
+Trigger,Trigger,觸發,トリガー
+XR Tracker,XR Tracker,XR 追蹤,XR トラッカー
+Arithmetic,Arithmetic,運算,演算
+Output,Output,輸出,出力
+Compose,Compose,組合,合成
+Decompose,Decompose,拆分,分解
+Eval,Eval,算式,数式
+Solution,Solution,結果,結果
+Remap,Remap,範圍轉換,範囲変換
+From,From,從,元
+Clamp,Clamp,限制範圍,範囲制限
+To,To,到,先
+Weight,Weight,權重,重み
+In,In,進,イン
+Out,Out,出,アウト
+Toggle Group,Toggle Group,切換群組,切り替えグループ
+Slots,Slots,欄位,スロット
+Inactive,Inactive,未啟用,無効
+Toggle,Toggle,切換,切り替え
+State,State,狀態,状態
+Tween,Tween,補間,トゥイーン
+Duration,Duration,時間長度,長さ
+Easing,Easing,緩動,イージング
+InOut,InOut,進出,インアウト
+OutIn,OutIn,出進,アウトイン
+Transition,Transition,過渡曲線,補間曲線
+Linear,Linear,線性,リニア
+Sine,Sine,正弦,サイン
+Quintic,Quintic,五次方,5 次
+Quartic,Quartic,四次方,4 次
+Quadratic,Quadratic,二次方,2 次
+Exponential,Exponential,指數,指数
+Elastic,Elastic,彈性,エラスティック
+Cubic,Cubic,三次方,3 次
+Circ,Circ,圓弧,円弧
+Bounce,Bounce,彈跳,バウンス
+Back,Back,回彈,バック
+Spring,Spring,彈簧,ばね
+Write to Store,Write to Store,寫入暫存,ストアに書く
+Var,Var,變數,変数
+Output Model Parameters,Output Model Parameters,輸出模型參數,モデルパラメーターを出力
+Fade,Fade,淡入淡出,フェード
+Play,Play,播放,再生
+Stop,Stop,停止,停止
+Completed,Completed,完成,完了
+Skeleton Driver,Skeleton Driver,骨架驅動,スケルトン駆動
+Toggle Expression,Toggle Expression,切換表情,表情の切り替え
+Clear Expressions,Clear Expressions,清除表情,表情をクリア
+Active,Active,啟用,有効
+FPS: %d,FPS: %d,FPS：%d,FPS：%d
+Link Eye Blinking,Link Eye Blinking,雙眼一起眨,両目を一緒にまばたき
+OSF Port,OSF Port,OSF 連接埠,OSF ポート
+Auto Connect,Auto Connect,自動連線,自動接続
+Connect,Connect,連線,接続
+Disconnect,Disconnect,中斷連線,切断
+Listening,Listening,等待連線,接続待ち
+Hostname,Hostname,主機名稱,ホスト名
+Port,Port,連接埠,ポート
+Start Server,Start Server,啟動伺服器,サーバーを起動
+Hostname (Phone),Hostname (Phone),主機名稱（手機）,ホスト名（スマホ）
+Connect to Mobile,Connect to Mobile,連線到手機,スマホに接続
+no camera found,no camera found,找不到攝影機,カメラが見つかりません
+Gamepad,Gamepad,遊戲手把,ゲームパッド
+Keyboard,Keyboard,鍵盤,キーボード
+Map DPad to Left Stick,Map DPad to Left Stick,方向鍵當作左搖桿,十字キーを左スティックとして扱う
+Keyboard Mapping,Keyboard Mapping,鍵盤對應,キー割り当て
+Sample Microphone,Sample Microphone,測試麥克風,マイクをテスト
+Input Device,Input Device,輸入裝置,入力デバイス
+Edit Blueprint Properties,Edit Blueprint Properties,編輯節點圖屬性,ノードグラフのプロパティを編集
+Default,Default,預設,デフォルト
+Auto-Setup,Auto-Setup,自動設定,自動設定
+Move Left,Move Left,往左移,左へ移動
+Move Right,Move Right,往右移,右へ移動
+Add %s Tracker,Add %s Tracker,新增 %s 追蹤,%s トラッカーを追加
+Add XR Tracker,Add XR Tracker,新增 XR 追蹤,XR トラッカーを追加
+Add Hotkey Binding,Add Hotkey Binding,新增熱鍵綁定,ホットキーの割り当てを追加
+Add Onscreen Button Binding,Add Onscreen Button Binding,新增畫面按鈕綁定,画面ボタンの割り当てを追加
+Add Breathe,Add Breathe,新增呼吸,呼吸を追加
+Add Blink,Add Blink,新增眨眼,まばたきを追加
+Add Arithmetic,Add Arithmetic,新增運算,演算を追加
+Add Smoothing,Add Smoothing,新增平滑,スムージングを追加
+Add Toggle State,Add Toggle State,新增切換狀態,切り替え状態を追加
+Single Toggle,Single Toggle,單一切換,単独の切り替え
+Change Expression,Change Expression,切換表情,表情を変更
+Set Model Parameter,Set Model Parameter,設定模型參數,モデルパラメーターを設定
+OpenSeeFace (Webcam),OpenSeeFace (Webcam),OpenSeeFace（網路攝影機）,OpenSeeFace（Web カメラ）
+VTubeStudio (WiFi),VTubeStudio (WiFi),VTube Studio（Wi-Fi）,VTube Studio（Wi-Fi）
+iOS BlendShapes (VTS),iOS BlendShapes (VTS),iOS 表情形狀（VTS）,iOS ブレンドシェイプ（VTS）
+iFacialMocap (iPhone),iFacialMocap (iPhone),iFacialMocap（iPhone）,iFacialMocap（iPhone）
+Yorishiro tracker,Yorishiro tracker,Yorishiro 追蹤器,Yorishiro トラッカー
+Yorishiro (Controls),Yorishiro (Controls),Yorishiro（控制）,Yorishiro（操作）
+Action Palette,Action Palette,動作面板,アクションパレット
+Waiting for Input...,Waiting for Input...,等待輸入…,入力待ち…
+Press ESCAPE to clear binding,Press ESCAPE to clear binding,按 Esc 清除綁定,Esc で割り当てをクリア
+Set Expression [%s],Set Expression [%s],設定表情［%s］,表情を設定［%s］
+Model Settings [%s],Model Settings [%s],模型設定［%s］,モデル設定［%s］
+Z-Order,Z-Order,前後順序,前後の順番
+Model Name,Model Name,模型名稱,モデル名
+Group,Group,群組,グループ
+Group Name,Group Name,群組名稱,グループ名
+Action Controller,Action Controller,動作控制,アクション制御
+Section,Section,區段,セクション
+Search...,Search...,搜尋…,検索…
+Functions,Functions,函式,関数
+%s: %s,%s: %s,%s：%s,%s：%s
+Running,Running,執行中,実行中
+Starting,Starting,啟動中,起動中
+Error,Error,錯誤,エラー
+waiting for the tracker,waiting for the tracker,等待追蹤器,トラッカーを待っています
+loading tracker %s,loading tracker %s,載入追蹤模型 %s,トラッキングモデル %s を読み込み中
+the tracking core is not built (addons/yorishiro_tracking). Run app/build_dependencies.sh.,the tracking core is not built (addons/yorishiro_tracking). Run app/build_dependencies.sh.,追蹤核心還沒建置（addons/yorishiro_tracking），請執行 app/build_dependencies.sh。,トラッキングコアがビルドされていません（addons/yorishiro_tracking）。app/build_dependencies.sh を実行してください。
+starting tracker (first start loads models),starting tracker (first start loads models),啟動追蹤器中（第一次啟動要載入模型）,トラッカーを起動中（初回はモデルを読み込みます）
+tracking,tracking,追蹤中,トラッキング中
+no face in view,no face in view,畫面裡沒有臉,顔が映っていません
+calibrated,calibrated,已校正,キャリブレーション済み
+"calibrating, keep a neutral face","calibrating, keep a neutral face",校正中，請保持自然表情,キャリブレーション中、自然な表情のままでいてください
+NON-COMMERCIAL model,NON-COMMERCIAL model,非商用模型,非商用モデル
+Welcome to Yorishiro,Welcome to Yorishiro,歡迎使用 Yorishiro,Yorishiro へようこそ
+Add your model,Add your model,加入你的模型,モデルを追加
+Choose a model...,Choose a model...,選擇模型…,モデルを選ぶ…
+Your models,Your models,我的模型,あなたのモデル
+Face tracking,Face tracking,臉部追蹤,フェイストラッキング
+Tracking settings,Tracking settings,追蹤設定,トラッキング設定
+Place it,Place it,擺好位置,配置する
+"Drag the model to move it, scroll to resize, Shift + scroll to tilt. The gear in the corner opens all settings.","Drag the model to move it, scroll to resize, Shift + scroll to tilt. The gear in the corner opens all settings.",拖曳模型可以移動，滾輪調整大小，Shift + 滾輪旋轉。角落的齒輪可以打開所有設定。,モデルはドラッグで移動、ホイールで拡大縮小、Shift + ホイールで回転できます。隅の歯車からすべての設定を開けます。
+No face tracking input is selected.,No face tracking input is selected.,還沒有選擇臉部追蹤來源。,フェイストラッキングの入力が選ばれていません。
+"Another tracking input is selected, see the tracking settings.","Another tracking input is selected, see the tracking settings.",目前用的是其他追蹤來源，詳情請看追蹤設定。,別のトラッキング入力が選ばれています。トラッキング設定を確認してください。
+Ready: your face is in view.,Ready: your face is in view.,準備好了：已經看到你的臉。,準備完了：顔が見えています。
+"Running, but no face is in view. Sit in front of the camera with some light on your face.","Running, but no face is in view. Sit in front of the camera with some light on your face.",追蹤器在執行，但畫面裡沒有臉。請坐到攝影機前，讓臉上有一點光。,実行中ですが、顔が映っていません。カメラの前に座り、顔に少し光を当ててください。
+Not working: %s,Not working: %s,無法使用：%s,動作していません：%s
+Starting the tracker. The first start takes a little longer.,Starting the tracker. The first start takes a little longer.,正在啟動追蹤器，第一次啟動會久一點。,トラッカーを起動中です。初回は少し時間がかかります。
+Camera,Camera,攝影機,カメラ
+Compute,Compute,運算,演算
+%s (non-commercial),%s (non-commercial),%s（非商用）,%s（非商用）
+Go back,Go back,返回,戻る
+Expression Settings,Expression Settings,表情設定,表情の設定
+Parts Settings,Parts Settings,部件設定,パーツの設定
+Meshes Settings,Meshes Settings,網格設定,メッシュの設定
+Filter Mode,Filter Mode,縮放濾鏡,拡大縮小フィルター
+Bilinear,Bilinear,平滑,なめらか
+Nearest,Nearest,像素,ピクセル
+Idle Animation,Idle Animation,待機動畫,待機アニメーション
+Opacity,Opacity,不透明度,不透明度
+Visible,Visible,顯示,表示
+Color Override,Color Override,覆蓋顏色,色の上書き
+Multiply Color,Multiply Color,色彩相乘,乗算カラー
+Screen Color,Screen Color,色彩濾色,スクリーンカラー
+Pinnable,Pinnable,可釘選道具,固定できるアイテム
+Send tracking to other apps on this computer,Send tracking to other apps on this computer,把追蹤資料傳給這台電腦上的其他軟體,トラッキングをこのコンピューターの他のアプリに送る
+VTube Studio (as an iPhone),VTube Studio (as an iPhone),VTube Studio（當作 iPhone）,VTube Studio（iPhone として）
+"VSeeFace, Warudo, VNyan (iFacialMocap)","VSeeFace, Warudo, VNyan (iFacialMocap)",VSeeFace、Warudo、VNyan（iFacialMocap）,VSeeFace、Warudo、VNyan（iFacialMocap）
+In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT.,In VTube Studio pick the iPhone as the tracking source and enter 127.0.0.1. Also read by OpenVT.,在 VTube Studio 選擇 iPhone 當作追蹤來源，輸入 127.0.0.1。OpenVT 也讀得到。,VTube Studio でトラッキングの入力に iPhone を選び、127.0.0.1 を入力してください。OpenVT でも受信できます。
+In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,In the other app pick iFacialMocap as the tracking source and enter 127.0.0.1.,在那個軟體選擇 iFacialMocap 當作追蹤來源，輸入 127.0.0.1。,相手のアプリでトラッキングの入力に iFacialMocap を選び、127.0.0.1 を入力してください。
+Add item...,Add item...,加入道具…,アイテムを追加…
+Pictures in the Items folder show up here. Add one from anywhere on this computer.,Pictures in the Items folder show up here. Add one from anywhere on this computer.,Items 資料夾裡的圖片會出現在這裡，也可以從這台電腦的任何地方加入。,Items フォルダーの画像がここに表示されます。このコンピューターのどこからでも追加できます。
+"No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:","No virtual camera device yet. Run this once in a terminal (it needs your password), then check again:",還沒有虛擬攝影機裝置。請在終端機執行一次下面的指令（需要輸入密碼），再按「重新檢查」：,仮想カメラのデバイスがまだありません。ターミナルで次のコマンドを一度実行して（パスワードが必要です）、もう一度確認してください：
+Copy,Copy,複製,コピー
+Check again,Check again,重新檢查,再確認
+"Send the stage to OBS (PipeWire, transparent)","Send the stage to OBS (PipeWire, transparent)",把舞台傳到 OBS（PipeWire，透明背景）,ステージを OBS に送る（PipeWire、透過）
+"In OBS add a ""PipeWire video"" source (obs-pwvideo plugin) and pick Yorishiro. Only the stage is sent, without buttons or settings.","In OBS add a ""PipeWire video"" source (obs-pwvideo plugin) and pick Yorishiro. Only the stage is sent, without buttons or settings.",在 OBS 新增「PipeWire video」來源（obs-pwvideo 外掛），選 Yorishiro。只會傳送舞台，不含按鈕和設定畫面。,OBS で「PipeWire video」ソース（obs-pwvideo プラグイン）を追加し、Yorishiro を選んでください。送られるのはステージだけで、ボタンや設定画面は含まれません。
+The PipeWire output is not built (addons/yorishiro_pipewire). Run app/build_dependencies.sh.,The PipeWire output is not built (addons/yorishiro_pipewire). Run app/build_dependencies.sh.,PipeWire 輸出還沒建置（addons/yorishiro_pipewire），請執行 app/build_dependencies.sh。,PipeWire 出力がビルドされていません（addons/yorishiro_pipewire）。app/build_dependencies.sh を実行してください。
+"The PipeWire output needs PipeWire 1.4 or newer. This system's PipeWire is older (Ubuntu 24.04 has 1.0, Ubuntu 26.04 has 1.6).","The PipeWire output needs PipeWire 1.4 or newer. This system's PipeWire is older (Ubuntu 24.04 has 1.0, Ubuntu 26.04 has 1.6).",PipeWire 輸出需要 PipeWire 1.4 以上，這台系統的版本較舊（Ubuntu 24.04 是 1.0，Ubuntu 26.04 是 1.6）。,PipeWire 出力には PipeWire 1.4 以降が必要です。このシステムの PipeWire は古いバージョンです（Ubuntu 24.04 は 1.0、Ubuntu 26.04 は 1.6）。
+"PipeWire refused the stream. It needs PipeWire 1.2 or newer, and OBS 31 or newer on NVIDIA.","PipeWire refused the stream. It needs PipeWire 1.2 or newer, and OBS 31 or newer on NVIDIA.",PipeWire 拒絕了這個串流。需要 PipeWire 1.2 以上，NVIDIA 顯示卡還需要 OBS 31 以上。,PipeWire がストリームを拒否しました。PipeWire 1.2 以降と、NVIDIA の場合は OBS 31 以降が必要です。
+Sending to OBS needs the Vulkan renderer (Forward+ or Mobile).,Sending to OBS needs the Vulkan renderer (Forward+ or Mobile).,傳到 OBS 需要 Vulkan 渲染器（Forward+ 或 Mobile）。,OBS に送るには Vulkan レンダラー（Forward+ または Mobile）が必要です。
+Starting...,Starting...,啟動中…,起動中…
+"Sending %sx%s, waiting for OBS","Sending %sx%s, waiting for OBS",正在傳送 %sx%s，等待 OBS 接收,%sx%s で送信中、OBS を待っています
+Sending to OBS,Sending to OBS,正在傳送到 OBS,OBS に送信中
+PipeWire is not running or not reachable.,PipeWire is not running or not reachable.,PipeWire 沒有在執行，或連不上。,PipeWire が動いていないか、接続できません。
+Sending the stage to OBS over PipeWire,Sending the stage to OBS over PipeWire,透過 PipeWire 把舞台傳到 OBS,PipeWire でステージを OBS に送信
+Physics,Physics,物理,物理演算
+Use physics,Use physics,使用物理,物理演算を使う
+"Hair, clothes and accessories swing with the movement, as the model's maker set them up.","Hair, clothes and accessories swing with the movement, as the model's maker set them up.",頭髮、衣服和配件會隨動作擺動，依模型作者的設定。,髪や服、アクセサリーが動きに合わせて揺れます。揺れ方はモデル制作者の設定どおりです。
+This model has no physics.,This model has no physics.,這個模型沒有物理設定。,このモデルには物理演算の設定がありません。
+Overall strength,Overall strength,整體強度,全体の強さ
+Each part (%d),Each part (%d),各部位（%d）,部位ごと（%d）
+A Live2D model folder (with a .model3.json file).,A Live2D model folder (with a .model3.json file).,Live2D 模型資料夾（裡面有 .model3.json 檔）。,Live2D モデルのフォルダー（.model3.json ファイルを含む）。
+Save here,Save here,存在這裡,ここを保存
+"Remember where the model is now, this hotkey moves it back here.","Remember where the model is now, this hotkey moves it back here.",記住模型現在的位置，按這個熱鍵就會移回來。,今のモデルの位置を記憶します。このホットキーでここに戻ります。
+Saved,Saved,已儲存,保存しました
+Move to saved position %d,Move to saved position %d,移到存好的位置 %d,保存した位置 %d に移動
+Background: %s,Background: %s,背景：%s,背景：%s
+Change model: %s,Change model: %s,切換模型：%s,モデル変更：%s
+Toggle item: %s,Toggle item: %s,開關道具：%s,アイテムの表示切り替え：%s
+Reload model,Reload model,重新載入模型,モデルを再読み込み
+Take a screenshot,Take a screenshot,截圖,スクリーンショットを撮る
+App Action,App Action,App 動作,アプリの操作
+Move to saved position,Move to saved position,移到存好的位置,保存した位置に移動
+Change background,Change background,切換背景,背景を変更
+Change model,Change model,切換模型,モデルを変更
+Toggle item,Toggle item,開關道具,アイテムの表示切り替え
+Position %s,Position %s,位置 %s,位置 %s
+Reload,Reload,重新載入,再読み込み
+Screenshot,Screenshot,截圖,スクリーンショット
+Add picture...,Add picture...,加入圖片…,画像を追加…
+Pictures in the Backgrounds folder show up here. Add one from anywhere on this computer.,Pictures in the Backgrounds folder show up here. Add one from anywhere on this computer.,Backgrounds 資料夾裡的圖片會出現在這裡，也可以從這台電腦的任何地方加入。,Backgrounds フォルダーの画像がここに表示されます。このコンピューターのどこからでも追加できます。
+Allow plugins (port %d),Allow plugins (port %d),允許外掛（連接埠 %d）,プラグインを許可（ポート %d）
+"Plugins on this computer can connect over WebSocket. Each one asks once, here in the main window.","Plugins on this computer can connect over WebSocket. Each one asks once, here in the main window.",這台電腦上的外掛可以透過 WebSocket 連線。每個外掛第一次連線時，會在主視窗詢問你。,このコンピューターのプラグインが WebSocket で接続できます。各プラグインは初回接続時に一度だけ、メインウィンドウで許可を求めます。
+The plugin has to ask again next time.,The plugin has to ask again next time.,下次外掛要重新詢問。,次回、プラグインはもう一度許可を求めます。
+Port %d is in use by another program.,Port %d is in use by another program.,連接埠 %d 被其他程式使用中。,ポート %d は他のプログラムが使用中です。
+"This plugin wants to control Yorishiro: read and move the model, trigger hotkeys and expressions, send tracking values. Allow it?","This plugin wants to control Yorishiro: read and move the model, trigger hotkeys and expressions, send tracking values. Allow it?",這個外掛想要控制 Yorishiro：讀取與移動模型、觸發熱鍵和表情、送出追蹤數值。要允許嗎？,このプラグインが Yorishiro を操作しようとしています：モデルの読み取りと移動、ホットキーや表情の実行、トラッキング値の送信。許可しますか？
+Deny,Deny,拒絕,拒否
+Allow,Allow,允許,許可
+by %s,by %s,作者：%s,作者：%s
+New expression,New expression,新增表情,新しい表情
+Edit,Edit,編輯,編集
+Edit expression,Edit expression,編輯表情,表情を編集
+Search parameters,Search parameters,搜尋參數,パラメーターを検索
+Only the ones in use,Only the ones in use,只顯示有用到的,使用中のものだけ
+Part of this expression,Part of this expression,這個表情有用到,この表情で使用
+Add: on top of tracking. Multiply: scales tracking. Overwrite: replaces tracking.,Add: on top of tracking. Multiply: scales tracking. Overwrite: replaces tracking.,相加：加在追蹤數值上。相乘：放大縮小追蹤數值。覆寫：取代追蹤數值。,加算：トラッキングに足します。乗算：トラッキングを拡大縮小します。上書き：トラッキングを置き換えます。
+Add,Add,相加,加算
+Multiply,Multiply,相乘,乗算
+Overwrite,Overwrite,覆寫,上書き
+Delete my version,Delete my version,刪除我的版本,自分の版を削除
+"The model's own expression of this name comes back, if it has one.","The model's own expression of this name comes back, if it has one.",如果模型本身有同名的表情，會恢復成原本的。,モデル自体に同じ名前の表情があれば、それに戻ります。
+The expression needs a name.,The expression needs a name.,表情需要一個名稱。,表情に名前を付けてください。
+"The name cannot contain / \ : * ? "" < > |","The name cannot contain / \ : * ? "" < > |","名稱不能有 / \ : * ? "" < > |","名前に / \ : * ? "" < > | は使えません"
+The model already has an expression with this name.,The model already has an expression with this name.,模型已經有同名的表情。,このモデルには同じ名前の表情がすでにあります。
+Lip sync from the microphone,Lip sync from the microphone,用麥克風對嘴型,マイクでリップシンク
+"Microphone level. The line is the noise gate: quieter than it, the mouth stays closed.","Microphone level. The line is the noise gate: quieter than it, the mouth stays closed.",麥克風音量。那條線是噪音門檻，比它小聲時嘴巴不會動。,マイクの音量です。線はノイズゲートで、これより小さい音では口が動きません。
+Gain,Gain,增益,ゲイン
+Makes a quiet microphone louder.,Makes a quiet microphone louder.,把太小聲的麥克風放大。,小さいマイクの音を大きくします。
+Noise gate,Noise gate,噪音門檻,ノイズゲート
+"Sounds quieter than this do not move the mouth, like a fan or keyboard.","Sounds quieter than this do not move the mouth, like a fan or keyboard.",比這個小聲的聲音（例如電扇、鍵盤）不會讓嘴巴動。,これより小さい音（扇風機やキーボードなど）では口が動きません。
+"Higher is calmer, lower follows every syllable.","Higher is calmer, lower follows every syllable.",越高越穩定，越低越會跟著每個音節動。,高いほど落ち着いた動きに、低いほど音節ごとに動きます。
+Track hands,Track hands,追蹤手部,手をトラッキング
+"Hand position, angle and fingers for models with hand parameters. Uses more CPU.","Hand position, angle and fingers for models with hand parameters. Uses more CPU.",給有手部參數的模型用：手的位置、角度和手指。會多用一些 CPU。,手のパラメーターがあるモデル用：手の位置、角度、指。CPU を少し多く使います。
+Hands,Hands,手部,手
+"Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.","Hand position, angle and fingers for models with hand parameters. Runs beside the face on the same runtime.",給有手部參數的模型用：手的位置、角度和手指。和臉部用同一個運算方式並行。,手のパラメーターがあるモデル用：手の位置、角度、指。顔と同じランタイムで並行して動きます。
+Add to application menu,Add to application menu,加到應用程式選單,アプリケーションメニューに追加
+Update application menu entry,Update application menu entry,更新應用程式選單項目,アプリケーションメニューの項目を更新
+Remove from application menu,Remove from application menu,從應用程式選單移除,アプリケーションメニューから削除
+Removed.,Removed.,已移除。,削除しました。
+"Added. If the dock still shows the old icon, restart the app.","Added. If the dock still shows the old icon, restart the app.",已加入。如果 Dock 還是舊圖示，請重開 app。,追加しました。ドックのアイコンが古いままなら、アプリを再起動してください。
+"Already in the application menu (added by another tool), nothing to add.","Already in the application menu (added by another tool), nothing to add.",已經在應用程式選單裡（由其他工具加入），不用再加。,すでにアプリケーションメニューにあります（別のツールで追加済み）。追加は不要です。
+Adds Yorishiro to the application menu and shows its icon in the dock. Press it again if you move this file.,Adds Yorishiro to the application menu and shows its icon in the dock. Press it again if you move this file.,把 Yorishiro 加到應用程式選單，並在 Dock 顯示圖示。移動這個檔案後請再按一次。,Yorishiro をアプリケーションメニューに追加し、ドックにアイコンを表示します。このファイルを移動したら、もう一度押してください。

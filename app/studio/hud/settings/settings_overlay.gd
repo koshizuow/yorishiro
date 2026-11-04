@@ -213,10 +213,11 @@ func _language_selector() -> OptionButton:
 	var languages := OptionButton.new()
 	languages.name = "Language"
 	languages.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
-	languages.add_item("繁體中文")
-	languages.set_item_metadata(0, "zh_TW")
-	languages.add_item("English")
-	languages.set_item_metadata(1, "en")
-	languages.select(1 if TranslationServer.get_locale().begins_with("en") else 0)
+	var current := TranslationServer.get_locale()
+	for entry in [["繁體中文", "zh_TW"], ["English", "en"], ["日本語", "ja"]]:
+		languages.add_item(entry[0])
+		languages.set_item_metadata(languages.item_count - 1, entry[1])
+		if current.begins_with(entry[1]):
+			languages.select(languages.item_count - 1)
 	languages.item_selected.connect(func (i): Locale.set_language(languages.get_item_metadata(i)))
 	return languages

@@ -1,4 +1,4 @@
-## UI language. Traditional Chinese by default, English selectable. Kept outside the profiles in
+## UI language. Traditional Chinese by default, English and Japanese selectable. Kept outside the profiles in
 ## user://locale.cfg because it belongs to the user, not to a stream setup.
 ## Translations live in res://i18n/ui.csv, keyed by the English text so existing scenes translate without edits.
 extends Node

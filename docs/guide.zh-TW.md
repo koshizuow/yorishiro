@@ -1,6 +1,6 @@
 # Yorishiro 使用說明
 
-[English](guide.md)
+[English](guide.md) · [日本語](guide.ja.md)
 
 - [開始使用](#開始使用)
 - [快捷鍵](#快捷鍵)

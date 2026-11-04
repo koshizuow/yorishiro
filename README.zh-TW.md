@@ -4,7 +4,7 @@
 
 <p align="center">Linux 上的 Live2D VTuber 軟體，自帶 GPU 臉部追蹤。</p>
 
-<p align="center"><a href="README.md">English</a></p>
+<p align="center"><a href="README.md">English</a> · <a href="README.ja.md">日本語</a></p>
 
 ![左邊是戴眼鏡的 3D 光頭在單眼眨眼和轉頭，右邊的 Live2D 模型同步做出一樣的動作](docs/images/hero.gif)
 
@@ -32,7 +32,7 @@
   軟體支援的 iPhone 追蹤協定。
 - **外掛。** 提供本機的 WebSocket API（連接埠 8001，預設關閉），訊息格式和現有的 VTuber 外掛相同。外掛可以移動模型、
   觸發熱鍵和表情、送入追蹤數值。每個外掛第一次連線前都會先問過你。
-- **介面支援英文和繁體中文。**
+- **介面支援英文、繁體中文和日文。**
 
 | | |
 |---|---|

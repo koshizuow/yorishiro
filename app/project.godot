@@ -163,4 +163,4 @@ platforms/linuxbsd/prefer_wayland=true
 
 [internationalization]
 
-locale/translations=PackedStringArray("res://i18n/ui.en.translation", "res://i18n/ui.zh_TW.translation")
+locale/translations=PackedStringArray("res://i18n/ui.en.translation", "res://i18n/ui.zh_TW.translation", "res://i18n/ui.ja.translation")
