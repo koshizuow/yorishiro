@@ -53,6 +53,9 @@
   </recommends>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.7" date="2026-11-05">
+      <description><p>The interface and the guide are in Japanese too: choose 日本語 at the top right of the settings.</p></description>
+    </release>
     <release version="0.1.6" date="2026-11-04">
       <description><p>An iPhone can track the face over Wi-Fi in two ways, both checked with a phone, and the model now turns like a mirror with it. Hotkeys can use two plain keys together, such as Tab+F1.</p></description>
     </release>
