@@ -323,6 +323,8 @@ func _listen(button: Button, e: Dictionary) -> void:
 	_stop_listening()
 	_listening = button
 	_listening_entry = e
+	_captured.clear()
+	_held.clear()
 	button.text = tr("Press keys...")
 
 func _stop_listening() -> void:
@@ -330,29 +332,36 @@ func _stop_listening() -> void:
 		_listening.text = _keys_text(_listening_entry)
 	_listening = null
 
+## Every key held together counts (Ctrl+K, and also two plain keys like Tab+F1 as VTS hotkeys often are, up to
+## three): the keys are set when all of them are released, modifiers first.
+var _captured: Array[int] = []
+var _held := {}
+
 func _input(event: InputEvent) -> void:
-	if _listening == null or not (event is InputEventKey) or not event.pressed or event.echo:
+	if _listening == null or not (event is InputEventKey) or event.echo:
 		return
 	get_viewport().set_input_as_handled()
-	match event.keycode:
-		KEY_ESCAPE:
+	var code: int = event.keycode
+	if not event.pressed:
+		_held.erase(code)
+		if _held.is_empty() and not _captured.is_empty():
+			var mods := _captured.filter(func (k): return k in MODIFIERS)
+			var rest := _captured.filter(func (k): return k not in MODIFIERS)
+			_set_keys(_listening_entry, (mods + rest).slice(0, 3).map(OS.get_keycode_string))
 			_stop_listening()
-			return
-		KEY_BACKSPACE, KEY_DELETE:
-			_set_keys(_listening_entry, [])
-			_stop_listening()
-			return
-	if event.keycode in MODIFIERS:
-		return  # wait for the main key, modifiers are read from the event
-	var keys: Array = []
-	if event.ctrl_pressed:
-		keys.append("Ctrl")
-	if event.shift_pressed:
-		keys.append("Shift")
-	if event.alt_pressed:
-		keys.append("Alt")
-	keys.append(OS.get_keycode_string(event.keycode))
-	_set_keys(_listening_entry, keys.slice(0, 3))
-	_stop_listening()
+		return
+	if _captured.is_empty():
+		match code:
+			KEY_ESCAPE:
+				_stop_listening()
+				return
+			KEY_BACKSPACE, KEY_DELETE:
+				_set_keys(_listening_entry, [])
+				_stop_listening()
+				return
+	_held[code] = true
+	if code not in _captured:
+		_captured.append(code)
+	_listening.text = " + ".join(_captured.map(OS.get_keycode_string)) + " ..."
 
 #endregion

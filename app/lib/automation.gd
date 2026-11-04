@@ -995,7 +995,18 @@ func _hotkey_test(prefix: String):
 	var entries: Array = list.entries()
 	check.call("add (%d -> %d)" % [before, entries.size()], entries.size() == before + 1)
 	var row = list._rows.get_child(list._rows.get_child_count() - 1)
-	# key capture: click the keys button, then Ctrl+K as real key events
+	# key capture: two plain keys held together (Tab+F1, as VTS hotkeys often are), set when both are released
+	row.get_child(1).pressed.emit()
+	for k in [[KEY_TAB, true], [KEY_F1, true], [KEY_TAB, false], [KEY_F1, false]]:
+		var ev := InputEventKey.new()
+		ev.keycode = k[0]
+		ev.physical_keycode = k[0]
+		ev.pressed = k[1]
+		Input.parse_input_event(ev)
+		await get_tree().process_frame
+	var two: Array = list.entries()[-1].key.get_node("%Handler").input_as_list
+	check.call("two keys %s" % [two], two == ["Tab", "F1"])
+	# then Ctrl+K as real key events, replacing them
 	row.get_child(1).pressed.emit()
 	for k in [[KEY_CTRL, true, false], [KEY_K, true, true], [KEY_K, false, true], [KEY_CTRL, false, false]]:
 		var ev := InputEventKey.new()
