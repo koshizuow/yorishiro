@@ -11,8 +11,8 @@ members = [
 	"crates/katashiro-gd",
 	"tools/moc3",
 ]
-# upstream submodules with their own lock files and builds
-exclude = ["thirdparty/godot-keylogger"]
+# built on its own with its own lock file (godot-rust with other features; from erodozer/godot-keylogger)
+exclude = ["crates/keylogger-gd"]
 
 # debug builds (cargo test) fast enough for the tracking math and model files
 [profile.dev]

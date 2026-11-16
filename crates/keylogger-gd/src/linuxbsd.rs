@@ -1,0 +1,377 @@
+use godot::prelude::*;
+use godot::init::ExtensionLibrary;
+use godot::obj::Singleton;
+use godot::classes::{DisplayServer, Engine};
+use evdev::EvdevEnum;
+
+use input::event::keyboard::{KeyboardEventTrait, KeyState};
+use input::event::tablet_tool::TabletToolEventTrait;
+use input::{Libinput, LibinputInterface};
+use libc::{O_RDONLY, O_RDWR, O_WRONLY};
+use std::fs::{File, OpenOptions};
+use std::os::unix::{fs::OpenOptionsExt, io::OwnedFd};
+use std::path::Path;
+
+use godot::global::{Key as GKey, MouseButton, inverse_lerp};
+use evdev::KeyCode as EKey;
+
+use crate::keylogger::{GlobalInput, KeyloggerExtension};
+
+struct Interface;
+
+impl LibinputInterface for Interface {
+    fn open_restricted(&mut self, path: &Path, flags: i32) -> Result<OwnedFd, i32> {
+        OpenOptions::new()
+            .custom_flags(flags)
+            .read((flags & O_RDONLY != 0) | (flags & O_RDWR != 0))
+            .write((flags & O_WRONLY != 0) | (flags & O_RDWR != 0))
+            .open(path)
+            .map(|file| file.into())
+            .map_err(|err| err.raw_os_error().unwrap())
+    }
+    fn close_restricted(&mut self, fd: OwnedFd) {
+        drop(File::from(fd));
+    }
+}
+
+// annoying gross function that maps evdev key input to godot's input mapping
+// don't bother with trying to turn this into a static map or anything,
+// rust doesn't support static maps out of the box, and alternatives like phf
+// require too much work for something that'll just codegen/unwrap to a match
+// statement anyway.  This is the optimal way to do this.
+fn evdev_to_godot(keycode: EKey) -> Option<GKey> {
+    match keycode {
+        // GKey::NONE
+        // GKey::SPECIAL
+        EKey::KEY_ESC => Some(GKey::ESCAPE),
+        EKey::KEY_TAB => Some(GKey::TAB),
+        // GKey::BACKTAB
+        EKey::KEY_BACKSPACE => Some(GKey::BACKSPACE),
+        EKey::KEY_ENTER => Some(GKey::ENTER),
+        EKey::KEY_KPENTER => Some(GKey::KP_ENTER),
+        EKey::KEY_INSERT => Some(GKey::INSERT),
+        EKey::KEY_DELETE => Some(GKey::DELETE),
+        EKey::KEY_PAUSE => Some(GKey::PAUSE),
+        EKey::KEY_PRINT => Some(GKey::PRINT),
+        EKey::KEY_SYSRQ => Some(GKey::SYSREQ),
+        EKey::KEY_CLEAR => Some(GKey::CLEAR),
+        EKey::KEY_HOME => Some(GKey::HOME),
+        EKey::KEY_END => Some(GKey::END),
+        EKey::KEY_LEFT => Some(GKey::LEFT),
+        EKey::KEY_UP => Some(GKey::UP),
+        EKey::KEY_RIGHT => Some(GKey::RIGHT),
+        EKey::KEY_DOWN => Some(GKey::DOWN),
+        EKey::KEY_PAGEUP => Some(GKey::PAGEUP),
+        EKey::KEY_PAGEDOWN => Some(GKey::PAGEDOWN),
+        EKey::KEY_LEFTSHIFT => Some(GKey::SHIFT),
+        EKey::KEY_RIGHTSHIFT => Some(GKey::SHIFT),
+        EKey::KEY_LEFTCTRL => Some(GKey::CTRL),
+        EKey::KEY_RIGHTCTRL => Some(GKey::CTRL),
+        // GKey::META
+        EKey::KEY_LEFTALT => Some(GKey::ALT),
+        EKey::KEY_RIGHTALT => Some(GKey::ALT),
+        EKey::KEY_CAPSLOCK => Some(GKey::CAPSLOCK),
+        EKey::KEY_NUMLOCK => Some(GKey::NUMLOCK),
+        EKey::KEY_SCROLLLOCK => Some(GKey::SCROLLLOCK),
+        EKey::KEY_F1 => Some(GKey::F1),
+        EKey::KEY_F2 => Some(GKey::F2),
+        EKey::KEY_F3 => Some(GKey::F3),
+        EKey::KEY_F4 => Some(GKey::F4),
+        EKey::KEY_F5 => Some(GKey::F5),
+        EKey::KEY_F6 => Some(GKey::F6),
+        EKey::KEY_F7 => Some(GKey::F7),
+        EKey::KEY_F8 => Some(GKey::F8),
+        EKey::KEY_F9 => Some(GKey::F9),
+        EKey::KEY_F10 => Some(GKey::F10),
+        EKey::KEY_F11 => Some(GKey::F11),
+        EKey::KEY_F12 => Some(GKey::F12),
+        EKey::KEY_F13 => Some(GKey::F13),
+        EKey::KEY_F14 => Some(GKey::F14),
+        EKey::KEY_F15 => Some(GKey::F15),
+        EKey::KEY_F16 => Some(GKey::F16),
+        EKey::KEY_F17 => Some(GKey::F17),
+        EKey::KEY_F18 => Some(GKey::F18),
+        EKey::KEY_F19 => Some(GKey::F19),
+        EKey::KEY_F20 => Some(GKey::F20),
+        EKey::KEY_F21 => Some(GKey::F21),
+        EKey::KEY_F22 => Some(GKey::F22),
+        EKey::KEY_F23 => Some(GKey::F23),
+        EKey::KEY_F24 => Some(GKey::F24),
+        // GKey::F25
+        // GKey::F26
+        // GKey::F27
+        // GKey::F28
+        // GKey::F29
+        // GKey::F30
+        // GKey::F31
+        // GKey::F32
+        // GKey::F33
+        // GKey::F34
+        // GKey::F35
+        EKey::KEY_KPASTERISK => Some(GKey::KP_MULTIPLY),
+        EKey::KEY_KPSLASH => Some(GKey::KP_DIVIDE),
+        EKey::KEY_KPMINUS => Some(GKey::KP_SUBTRACT),
+        EKey::KEY_KPDOT => Some(GKey::KP_PERIOD),
+        EKey::KEY_KPPLUS => Some(GKey::KP_ADD),
+        EKey::KEY_KP0 => Some(GKey::KP_0),
+        EKey::KEY_KP1 => Some(GKey::KP_1),
+        EKey::KEY_KP2 => Some(GKey::KP_2),
+        EKey::KEY_KP3 => Some(GKey::KP_3),
+        EKey::KEY_KP4 => Some(GKey::KP_4),
+        EKey::KEY_KP5 => Some(GKey::KP_5),
+        EKey::KEY_KP6 => Some(GKey::KP_6),
+        EKey::KEY_KP7 => Some(GKey::KP_7),
+        EKey::KEY_KP8 => Some(GKey::KP_8),
+        EKey::KEY_KP9 => Some(GKey::KP_9),
+        // GKey::MENU
+        // GKey::HYPER
+        EKey::KEY_HELP => Some(GKey::HELP),
+        EKey::KEY_BACK => Some(GKey::BACK),
+        EKey::KEY_FORWARD => Some(GKey::FORWARD),
+        // GKey::STOP
+        EKey::KEY_REFRESH => Some(GKey::REFRESH),
+        EKey::KEY_VOLUMEDOWN => Some(GKey::VOLUMEDOWN),
+        EKey::KEY_VOLUMEUP => Some(GKey::VOLUMEUP),
+        EKey::KEY_PLAYPAUSE => Some(GKey::MEDIAPLAY),
+        EKey::KEY_STOP => Some(GKey::MEDIASTOP),
+        EKey::KEY_PREVIOUS => Some(GKey::MEDIAPREVIOUS),
+        EKey::KEY_PREVIOUSSONG => Some(GKey::MEDIAPREVIOUS),
+        EKey::KEY_NEXT => Some(GKey::MEDIANEXT),
+        EKey::KEY_NEXTSONG => Some(GKey::MEDIANEXT),
+        EKey::KEY_RECORD => Some(GKey::MEDIARECORD),
+        EKey::KEY_HOMEPAGE => Some(GKey::HOMEPAGE),
+        EKey::KEY_FAVORITES => Some(GKey::FAVORITES),
+        EKey::KEY_SEARCH => Some(GKey::SEARCH),
+        // GKey::STANDBY
+        EKey::KEY_WWW => Some(GKey::OPENURL),
+        EKey::KEY_MAIL => Some(GKey::LAUNCHMAIL),
+        EKey::KEY_EMAIL => Some(GKey::LAUNCHMAIL),
+        EKey::KEY_MEDIA => Some(GKey::LAUNCHMEDIA),
+        // GKey::LAUNCH0
+        // GKey::LAUNCH1
+        // GKey::LAUNCH2
+        // GKey::LAUNCH3
+        // GKey::LAUNCH4
+        // GKey::LAUNCH5
+        // GKey::LAUNCH6
+        // GKey::LAUNCH7
+        // GKey::LAUNCH8
+        // GKey::LAUNCH9
+        // GKey::LAUNCHA
+        // GKey::LAUNCHB
+        // GKey::LAUNCHC
+        // GKey::LAUNCHD
+        // GKey::LAUNCHE
+        // GKey::LAUNCHF
+        // GKey::GLOBE
+        // GKey::KEYBOARD
+        // GKey::JIS_EISU
+        // GKey::JIS_KANA
+        // GKey::UNKNOWN
+        EKey::KEY_SPACE => Some(GKey::SPACE),
+        // GKey::EXCLAM
+        // GKey::QUOTEDBL
+        // GKey::NUMBERSIGN
+        EKey::KEY_DOLLAR => Some(GKey::DOLLAR),
+        // GKey::PERCENT
+        // GKey::AMPERSAND
+        EKey::KEY_APOSTROPHE => Some(GKey::APOSTROPHE),
+        EKey::KEY_KPLEFTPAREN => Some(GKey::PARENLEFT),
+        EKey::KEY_KPRIGHTPAREN => Some(GKey::PARENRIGHT),
+        // GKey::ASTERISK
+        // GKey::PLUS
+        EKey::KEY_COMMA => Some(GKey::COMMA),
+        EKey::KEY_MINUS => Some(GKey::MINUS),
+        EKey::KEY_DOT => Some(GKey::PERIOD),
+        EKey::KEY_SLASH => Some(GKey::SLASH),
+        EKey::KEY_0 => Some(GKey::KEY_0),
+        EKey::KEY_1 => Some(GKey::KEY_1),
+        EKey::KEY_2 => Some(GKey::KEY_2),
+        EKey::KEY_3 => Some(GKey::KEY_3),
+        EKey::KEY_4 => Some(GKey::KEY_4),
+        EKey::KEY_5 => Some(GKey::KEY_5),
+        EKey::KEY_6 => Some(GKey::KEY_6),
+        EKey::KEY_7 => Some(GKey::KEY_7),
+        EKey::KEY_8 => Some(GKey::KEY_8),
+        EKey::KEY_9 => Some(GKey::KEY_9),
+        // GKey::COLON
+        EKey::KEY_SEMICOLON => Some(GKey::SEMICOLON),
+        // GKey::LESS
+        EKey::KEY_EQUAL => Some(GKey::EQUAL),
+        // GKey::GREATER
+        EKey::KEY_QUESTION => Some(GKey::QUESTION),
+        // GKey::AT
+        EKey::KEY_A => Some(GKey::A),
+        EKey::KEY_B => Some(GKey::B),
+        EKey::KEY_C => Some(GKey::C),
+        EKey::KEY_D => Some(GKey::D),
+        EKey::KEY_E => Some(GKey::E),
+        EKey::KEY_F => Some(GKey::F),
+        EKey::KEY_G => Some(GKey::G),
+        EKey::KEY_H => Some(GKey::H),
+        EKey::KEY_I => Some(GKey::I),
+        EKey::KEY_J => Some(GKey::J),
+        EKey::KEY_K => Some(GKey::K),
+        EKey::KEY_L => Some(GKey::L),
+        EKey::KEY_M => Some(GKey::M),
+        EKey::KEY_N => Some(GKey::N),
+        EKey::KEY_O => Some(GKey::O),
+        EKey::KEY_P => Some(GKey::P),
+        EKey::KEY_Q => Some(GKey::Q),
+        EKey::KEY_R => Some(GKey::R),
+        EKey::KEY_S => Some(GKey::S),
+        EKey::KEY_T => Some(GKey::T),
+        EKey::KEY_U => Some(GKey::U),
+        EKey::KEY_V => Some(GKey::V),
+        EKey::KEY_W => Some(GKey::W),
+        EKey::KEY_X => Some(GKey::X),
+        EKey::KEY_Y => Some(GKey::Y),
+        EKey::KEY_Z => Some(GKey::Z),
+        // GKey::BRACKETLEFT
+        EKey::KEY_BACKSLASH => Some(GKey::BACKSLASH),
+        // GKey::BRACKETRIGHT
+        // GKey::ASCIICIRCUM
+        // GKey::UNDERSCORE
+        // GKey::QUOTELEFT
+        EKey::KEY_LEFTBRACE => Some(GKey::BRACELEFT),
+        // GKey::BAR
+        EKey::KEY_RIGHTBRACE => Some(GKey::BRACERIGHT),
+        EKey::KEY_GRAVE => Some(GKey::ASCIITILDE),
+        EKey::KEY_YEN => Some(GKey::YEN),
+        // GKey::SECTION
+
+        // TODO some buttons are missing from evdev, instead expecting modifiers to map them
+        _ => None
+    }
+}
+
+#[derive(GodotClass)]
+#[class(init, singleton, base = Object)]
+struct LibInputHolder {
+    input: Option<Libinput>,
+}
+
+#[gdextension]
+unsafe impl ExtensionLibrary for KeyloggerExtension {
+    fn on_stage_init(stage: InitStage) {
+        match stage {
+            InitStage::MainLoop => {
+                let mut input = Libinput::new_with_udev(Interface);
+                input.udev_assign_seat("seat0").unwrap();
+                LibInputHolder::singleton().bind_mut().input = Some(input);
+
+                // disable standard real-time listener to prefer libinput updates
+                let mut singleton = GlobalInput::singleton();
+                let mut gi = singleton.bind_mut();
+                let mut gi_base= gi.base_mut();
+                gi_base.set_process(false);
+                gi_base.set_process_input(false);
+            }
+            _ => {}
+        }
+    }
+
+    // listen to events from libinput to read directly from hardware,
+    // allowing for Input event updates to process from outside of the window
+    // receives events from libinput by polling once per process frame
+    fn on_main_loop_frame() {
+        if Engine::singleton().is_editor_hint() {
+            return;
+        }
+
+        let Some(mut input) = LibInputHolder::singleton().bind().input.clone() else {
+            godot_error!("libinput not initialized");
+            return; 
+        };
+        input.dispatch().unwrap();
+
+        let mut singleton = GlobalInput::singleton();
+        let mut kl = singleton.bind_mut();
+
+        kl.prev_keystate = kl.keystate.clone();
+        kl.hold_keystate.clear();
+
+        for event in &mut input {
+            match event {
+                input::Event::Keyboard(event) => {
+                    let keycode = EKey::from_index(event.key() as usize);
+                    if let Some(godotkey) = evdev_to_godot(keycode) {
+                        let pressed = match event.key_state() {
+                            KeyState::Pressed => true,
+                            KeyState::Released => false
+                        };
+
+                        let prev_state = match kl.prev_keystate.get(&godotkey) {
+                            Some(res) => *res,
+                            _ => false
+                        };
+
+                        kl.keystate.insert(godotkey, pressed);
+                        kl.hold_keystate.insert(godotkey, pressed && prev_state);
+                    }
+                }
+                // for mice/touchpads
+                input::Event::Pointer(input::event::PointerEvent::Motion(event)) => {
+                    let dimensions: Vector2 = DisplayServer::singleton().screen_get_size().cast_float();
+                    let mut position = kl.mouseposition;
+                    let scaled = Vector2 {
+                        x: event.dx() as f32,
+                        y: event.dy() as f32,
+                    } / (dimensions / 2.0);
+                    position += scaled;
+                    position = position.clamp(Vector2 { x: -1.0, y: -1.0 }, Vector2 { x: 1.0, y: 1.0 });
+
+                    kl.mouseposition = position;
+                }
+                // for touch screens
+                input::Event::Pointer(input::event::PointerEvent::MotionAbsolute(event)) => {
+                    let dimensions = DisplayServer::singleton().screen_get_size();
+                    let screen_half = dimensions.cast_float() / 2.0;
+                    let x = event.absolute_x_transformed(dimensions.x as u32);
+                    let y = event.absolute_y_transformed(dimensions.y as u32);
+                    let scaled = Vector2 {
+                        x: inverse_lerp(screen_half.x as f64, dimensions.x as f64, x) as f32,
+                        y: inverse_lerp(screen_half.y as f64, dimensions.y as f64, y) as f32,
+                    };
+
+                    kl.mouseposition = scaled;
+                }
+                input::Event::Pointer(input::event::PointerEvent::Button(event)) => {
+                    let btn = match EKey::from_index(event.button() as usize) {
+                        EKey::BTN_LEFT => MouseButton::LEFT,
+                        EKey::BTN_MIDDLE => MouseButton::MIDDLE,
+                        EKey::BTN_RIGHT => MouseButton::RIGHT,
+                        _ => continue
+                    };
+                    kl.mousestate.insert(btn, event.button_state() == input::event::pointer::ButtonState::Pressed);
+                }
+                // for tablets
+                input::Event::Tablet(input::event::TabletToolEvent::Axis(event)) => {
+                    kl.penpressure = event.pressure() as f32;
+                    
+                    let dimensions: Vector2i = DisplayServer::singleton().screen_get_size();
+                    let x = event.x_transformed(dimensions.x as u32);
+                    let y = event.y_transformed(dimensions.y as u32);
+                    let screen_half = dimensions.cast_float() / 2.0;
+                    let scaled = Vector2 {
+                        x: inverse_lerp(screen_half.x as f64, dimensions.x as f64, x) as f32,
+                        y: inverse_lerp(screen_half.y as f64, dimensions.y as f64, y) as f32,
+                    };
+                    kl.mouseposition = scaled;
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn on_stage_deinit(stage: InitStage) {
+        match stage {
+            InitStage::Scene => {
+                if let Some(input) = &LibInputHolder::singleton().bind_mut().input {
+                    input.suspend();
+                }
+            },
+            _ => {}
+        }   
+    }
+}

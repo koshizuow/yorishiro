@@ -166,7 +166,7 @@ GDEXT
 build_keylogger() {
 	echo -e "\n#### Preparing godot-keylogger\n\n"
 
-	WORKDIR=$PROJ_ROOT/../thirdparty/godot-keylogger
+	WORKDIR=$PROJ_ROOT/../crates/keylogger-gd
 	ADDONDIR=$PROJ_ROOT/addons
 
 	mkdir -p $ADDONDIR

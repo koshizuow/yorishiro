@@ -1,3 +1,0 @@
-[submodule "app/thirdparty/godot-keylogger"]
-	path = thirdparty/godot-keylogger
-	url = https://github.com/erodozer/godot-keylogger

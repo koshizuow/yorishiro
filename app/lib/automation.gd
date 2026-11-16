@@ -49,6 +49,8 @@
 ##   --virtual-camera=<dev> send the stage to this v4l2loopback device, for --hold=<s> seconds before going on
 ##   --pipewire-test[=<s>]  send the stage to PipeWire, resize the window twice (s seconds per size, default 2, longer
 ##                          to watch it in OBS) and check the output keeps running
+##   --global-key-test=<s>  minimize the window, then for s seconds count the frames GlobalInput (the keylogger addon)
+##                          saw F9 pressed (and how many of them without the focus) and whether the mouse moved
 ##   --core-test=<camera>   switch the tracker from the replayed recording to that camera (the development loopback
 ##                          camera is 10), check it runs and moves the model, with the outputs to other apps on;
 ##                          --core-runtime=<auto|vulkan|vulkan-fp32|ncnn-cpu|ort-cpu> picks the runtime (vulkan)
@@ -357,6 +359,8 @@ func _ready() -> void:
 			await get_tree().create_timer(float(args.get("hold", 0))).timeout
 		if args.has("pipewire-test"):
 			await _pipewire_test(float(args["pipewire-test"]) if str(args["pipewire-test"]).is_valid_float() else 2.0)
+		if args.has("global-key-test"):
+			await _global_key_test(float(args["global-key-test"]))
 		if args.has("mic-test"):
 			await _mic_test(str(args["mic-test"]))
 		if args.has("plugin-api-test"):
@@ -738,6 +742,31 @@ func _motion_switch(model, motions: PackedStringArray) -> void:
 					fade_ms[gi] = Time.get_ticks_msec() - start
 				shown[gi] = g["parts"][g["shown"]]
 		print("[automation] motion %s: shown %s, lowest cover %s, fade ended at %s ms" % [m, shown.values(), worst.values(), fade_ms.values()])
+
+func _global_key_test(seconds: float):
+	var gi = Engine.get_singleton(&"GlobalInput") if Engine.has_singleton(&"GlobalInput") else null
+	if gi == null:
+		print("[automation] global keys: no GlobalInput")
+		return
+	var seen := 0
+	var godot_seen := 0
+	var unfocused := 0
+	var just := 0
+	var moved := false
+	get_window().mode = Window.MODE_MINIMIZED
+	var first: Vector2 = gi.get_mouse_position()
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < seconds * 1000:
+		await get_tree().process_frame
+		godot_seen += 1 if Input.is_key_pressed(KEY_F9) else 0
+		if gi.is_key_pressed(KEY_F9):
+			seen += 1
+			unfocused += 0 if get_window().has_focus() else 1
+		just += 1 if gi.is_key_just_pressed(KEY_F9) else 0
+		moved = moved or gi.get_mouse_position().distance_to(first) > 0.01
+	get_window().mode = Window.MODE_WINDOWED
+	print("[automation] global keys: F9 down in %d frames (%d without the focus; Godot's own Input, focus only: %d), just pressed %d times, mouse moved %s" % [
+		seen, unfocused, godot_seen, just, moved])
 
 func _pipewire_test(seconds: float):
 	var check := func (what: String, ok: bool): print("[automation] pipewire %s: %s" % [what, "ok" if ok else "FAILED"])
