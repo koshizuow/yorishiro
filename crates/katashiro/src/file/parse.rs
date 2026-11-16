@@ -546,13 +546,17 @@ impl ParsedModel {
         blend_form_map!(Glue, glue);
         blend_form_map!(OffscreenPart, offscreen_part);
 
-        // TODO: There's probably a better way...
-        if let Some(dg) = self
-            .draw_groups()
-            .into_iter()
-            .max_by_key(|g| *g.f_total_artmesh_count())
-        {
-            self.root_draw_group = Some(dg.idx())
+        // The root is the group drawing the most art meshes; on a tie the first one (max_by_key would take the
+        // last: a model whose root and only child group draw the same meshes failed to load)
+        let mut best: Option<(u32, _)> = None;
+        for g in self.draw_groups() {
+            let n = *g.f_total_artmesh_count();
+            if best.as_ref().is_none_or(|(m, _)| n > *m) {
+                best = Some((n, g.idx()));
+            }
+        }
+        if let Some((_, idx)) = best {
+            self.root_draw_group = Some(idx)
         }
 
         // Let's assert this, seems to be true in models we've seen
