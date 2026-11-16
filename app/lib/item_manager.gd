@@ -22,6 +22,22 @@ func about_item(path: String) -> Dictionary:
 		}
 	return {}
 
+## the expressions VTube Studio had on for this Live2D item (SavedActiveExpressions in its .vtube.json, e.g. an item
+## that holds a drink only with its drink expression on)
+static func _vts_saved_expressions(model) -> void:
+	var controller = model.get_expression_controller()
+	var vt: String = model.modelmeta.studio_parameters
+	if controller == null or not FileAccess.file_exists(vt):
+		return
+	var data = JSON.parse_string(FileAccess.get_file_as_string(vt))
+	if not data is Dictionary:
+		return
+	var names: Array = (controller.expressions as Array).map(func (e): return e.get_name())
+	for f in data.get("SavedActiveExpressions", []):
+		var n := str(f).get_file().trim_suffix(".exp3.json")
+		if n in names:
+			controller.set("weight/%s" % n, 1.0)
+
 func create_item(path: PackedStringArray) -> VtItem:
 	assert(not path.is_empty())
 	var vtitem = preload("res://lib/items/vt_item.tscn").instantiate()
@@ -54,6 +70,7 @@ func create_item(path: PackedStringArray) -> VtItem:
 		model.locked = true
 		# the item moves with what it is pinned to (or stays put), not with the face on its own
 		model.movement_enabled = false
+		_vts_saved_expressions(model)
 		
 		vtitem.size = model.size
 		vtitem.item_type = VtItem.ItemType.MODEL

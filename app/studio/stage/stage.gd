@@ -100,6 +100,8 @@ func _on_stage_resized() -> void:
 	if _stage_size.x > 0 and _stage_size.y > 0 and new_size.x > 0 and new_size.y > 0 and new_size != _stage_size:
 		var k := new_size / _stage_size
 		for o in canvas.get_children():
+			if o is VtItem and o.pinned_to != null and o.pin_mode == VtItem.PinMode.VERTICES:
+				continue  # sized and placed from the model every frame, and the model is scaled here
 			if o is Node2D or o is Control:
 				o.position *= k
 				o.scale *= k.y
