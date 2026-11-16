@@ -643,8 +643,14 @@ impl RdRenderer {
         if self.target.as_ref().is_some_and(|t| t.size == size && t.samples == samples) {
             return;
         }
-        let rd = &mut self.rd;
         let old_samples = self.target.as_ref().map(|t| t.samples);
+        if self.target.is_some() {
+            // the view lets go first: Texture2DRD frees what it made around the old texture when it changes, which
+            // printed "Attempted to free invalid ID" twice after the texture was gone (a model moved into a viewport
+            // with other MSAA, as items are)
+            self.view.set_texture_rd_rid(Rid::Invalid);
+        }
+        let rd = &mut self.rd;
         if let Some(old) = self.target.take() {
             rd.free_rid(old.texture);
             if let Some(m) = old.msaa {

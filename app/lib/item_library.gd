@@ -1,5 +1,6 @@
 ## The items the user can put on the stage (VTube Studio's item library): every picture in user://Items,
-## folders of PNG frames there as animations, and pictures added from elsewhere with the file browser.
+## folders of PNG frames there as animations, folders with a Live2D model (.model3.json in the folder or one below,
+## as VTS keeps Live2D items), and items added from elsewhere with the file browser.
 ## The files stay where they are, only their paths are remembered.
 extends Node
 
@@ -26,6 +27,12 @@ func list() -> Array[Dictionary]:
 		if f.get_extension().to_lower() in IMAGE_EXTENSIONS:
 			out.append(_entry(PackedStringArray([dir.path_join(f)])))
 	for d in DirAccess.get_directories_at(dir):
+		var model := live2d_in(dir.path_join(d))
+		if model:
+			var e := _entry(PackedStringArray([model]))
+			e.name = d
+			out.append(e)
+			continue
 		var frames := _frames(dir.path_join(d))
 		if frames.size() > 1:
 			out.append(_entry(frames))
@@ -64,8 +71,36 @@ func thumbnail(path: String) -> Texture2D:
 
 func _entry(paths: PackedStringArray) -> Dictionary:
 	var first: String = paths[0]
+	if first.ends_with(".model3.json"):
+		return {"paths": paths, "name": first.get_base_dir().get_file(), "animated": false, "live2d": true, "thumb": live2d_thumbnail(first)}
 	var name := first.get_base_dir().get_file() if paths.size() > 1 else first.get_file().get_basename()
-	return {"paths": paths, "name": name, "animated": paths.size() > 1}
+	# GIF and APNG files count as animations (decoding each to be sure would slow the list down)
+	var animated := paths.size() > 1 or first.get_extension().to_lower() in ["gif", "apng"]
+	return {"paths": paths, "name": name, "animated": animated, "thumb": first}
+
+## the .model3.json of a Live2D item folder (in it or one folder below), "" when there is none
+static func live2d_in(dir: String) -> String:
+	for f in DirAccess.get_files_at(dir):
+		if f.ends_with(".model3.json"):
+			return dir.path_join(f)
+	for sub in DirAccess.get_directories_at(dir):
+		for f in DirAccess.get_files_at(dir.path_join(sub)):
+			if f.ends_with(".model3.json"):
+				return dir.path_join(sub).path_join(f)
+	return ""
+
+## a picture for a Live2D item's card: icon.png beside the model or in the item folder, else its first texture
+static func live2d_thumbnail(model3: String) -> String:
+	for d in [model3.get_base_dir(), model3.get_base_dir().get_base_dir()]:
+		for name in ["icon.png", "Icon.png", "thumbnail.png"]:
+			if FileAccess.file_exists(d.path_join(name)):
+				return d.path_join(name)
+	var data = JSON.parse_string(FileAccess.get_file_as_string(model3))
+	if data is Dictionary:
+		var textures: Array = data.get("FileReferences", {}).get("Textures", [])
+		if textures.size() > 0:
+			return model3.get_base_dir().path_join(textures[0])
+	return ""
 
 ## PNG frames of an animation folder, in name order
 func _frames(dir: String) -> PackedStringArray:

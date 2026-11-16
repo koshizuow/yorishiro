@@ -36,7 +36,9 @@ func _card(entry: Dictionary) -> Button:
 	card.name = "Item_%s" % entry.name.validate_node_name()
 	card.theme_type_variation = &"ModelCard"
 	card.custom_minimum_size = CARD_SIZE
-	card.tooltip_text = entry.paths[0] if not entry.animated else entry.paths[0].get_base_dir()
+	card.tooltip_text = entry.paths[0] if entry.paths.size() == 1 else entry.paths[0].get_base_dir()
+	if entry.get("live2d", false):
+		card.tooltip_text = tr("Live2D item") + "\n" + entry.paths[0]
 	card.pressed.connect(func (): picked.emit(entry.paths))
 
 	var column := VBoxContainer.new()
@@ -49,7 +51,7 @@ func _card(entry: Dictionary) -> Button:
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pic.texture = ItemLibrary.thumbnail(entry.paths[0])
+	pic.texture = ItemLibrary.thumbnail(entry.get("thumb", entry.paths[0]))
 	column.add_child(pic)
 
 	var title := Label.new()
@@ -59,9 +61,9 @@ func _card(entry: Dictionary) -> Button:
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.clip_text = true
 	column.add_child(title)
-	if entry.animated:
+	if entry.animated or entry.get("live2d", false):
 		var kind := Label.new()
-		kind.text = "Animation"
+		kind.text = "Live2D" if entry.get("live2d", false) else "Animation"
 		kind.theme_type_variation = &"SubscriptLabel"
 		kind.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		column.add_child(kind)
