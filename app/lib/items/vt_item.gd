@@ -38,6 +38,12 @@ var pin_indicies: int = -1
 var pin_angle: float = 0
 var pin_mode = PinMode.CENTROID
 var pin_scale: Vector2 = Vector2.ONE
+## the item's own turn while pinned, on top of how far the pinned triangle turned since binding
+var pin_rotation: float = 0
+# the rotation and scale _process set last: a change made since (the item panel, the rotate handle) is the user's,
+# kept by folding it into pin_rotation and pin_scale
+var _applied_rotation = null
+var _applied_scale = null
 
 # separate from godot's own group system
 # is used to associate an item with a set of objects within an ItemScene
@@ -64,10 +70,16 @@ func _process(_delta: float) -> void:
 			_ary[Mesh.ARRAY_VERTEX][f[pin_indicies+2]]
 		]
 		
+		if _applied_rotation != null and not is_equal_approx(rotation, _applied_rotation):
+			pin_rotation += rotation - _applied_rotation
+		if _applied_scale != null and not scale.is_equal_approx(_applied_scale) and _applied_scale.x != 0.0:
+			pin_scale *= scale.x / _applied_scale.x
 		# compare one of the corner angles to the value it was at during attachment to get current morph rotation
 		var angle: float = t[0].angle_to_point(t[1])
-		rotation = angle - pin_angle
+		rotation = pin_rotation + angle - pin_angle
 		scale = pin_scale * model.scale
+		_applied_rotation = rotation
+		_applied_scale = scale
 		
 		# apply barycentric weights to current vtx positions to get centroid offset
 		var p = (
@@ -127,6 +139,9 @@ func _on_drag_released() -> void:
 				break
 	
 	pin_mode = PinMode.VERTICES if pin_vertices != Vector3.ZERO else PinMode.CENTROID
+	pin_rotation = rotation
+	_applied_rotation = null
+	_applied_scale = null
 	
 	if pinned_to != pinned:
 		# preserve scale when pinned

@@ -19,6 +19,14 @@ fn main() {
     for i in 0..meshes.count() {
         let a = meshes.index(i).unwrap();
         let id = a.id().to_string();
+        if want.contains(&"ALL") {
+            if let Some(st) = driver.artmesh_state(a.uid()) {
+                if st.visual.visible && st.visual.opacity > 0.01 {
+                    for v in st.vertices { println!("V {} {} {}", v.x, v.y, id); }
+                }
+            }
+            continue;
+        }
         if !want.contains(&id.as_str()) { continue; }
         match driver.artmesh_state(a.uid()) {
             Some(st) => {

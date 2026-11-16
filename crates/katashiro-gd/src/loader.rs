@@ -193,6 +193,7 @@ impl KatashiroLoader {
             x: origin.x,
             y: origin.y,
         });
+        scene.bind_mut().set_ppu(px_size);
 
         // setup animation player
         {

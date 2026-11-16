@@ -58,6 +58,9 @@ pub struct KatashiroModel {
     size: Vector2i,
     #[var(pub)]
     origin: Vector2,
+    /// canvas pixels per model unit (the moc3's), the unit VTube Studio stores pinned item positions in
+    #[var(pub)]
+    ppu: f32,
     pub model: Option<LoadedModel<ParsedModel, Box<ParsedModel>>>,
     display_info: Option<DisplayInfo>,
     parameter_groups: HashMap<u32, GString>,

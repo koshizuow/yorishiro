@@ -8,6 +8,7 @@ const VtModel = preload("res://lib/model/vt_model.gd")
 const VtItem = preload("res://lib/items/vt_item.gd")
 const AnimFrames = preload("res://lib/utils/anim_frames.gd")
 const PipeWireOutput = preload("res://lib/output/pipewire_output.gd")
+const VtsPins = preload("res://lib/items/vts_pins.gd")
 
 const INDEX_RANGE = 30
 
@@ -199,10 +200,79 @@ func spawn_model(model: VtModel):
 			if i.pinned_to != null:
 				remove_item(i, false)
 
-	# TODO if model had items pinned to it, load them in as well
 	model_changed.emit(active_model)
+	await restore_pinned_items(model)
 	if prev_model != null and not prev_model.is_queued_for_deletion():
 		prev_model.queue_free()
+
+## the model's pinned items: those saved with it, else the ones VTube Studio pinned (items_pinned_to_model.json)
+func restore_pinned_items(model) -> void:
+	var specs = model.saved_items
+	if specs == null:
+		specs = VtsPins.import_vts(model)
+		if not specs.is_empty():
+			print("pinned items from VTube Studio: %d" % specs.size())
+	for spec in specs:
+		if not spec is Dictionary:
+			continue
+		var paths := PackedStringArray(Array(spec.get("paths", [])).map(func (p): return Preferences.resolve(str(p))))
+		if paths.is_empty() or not (FileAccess.file_exists(paths[0]) or DirAccess.dir_exists_absolute(paths[0])):
+			push_warning("pinned item is gone: %s" % [spec.get("paths")])
+			continue
+		var item: VtItem = await ItemManager.create_item(paths)
+		if item == null:
+			continue
+		if model != active_model or not is_instance_valid(model):
+			item.queue_free()
+			return
+		spawn_item(item, false, false)
+		if not VtsPins.apply(item, model, spec):
+			push_warning("could not pin %s to %s" % [paths[0].get_file(), spec.get("mesh")])
+			remove_item(item, false)
+			continue
+		var order := int(spec.get("order", 1))
+		item.set_meta("order", order)
+		if order < 0:  # behind the model, as in VTube Studio
+			canvas.move_child(item, model.get_index())
+	model.items_restored = true
+
+## items on the stage that are not pinned, as saved with the window settings
+func _loose_item_specs() -> Array:
+	var out := []
+	var view := get_viewport().get_visible_rect().size
+	for i in canvas.get_children():
+		if i is VtItem and i.pinned_to == null and not i.is_queued_for_deletion() and i.group_name == &"":
+			out.append({
+				"paths": Array(i.path).map(func (p): return Preferences.portable(p)),
+				# parts of the view, so another window size keeps the layout
+				"x": i.position.x / view.x, "y": i.position.y / view.y,
+				"scale": i.scale.x / view.y, "rotation": i.rotation, "flip": i.mirror,
+			})
+	return out
+
+## the saved model, then the loose items saved with it (not awaited by load_settings, as before)
+func _spawn_with_items(model, items: Array) -> void:
+	await spawn_model(model)
+	if active_model == model:
+		await _restore_loose_items(items)
+
+func _restore_loose_items(specs: Array) -> void:
+	var view := get_viewport().get_visible_rect().size
+	for spec in specs:
+		if not spec is Dictionary:
+			continue
+		var paths := PackedStringArray(Array(spec.get("paths", [])).map(func (p): return Preferences.resolve(str(p))))
+		if paths.is_empty() or not (FileAccess.file_exists(paths[0]) or DirAccess.dir_exists_absolute(paths[0])):
+			continue
+		var item: VtItem = await ItemManager.create_item(paths)
+		if item == null or active_model == null:
+			continue
+		item.model = active_model
+		item.position = Vector2(float(spec.get("x", 0.5)) * view.x, float(spec.get("y", 0.5)) * view.y)
+		item.scale = Vector2.ONE * float(spec.get("scale", 0.001)) * view.y
+		item.rotation = float(spec.get("rotation", 0.0))
+		item.mirror = bool(spec.get("flip", false))
+		spawn_item(item, false, false)
 
 func spawn_item(item: VtItem, animate = true, reposition = true):
 	# do not allow spawning items if there is no active model
@@ -279,12 +349,13 @@ func load_settings(data):
 		var mm = get_tree().get_first_node_in_group("system:model")
 		var model = mm.make_model(path)
 		if model:
-			spawn_model(model)
+			_spawn_with_items(model, data.get("items", []))
 	
 	
 func save_settings(data):
 	if active_model != null and active_model.modelmeta != null:
 		data["active_model"] = Preferences.portable(active_model.modelmeta.model)
+	data["items"] = _loose_item_specs()
 	
 	var window_settings = data.get("window", {})
 	window_settings["transparent"] = %Bg.visible

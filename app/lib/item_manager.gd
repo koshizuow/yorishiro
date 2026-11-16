@@ -52,6 +52,8 @@ func create_item(path: PackedStringArray) -> VtItem:
 		model.rotation_degrees = 0
 		# do not drag by the model itself, we want to drag the item
 		model.locked = true
+		# the item moves with what it is pinned to (or stays put), not with the face on its own
+		model.movement_enabled = false
 		
 		vtitem.size = model.size
 		vtitem.item_type = VtItem.ItemType.MODEL

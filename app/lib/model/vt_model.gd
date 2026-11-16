@@ -65,6 +65,11 @@ var rest_anchors: Dictionary = {}
 
 # follow the face (VTube Studio's "move model with face"): the model slides with FacePositionX/Y and grows
 # with FacePositionZ. Amounts and smoothing use VTS's numbers so its settings carry over.
+## pinned items from the model's settings (null: none saved yet, VTube Studio's file is read instead), and
+## whether the stage has put them back
+var saved_items = null
+var items_restored := false
+
 var movement_enabled: bool = false
 ## how far the model moves per axis, VTS units (its defaults are 6, 8, 11)
 var movement_amount: Vector3 = Vector3(6, 8, 11)
@@ -167,6 +172,7 @@ func save_position(slot: String) -> void:
 
 func load_model_settings(settings: Dictionary):
 	saved_positions = settings.get("positions", {}).duplicate(true)
+	saved_items = settings.get("items")
 	var movement: Dictionary = settings.get("movement", {})
 	if not movement.is_empty():
 		movement_enabled = movement.get("use", movement_enabled)
@@ -188,6 +194,9 @@ func load_model_settings(settings: Dictionary):
 
 	
 func save_model_settings(settings: Dictionary):
+	var items = pinned_item_specs()
+	if items != null:
+		settings["items"] = items
 	settings.merge({
 		"quality": {
 			"filter": "nearest" if self.texture_filter != TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC else "linear",
@@ -208,6 +217,21 @@ func save_model_settings(settings: Dictionary):
 			{}
 		)
 	})
+
+## the items pinned to this model on the stage, as placements (lib/items/vts_pins.gd); before the stage has put
+## the saved ones back, still those
+func pinned_item_specs():
+	if not items_restored:
+		return saved_items  # null until there is something: VTube Studio's file is still read next time
+	var out := []
+	if get_parent() == null:
+		return out
+	# loaded at run time: vt_item.gd preloads this script
+	var pins = load("res://lib/items/vts_pins.gd")
+	for i in get_parent().get_children():
+		if "pinned_to" in i and i.model == self and i.pinned_to != null and not i.is_queued_for_deletion():
+			out.append(pins.spec_of(i))
+	return out
 
 func _saved_transform() -> Dictionary:
 	var saved := to_saved(position, scale.x)
