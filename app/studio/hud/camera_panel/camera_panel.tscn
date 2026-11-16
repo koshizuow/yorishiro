@@ -218,7 +218,7 @@ expand_icon = true
 title = "Open a File"
 file_mode = 0
 access = 2
-filters = PackedStringArray(";Png;image/png", ";Jpeg;image/jpeg")
+filters = PackedStringArray("*.png, *.jpg, *.jpeg, *.webp, *.gif, *.apng;Images")
 use_native_dialog = true
 
 [node name="BackgroundColor" type="HBoxContainer" parent="ScrollContainer/Accordion/Application Settings/VBoxContainer" unique_id=1057400813]

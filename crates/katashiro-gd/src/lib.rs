@@ -3,6 +3,7 @@ use godot::prelude::*;
 
 use crate::physics::*;
 
+pub mod anim_image;
 pub mod expression;
 pub mod importer;
 pub mod loader;

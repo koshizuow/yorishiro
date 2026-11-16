@@ -41,6 +41,9 @@
 ##   --pin-test             add an item over the model, pin it to the art mesh under it (as dropping it does), move
 ##                          the model and check the item follows the mesh (vertices read back from the GPU)
 ##   --blink-test=<s>      the lowest value each eye's open parameter reaches in that time, and how many frames they differ
+##   --add-item=<a|b|...>   put these items on the stage before the screenshot (a folder of PNG frames counts as one)
+##   --anim-check=<a|b|...> for each picture file: frames, size and frames per second as an item would get them, and the
+##                          texture a background gets (frame count of an AnimatedTexture)
 ##   --background=<RRGGBB or image path> set the stage background before the outputs start
 ##   --virtual-camera=<dev> send the stage to this v4l2loopback device, for --hold=<s> seconds before going on
 ##   --pipewire-test[=<s>]  send the stage to PipeWire, resize the window twice (s seconds per size, default 2, longer
@@ -82,6 +85,7 @@
 ##   --quit                 exit after the screenshot
 extends Node
 
+const AnimFrames = preload("res://lib/utils/anim_frames.gd")
 const CameraTracker = preload("res://lib/tracking/camera/camera_tracker.gd")
 const Clock = preload("res://lib/utils/clock.gd")
 
@@ -143,6 +147,20 @@ func _ready() -> void:
 	if args.has("trace"):
 		# not awaited: runs beside the rest of the sequence
 		_trace(float(args["trace"]))
+	if args.has("anim-check"):
+		for f in str(args["anim-check"]).split("|"):
+			var anim := AnimFrames.load_frames(PackedStringArray([f]))
+			if anim.is_empty():
+				var still := AnimFrames.load_still(f)
+				print("[automation] anim %s: still, %s" % [f.get_file(), still.get_size() if still else "FAILED to load"])
+			else:
+				var sf: SpriteFrames = anim.frames
+				var rel := []
+				for i in sf.get_frame_count(&"default"):
+					rel.append("%.2f" % sf.get_frame_duration(&"default", i))
+				print("[automation] anim %s: %d frames, size %s, %.2f fps, relative durations %s" % [f.get_file(), sf.get_frame_count(&"default"), anim.size, sf.get_animation_speed(&"default"), ", ".join(rel)])
+			var bgtex := AnimFrames.load_texture(f)
+			print("[automation] background %s: %s" % [f.get_file(), ("animated, %d frames, first %.3f s" % [bgtex.frames, bgtex.get_frame_duration(0)]) if bgtex is AnimatedTexture else ("still" if bgtex else "FAILED")])
 	if args.has("tracker"):
 		# the settings panel restores the saved tracker a frame after startup, go after it
 		for i in 10:
@@ -246,6 +264,17 @@ func _ready() -> void:
 			print("[automation] playing %s: %s" % [args["play-motion"], player.current_animation])
 		if args.has("motion-switch") and placed:
 			await _motion_switch(placed, str(args["motion-switch"]).split(","))
+		if args.has("background"):
+			_set_background(str(args["background"]))
+		if args.has("add-item") and placed:
+			# items as the library puts them: several paths of a frame folder are one item, "|" separates items
+			for spec in str(args["add-item"]).split("|"):
+				var it = await ItemManager.create_item(PackedStringArray(spec.split(",")))
+				if it == null:
+					print("[automation] add item %s: FAILED" % spec)
+					continue
+				stage.spawn_item(it, false)
+				print("[automation] add item %s: type %d, size %s" % [spec.get_file(), it.item_type, it.size])
 		for i in int(args.get("wait-frames", "90")):
 			await RenderingServer.frame_post_draw
 		if placed:

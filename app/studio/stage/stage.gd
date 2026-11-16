@@ -6,6 +6,7 @@ const Collections = preload("res://lib/utils/collections.gd")
 const VtObject = preload("res://lib/vtobject.gd")
 const VtModel = preload("res://lib/model/vt_model.gd")
 const VtItem = preload("res://lib/items/vt_item.gd")
+const AnimFrames = preload("res://lib/utils/anim_frames.gd")
 const PipeWireOutput = preload("res://lib/output/pipewire_output.gd")
 
 const INDEX_RANGE = 30
@@ -35,11 +36,10 @@ var background_image: String = "" :
 			_sync_camera_background()
 			return
 
-		var image = Image.load_from_file(path)
-		if not image:
+		# a still picture, or an animated GIF, APNG or WebP
+		var tex := AnimFrames.load_texture(path)
+		if tex == null:
 			return
-
-		var tex = ImageTexture.create_from_image(image)
 		%Bg/BackgroundImage.texture = tex
 		background_image = path
 		

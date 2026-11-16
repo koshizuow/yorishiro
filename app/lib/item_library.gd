@@ -7,7 +7,8 @@ signal changed
 
 const DIR = "user://Items"
 const STATE = "user://item_library.cfg"
-const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg"]
+const IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "svg", "gif"]
+const AnimFrames = preload("res://lib/utils/anim_frames.gd")
 const THUMB = 112
 
 var _cfg := ConfigFile.new()
@@ -51,7 +52,7 @@ func add_imported(paths: PackedStringArray) -> void:
 func thumbnail(path: String) -> Texture2D:
 	if path in _thumbs:
 		return _thumbs[path]
-	var img := Image.load_from_file(path)
+	var img := AnimFrames.load_still(path)
 	var tex: Texture2D = null
 	if img:
 		var s := float(THUMB) / maxf(img.get_width(), img.get_height())
@@ -68,6 +69,4 @@ func _entry(paths: PackedStringArray) -> Dictionary:
 
 ## PNG frames of an animation folder, in name order
 func _frames(dir: String) -> PackedStringArray:
-	var files := Array(DirAccess.get_files_at(dir)).filter(func (f): return f.get_extension().to_lower() == "png")
-	files.sort_custom(func (a, b): return a.naturalnocasecmp_to(b) < 0)
-	return PackedStringArray(files.map(func (f): return dir.path_join(f)))
+	return AnimFrames.folder_frames(dir)

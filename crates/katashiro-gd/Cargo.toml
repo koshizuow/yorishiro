@@ -7,6 +7,8 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
+# animated pictures for items and backgrounds (anim_image.rs)
+image = { version = "0.25.10", default-features = false, features = ["gif", "png", "webp"] }
 katashiro-core = { path = "../katashiro" }
 fastxfix = "1.0.0"
 glob = "0.3.3"

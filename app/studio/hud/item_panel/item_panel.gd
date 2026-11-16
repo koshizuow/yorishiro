@@ -15,7 +15,7 @@ func _ready():
 	strip.import_requested.connect(_on_add_button_pressed)
 	$VBoxContainer.add_child(strip)
 	$VBoxContainer.move_child(strip, 0)
-	%FileDialog.filters = PackedStringArray(["*.png, *.jpg, *.jpeg, *.webp;Images"])
+	%FileDialog.filters = PackedStringArray(["*.png, *.jpg, *.jpeg, *.webp, *.gif, *.apng;Images"])
 
 	stage.model_changed.connect(_on_stage_model_changed)
 	stage.item_added.connect(_on_stage_item_added)

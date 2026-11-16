@@ -7,7 +7,7 @@ signal changed
 
 const DIR = "user://Backgrounds"
 const STATE = "user://background_library.cfg"
-const EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
+const EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "apng"]
 
 var _cfg := ConfigFile.new()
 

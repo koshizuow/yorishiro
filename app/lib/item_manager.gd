@@ -2,6 +2,7 @@ extends Node
 
 const VtModel = preload("res://lib/model/vt_model.gd")
 const VtItem = preload("res://lib/items/vt_item.gd")
+const AnimFrames = preload("res://lib/utils/anim_frames.gd")
 
 func about_item(path: String) -> Dictionary:
 	if ModelManager.is_model(path):
@@ -9,12 +10,12 @@ func about_item(path: String) -> Dictionary:
 			"name": path.get_basename(),
 			"type": VtItem.ItemType.MODEL
 		}
-	elif DirAccess.dir_exists_absolute(path):
+	elif DirAccess.dir_exists_absolute(path) or (AnimFrames.maybe_animated(path) and not AnimFrames.load_frames(PackedStringArray([path])).is_empty()):
 		return {
 			"name": path.get_basename(),
 			"type": VtItem.ItemType.ANIMATED
 		}
-	elif Image.load_from_file(path):
+	elif AnimFrames.load_still(path):
 		return {
 			"name": path.get_basename(),
 			"type": VtItem.ItemType.IMAGE
@@ -25,32 +26,14 @@ func create_item(path: PackedStringArray) -> VtItem:
 	assert(not path.is_empty())
 	var vtitem = preload("res://lib/items/vt_item.tscn").instantiate()
 	
-	# APNG consists of multiple selected pngs
-	if len(path) > 1:
-		var frames: SpriteFrames = SpriteFrames.new()
-		frames.set_animation_loop("default", true)
-		for fp in path:
-			var tex = ImageTexture.create_from_image(Image.load_from_file(fp))
-			frames.add_frame(
-				"default",
-				tex
-			)
-				
-		frames.set_animation_speed("default", 60.0 / frames.get_frame_count("default"))
-	
-		var size = Vector2.ZERO
-		for f in range(frames.get_frame_count("default")):
-			var tex = frames.get_frame_texture("default", f)
-			size = Vector2(
-				max(size.x, tex.get_size().x),
-				max(size.y, tex.get_size().y)
-			)
-			
+	# a folder of PNG frames (several selected, or the folder itself), or one animated GIF, APNG or WebP
+	var anim := {} if ModelManager.is_model(path[0]) else AnimFrames.load_frames(path)
+	if not anim.is_empty():
 		var render = AnimatedSprite2D.new()
-		render.sprite_frames = frames
+		render.sprite_frames = anim.frames
 		render.play("default")
 		render.name = "Render"
-		vtitem.size = size
+		vtitem.size = anim.size
 		vtitem.add_child(render)
 		vtitem.item_type = VtItem.ItemType.ANIMATED
 		vtitem.render = render
@@ -76,9 +59,10 @@ func create_item(path: PackedStringArray) -> VtItem:
 	else:
 		var render = Sprite2D.new()
 		var texture: Texture2D
-		texture = ImageTexture.create_from_image(Image.load_from_file(path[0]))
-		if texture == null:
+		var still := AnimFrames.load_still(path[0])
+		if still == null:
 			return
+		texture = ImageTexture.create_from_image(still)
 		render.name = "Render"
 		render.texture = texture
 		render.centered = true
