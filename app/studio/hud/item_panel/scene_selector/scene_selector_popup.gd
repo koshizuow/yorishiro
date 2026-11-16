@@ -6,6 +6,7 @@ const Stage = preload("res://studio/stage/stage.gd")
 const Math = preload("res://lib/utils/math.gd")
 const Serializers = preload("res://lib/utils/serializers.gd")
 const Files = preload("res://lib/utils/files.gd")
+const VtsPins = preload("res://lib/items/vts_pins.gd")
 
 const FILE_DIR = "user://ItemScenes"
 const EXT = ".itemscene.json"
@@ -35,31 +36,58 @@ func get_scenes() -> Array:
 			}
 	)
 
+## puts the scene's items on the stage: pinned ones on the current model's art meshes when it is the model they
+## were pinned to (lib/items/vts_pins.gd), the others where VTube Studio had them on its stage
 func load_item_scene():
 	var stage: Stage = get_tree().get_first_node_in_group("system:stage")
+	var model = stage.active_model
 	var group_name = %GroupName.text
-	stage.clear_items(group_name)
-	
-	var idx = 0
+	if group_name:  # a named group replaces its items; without one the scene adds to the stage (pinned items stay)
+		stage.clear_items(group_name)
+	var view: Vector2 = stage.get_viewport().get_visible_rect().size
+
 	for i in %SceneItems.get_children():
-		var cfg = i.get_meta("cfg", {})
-		var item: VtItem = await ItemManager.create_item(i.get_meta("filepath"))
-		if i.get_meta("item_type") == VtItem.ItemType.ANIMATED:
-			var render: AnimatedSprite2D = i.render
-			render.speed_scale = cfg.get("FPS", 1.0) / render.sprite_frames.get_animation_speed("default")
-		# convert Unity Units to Pixels
-		var scale = cfg.get("Size", 0) / Math.UNITY_PPU
-		item.scale = Vector2(-1 if cfg.get("IsFlipped", false) else 1, 1) * (1.0 + scale)
-		item.rotation_degrees = cfg.get("Rotation", 0)
-		item.sort_order = cfg.get("Order", idx)
-		item.position = Math.unity_to_canvas(
-			stage.get_viewport(),
-			Serializers.Vec2Serializer.from_json(cfg.get("Position"))
-		)
-		stage.spawn_item(item, true, false)
+		var cfg: Dictionary = i.get_meta("cfg", {})
+		var paths: PackedStringArray = i.get_meta("filepath")
+		var item: VtItem = await ItemManager.create_item(paths)
+		if item == null or model == null:
+			continue
+		var spec := {}
+		if cfg.get("IsPinned", false) and _pinned_to(cfg, model):
+			spec = VtsPins.from_vts(model, cfg, paths)
+		if not spec.is_empty():
+			# no grow-in for a pinned item: it sizes itself every frame
+			stage.spawn_item(item, false, false)
+			if VtsPins.apply(item, model, spec):
+				spec["ok"] = true
+		if not spec.get("ok", false):
+			# set before spawning: the grow-in animation ends at the scale the item has then
+			var loose := VtsPins.loose_from_vts(cfg, paths, view)
+			item.model = model
+			item.pinned_to = null
+			item.scale = Vector2.ONE * loose.scale
+			item.global_position = loose.position
+			item.rotation_degrees = -float(cfg.get("Rotation", 0.0))
+			item.mirror = cfg.get("IsFlipped", false)
+			if cfg.get("IsAnimated", false) and item.render is AnimatedSprite2D and float(cfg.get("FPS", 0.0)) > 0.0:
+				var render: AnimatedSprite2D = item.render
+				render.speed_scale = float(cfg.FPS) / maxf(render.sprite_frames.get_animation_speed("default"), 0.001)
+			if item.get_parent() == null:
+				stage.spawn_item(item, true, false)
+		var order := int(cfg.get("Order", 1))
+		item.set_meta("order", order)
+		if order < 0 and model.get_parent() == item.get_parent():
+			item.get_parent().move_child(item, model.get_index())
 		if group_name:
 			item.group_name = group_name
-		idx += 1
+
+## the scene's item was pinned to this model (by its VTube Studio model ID, else its name)
+func _pinned_to(cfg: Dictionary, model) -> bool:
+	var id := str(cfg.get("PinnedModel_InternalID", ""))
+	if id and model.modelmeta and str(model.modelmeta.id) == id:
+		return true
+	var name := str(cfg.get("PinnedModel_Live2D", ""))
+	return name != "" and model.modelmeta and model.modelmeta.model.get_file().trim_suffix(".model3.json") == name
 
 func _on_load_button_pressed() -> void:
 	await load_item_scene()
@@ -84,10 +112,15 @@ func _on_file_dialog_file_selected(path: String) -> void:
 			# matching VTS for compatibility
 			# fallback to looking in an Items directory relative to the item scene
 			# otherwise load from the user data folder
-			var item_file_name = i.get("ItemFileName")
+			var item_file_name = str(i.get("ItemFileName", ""))
 			item_file = path.get_base_dir().get_base_dir().path_join("Items").path_join(item_file_name)
 			if not FileAccess.file_exists(item_file):
-				item_file = ProjectSettings.globalize_path("user://Items".path_join(item_file_name))
+				var found := VtsPins.find_item(path.get_base_dir(), item_file_name)
+				var stage = get_tree().get_first_node_in_group("system:stage")
+				if found.is_empty() and stage and stage.active_model and stage.active_model.modelmeta:
+					# beside the model on stage, as for its pinned items
+					found = VtsPins.find_item(stage.active_model.modelmeta.model.get_base_dir(), item_file_name)
+				item_file = found[0] if found.size() == 1 else ProjectSettings.globalize_path("user://Items".path_join(item_file_name))
 			
 		var meta = ItemManager.about_item(item_file)
 		if meta.is_empty():

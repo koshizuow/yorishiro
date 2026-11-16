@@ -42,6 +42,7 @@
 ##                          the model and check the item follows the mesh (vertices read back from the GPU)
 ##   --blink-test=<s>      the lowest value each eye's open parameter reaches in that time, and how many frames they differ
 ##   --add-item=<a|b|...>   put these items on the stage before the screenshot (a folder of PNG frames counts as one)
+##   --item-scene=<json>    load a VTube Studio item scene file before the screenshot, as its preview's Load button does
 ##   --anim-check=<a|b|...> for each picture file: frames, size and frames per second as an item would get them, and the
 ##                          texture a background gets (frame count of an AnimatedTexture)
 ##   --background=<RRGGBB or image path> set the stage background before the outputs start
@@ -275,6 +276,15 @@ func _ready() -> void:
 					continue
 				stage.spawn_item(it, false)
 				print("[automation] add item %s: type %d, size %s" % [spec.get_file(), it.item_type, it.size])
+		if args.has("item-scene") and placed:
+			# a VTube Studio item scene file, loaded as its preview's Load button does
+			var popup = load("res://studio/hud/item_panel/scene_selector/scene_selector_popup.tscn").instantiate()
+			add_child(popup)
+			popup._on_file_dialog_file_selected(str(args["item-scene"]))
+			await popup.load_item_scene()
+			print("[automation] item scene %s: %d items on stage" % [str(args["item-scene"]).get_file(),
+				stage.canvas.get_children().filter(func (c): return "pinned_to" in c).size()])
+			popup.queue_free()
 		for i in int(args.get("wait-frames", "90")):
 			await RenderingServer.frame_post_draw
 		if placed:

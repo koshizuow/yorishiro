@@ -40,7 +40,7 @@ static func import_vts(model) -> Array:
 		if paths.is_empty():
 			push_warning("%s: item %s not found" % [file, it.get("ItemFileName", "")])
 			continue
-		var spec := _from_vts(model, it, paths)
+		var spec := from_vts(model, it, paths)
 		if not spec.is_empty():
 			out.append(spec)
 	return out
@@ -82,7 +82,8 @@ static func mesh_named(model, mesh_name: String) -> MeshInstance2D:
 			return m
 	return null
 
-static func _from_vts(model, it: Dictionary, paths: PackedStringArray) -> Dictionary:
+## one VTube Studio pinned item as a placement on this model ({} when it does not fit the model)
+static func from_vts(model, it: Dictionary, paths: PackedStringArray) -> Dictionary:
 	var mesh := mesh_named(model, str(it.get("PinnedTo", "")))
 	if mesh == null:
 		push_warning("pinned item %s: the model has no art mesh %s" % [it.get("ItemFileName"), it.get("PinnedTo")])
@@ -139,6 +140,23 @@ static func _from_vts(model, it: Dictionary, paths: PackedStringArray) -> Dictio
 		"flip": bool(it.get("IsFlipped", false)),
 		"order": int(it.get("Order", 1)),
 		"fps": float(it.get("FPS", 0.0)) if it.get("IsAnimated", false) else 0.0,
+	}
+
+## VTube Studio's stage is VIEW_UNITS tall (an unpinned item's Position; measured: 10.95 px per unit on a 1316 px
+## high view) and draws a model at MODEL_VIEW of the view's height per model unit at scale 1 (928 px on 1316)
+const VIEW_UNITS = 120.2
+const MODEL_VIEW = 0.705
+
+## where an unpinned item of a VTube Studio item scene goes: {position (stage pixels), scale}. The size of unpinned
+## items could not be measured (VTube Studio sized every unpinned item in a pinned-items file the same); they are
+## sized as if pinned to a model at scale 1, which is what Size means for pinned ones.
+static func loose_from_vts(it: Dictionary, paths: PackedStringArray, view: Vector2) -> Dictionary:
+	var pos: Dictionary = it.get("Position", {})
+	var per_unit := view.y / VIEW_UNITS
+	var scale := _scale_for(paths, float(it.get("Size", 0.0)), 1.0) * MODEL_VIEW * view.y
+	return {
+		"position": view / 2.0 + Vector2(float(pos.get("x", 0.0)), -float(pos.get("y", 0.0))) * per_unit,
+		"scale": scale,
 	}
 
 ## the item's scale against the model's (item pixels to model pixels) for a VTube Studio Size
