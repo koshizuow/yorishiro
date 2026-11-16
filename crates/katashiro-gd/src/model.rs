@@ -8,7 +8,7 @@ use godot::classes::canvas_item::TextureFilter;
 use godot::classes::canvas_item_material::BlendMode as CanvasBlend;
 use godot::classes::rendering_device::TextureSamples;
 use godot::classes::viewport::Msaa;
-use godot::classes::{CanvasItemMaterial, FileAccess, INode2D, MeshInstance2D, Sprite2D, Texture2D};
+use godot::classes::{CanvasItemMaterial, FileAccess, INode2D, MeshInstance2D, Sprite2D, Texture2D, Texture2Drd};
 use godot::meta::ClassId;
 use godot::prelude::*;
 
@@ -191,6 +191,33 @@ impl KatashiroModel {
     }
 
     /// Whether an art mesh is drawn now
+    /// Items between the model's layers: what is drawn after each of these art meshes (up to the next one) goes
+    /// into an image of its own, shown by the app above the items placed there. The images, in the order given
+    /// (empty with the plain canvas path, which cannot split). An empty list draws the model in one piece again.
+    #[func]
+    pub fn set_layer_splits(&mut self, meshes: PackedStringArray) -> Array<Gd<Texture2Drd>> {
+        let uids: Vec<u32> = meshes.as_slice().iter().filter_map(|n| self.mesh_uids.get(&StringName::from(n)).copied()).collect();
+        if uids.len() != meshes.len() {
+            godot_warn!("Katashiro: set_layer_splits: some art meshes are not in the model");
+        }
+        let Some(r) = self.renderer.as_mut() else { return Array::new() };
+        let views = r.set_splits(uids);
+        let mut out = Array::new();
+        for v in views {
+            out.push(&v);
+        }
+        out
+    }
+
+    /// The place in the model's draw order an art mesh is drawn at (the root draw list: an art mesh inside an
+    /// offscreen part has the part's), -1 when it is not in the model
+    #[func]
+    pub fn mesh_draw_position(&self, name: StringName) -> i32 {
+        let (Some(md), Some(uid)) = (self.model.as_ref(), self.mesh_uids.get(&name)) else { return -1 };
+        let root: Vec<_> = md.driver.draw_nodes(None).map(|n| n.to_vec()).unwrap_or_default();
+        crate::rd_renderer::root_position(&md.driver, &root, *uid).map(|i| i as i32).unwrap_or(-1)
+    }
+
     #[func]
     pub fn mesh_visible(&self, name: StringName) -> bool {
         let (Some(md), Some(uid)) = (self.model.as_ref(), self.mesh_uids.get(&name)) else { return false };

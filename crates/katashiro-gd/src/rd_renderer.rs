@@ -312,6 +312,13 @@ pub struct RdRenderer {
     read_vertices: Rc<RefCell<HashMap<u32, PackedVector2Array>>>,
     /// per mesh color settings that replace the model's (the app's mesh modifiers)
     pub color_overrides: HashMap<u32, (Color, Color)>,
+    /// front layers (items between the model's layers): what comes after each of these art meshes in the draw
+    /// order, up to the next one, is drawn into its own image instead of the target
+    split_after: Vec<u32>,
+    split_targets: Vec<Target>,
+    split_views: Vec<Gd<Texture2Drd>>,
+    /// the framebuffer level 0 draws into when there are no layers (the target, or a front layer's)
+    level0_fb: Rid,
 }
 
 fn compile(rd: &mut Gd<RenderingDevice>, vertex: &str, fragment: &str) -> Result<Rid, String> {
@@ -385,6 +392,40 @@ fn color_texture(rd: &mut Gd<RenderingDevice>, size: Vector2i, format: DataForma
     };
     tf.set_usage_bits(usage);
     rd.texture_create(&tf, &RdTextureView::new_gd())
+}
+
+/// the root draw node an art mesh is drawn by (itself, or the offscreen part it is in)
+pub fn root_position(driver: &Driver<ParsedModel>, root: &[DrawNode<u32>], uid: u32) -> Option<usize> {
+    fn contains(driver: &Driver<ParsedModel>, nodes: &[DrawNode<u32>], uid: u32) -> bool {
+        nodes.iter().any(|n| match n {
+            DrawNode::ArtMesh(u) => *u == uid,
+            DrawNode::OffscreenPart(p) => driver.draw_nodes(Some(*p)).is_some_and(|c| contains(driver, &c.to_vec(), uid)),
+        })
+    }
+    root.iter().position(|n| contains(driver, std::slice::from_ref(n), uid))
+}
+
+/// an image to draw the model into (resolved from a multisampled one with MSAA) and its framebuffer
+fn make_target(rd: &mut Gd<RenderingDevice>, size: Vector2i, samples: TextureSamples) -> Target {
+    let texture = color_texture(rd, size, DataFormat::R8G8B8A8_UNORM, TextureSamples::SAMPLES_1);
+    let (msaa, framebuffer) = if samples == TextureSamples::SAMPLES_1 {
+        (None, rd.framebuffer_create(&array![texture]))
+    } else {
+        let msaa = color_texture(rd, size, DataFormat::R8G8B8A8_UNORM, samples);
+        let mut pass = RdFramebufferPass::new_gd();
+        pass.set_color_attachments(&PackedInt32Array::from(&[0][..]));
+        pass.set_resolve_attachments(&PackedInt32Array::from(&[1][..]));
+        (Some(msaa), rd.framebuffer_create_multipass(&array![msaa, texture], &array![&pass]))
+    };
+    Target { size, samples, texture, msaa, framebuffer }
+}
+
+/// frees a target's images (its framebuffer goes with them)
+fn free_target(rd: &mut Gd<RenderingDevice>, t: Target) {
+    rd.free_rid(t.texture);
+    if let Some(m) = t.msaa {
+        rd.free_rid(m);
+    }
 }
 
 fn sampler_uniform(binding: i32, sampler: Rid, texture: Rid) -> Gd<RdUniform> {
@@ -629,12 +670,73 @@ impl RdRenderer {
             watched: HashSet::new(),
             read_vertices: Rc::new(RefCell::new(HashMap::new())),
             color_overrides: HashMap::new(),
+            split_after: vec![],
+            split_targets: vec![],
+            split_views: vec![],
+            level0_fb: Rid::Invalid,
         })
     }
 
     /// The texture the model is drawn into, for the canvas item that shows it
     pub fn texture(&self) -> Gd<Texture2Drd> {
         self.view.clone()
+    }
+
+    /// Draw what follows each of these art meshes (uids) into a front layer of its own, up to the next one; the
+    /// images, in the order given. An art mesh inside an offscreen part splits after the whole part.
+    pub fn set_splits(&mut self, after: Vec<u32>) -> Vec<Gd<Texture2Drd>> {
+        if after != self.split_after {
+            for v in self.split_views.iter_mut() {
+                v.set_texture_rd_rid(Rid::Invalid);
+            }
+            for t in std::mem::take(&mut self.split_targets) {
+                free_target(&mut self.rd, t);
+            }
+            self.split_views = after
+                .iter()
+                .map(|_| {
+                    let mut v = Texture2Drd::new_gd();
+                    v.set_texture_rd_rid(Rid::Invalid);
+                    v
+                })
+                .collect();
+            self.split_after = after;
+        }
+        self.split_views.clone()
+    }
+
+    /// the front layer images at the target's size and samples
+    fn ensure_split_targets(&mut self) {
+        let Some((size, samples)) = self.target.as_ref().map(|t| (t.size, t.samples)) else { return };
+        if self.split_targets.len() == self.split_after.len()
+            && self.split_targets.iter().all(|t| t.size == size && t.samples == samples)
+        {
+            return;
+        }
+        for v in self.split_views.iter_mut() {
+            v.set_texture_rd_rid(Rid::Invalid);
+        }
+        for t in std::mem::take(&mut self.split_targets) {
+            free_target(&mut self.rd, t);
+        }
+        for i in 0..self.split_after.len() {
+            let t = make_target(&mut self.rd, size, samples);
+            self.split_views[i].set_texture_rd_rid(t.texture);
+            self.split_targets.push(t);
+        }
+    }
+
+    /// where each front layer starts in the root draw list (index of the first root node it draws)
+    fn split_positions(&self, driver: &Driver<ParsedModel>, root: &[DrawNode<u32>]) -> Vec<usize> {
+        self.split_after.iter().map(|&uid| root_position(driver, root, uid).map(|i| i + 1).unwrap_or(root.len())).collect()
+    }
+
+    /// level 0 draws into this image from now on (the target or a front layer)
+    fn set_level0(&mut self, texture: Rid, framebuffer: Rid) {
+        if let Some(l) = self.layers.as_mut() {
+            l.levels[0] = (texture, framebuffer);
+        }
+        self.level0_fb = framebuffer;
     }
 
     fn ensure_target(&mut self, size: Vector2i, samples: TextureSamples) {
@@ -657,16 +759,7 @@ impl RdRenderer {
                 rd.free_rid(m);
             }
         }
-        let texture = color_texture(rd, size, DataFormat::R8G8B8A8_UNORM, TextureSamples::SAMPLES_1);
-        let (msaa, framebuffer) = if samples == TextureSamples::SAMPLES_1 {
-            (None, rd.framebuffer_create(&array![texture]))
-        } else {
-            let msaa = color_texture(rd, size, DataFormat::R8G8B8A8_UNORM, samples);
-            let mut pass = RdFramebufferPass::new_gd();
-            pass.set_color_attachments(&PackedInt32Array::from(&[0][..]));
-            pass.set_resolve_attachments(&PackedInt32Array::from(&[1][..]));
-            (Some(msaa), rd.framebuffer_create_multipass(&array![msaa, texture], &array![&pass]))
-        };
+        let Target { texture, msaa, framebuffer, .. } = make_target(rd, size, samples);
         if old_samples != Some(samples) {
             for p in self.mesh_pipelines.iter_mut() {
                 if p.is_valid() {
@@ -951,11 +1044,28 @@ impl RdRenderer {
             size: tsize,
         };
         let root: Vec<DrawNode<u32>> = driver.draw_nodes(None).map(|n| n.to_vec()).unwrap_or_default();
-        let mut list = Some(self.begin(0, true));
-        self.draw_tree(driver, &root, 0, &mut list, &ctx);
-        if list.is_some() {
-            self.rd.draw_list_end();
+        self.ensure_split_targets();
+        // the target draws the root nodes up to the first front layer, each front layer up to the next
+        let main = self.target.as_ref().map(|t| (t.texture, t.framebuffer)).unwrap();
+        let mut segments: Vec<(usize, (Rid, Rid))> = vec![(0, main)];
+        let starts = self.split_positions(driver, &root);
+        let mut by_start: Vec<(usize, usize)> = starts.iter().copied().enumerate().map(|(i, p)| (p, i)).collect();
+        by_start.sort();
+        for (p, i) in by_start {
+            let t = &self.split_targets[i];
+            segments.push((p, (t.texture, t.framebuffer)));
         }
+        for k in 0..segments.len() {
+            let (from, out) = segments[k];
+            let to = segments.get(k + 1).map(|s| s.0).unwrap_or(root.len()).max(from);
+            self.set_level0(out.0, out.1);
+            let mut list = Some(self.begin(0, true));
+            self.draw_tree(driver, &root[from.min(root.len())..to.min(root.len())], 0, &mut list, &ctx);
+            if list.is_some() {
+                self.rd.draw_list_end();
+            }
+        }
+        self.set_level0(main.0, main.1);
         self.request_readbacks();
     }
 }
@@ -975,7 +1085,7 @@ impl RdRenderer {
     fn begin(&mut self, level: usize, clear: bool) -> i64 {
         let fb = match &self.layers {
             Some(l) => l.levels[level].1,
-            None => self.target.as_ref().unwrap().framebuffer,
+            None => self.level0_fb,
         };
         self.begin_on(fb, clear)
     }
@@ -1137,6 +1247,12 @@ impl RdRenderer {
 impl Drop for RdRenderer {
     fn drop(&mut self) {
         self.view.set_texture_rd_rid(Rid::Invalid);
+        for v in self.split_views.iter_mut() {
+            v.set_texture_rd_rid(Rid::Invalid);
+        }
+        for t in std::mem::take(&mut self.split_targets) {
+            free_target(&mut self.rd, t);
+        }
         if let Some(l) = self.layers.take() {
             for rid in l.sets.into_iter().chain(l.owned.into_iter().rev()) {
                 self.rd.free_rid(rid);

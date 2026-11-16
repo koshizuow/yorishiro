@@ -45,6 +45,12 @@ var pin_rotation: float = 0
 var _applied_rotation = null
 var _applied_scale = null
 
+## drawn right above this art mesh of the model, under what it draws after ("": above the whole model);
+## lib/items/model_layers.gd. A Live2D item cut at split_mesh puts the part up to it at back_layer_mesh instead.
+var layer_mesh := ""
+var back_layer_mesh := ""
+var split_mesh := ""
+
 # separate from godot's own group system
 # is used to associate an item with a set of objects within an ItemScene
 var group_name: StringName

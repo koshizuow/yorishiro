@@ -140,7 +140,16 @@ static func from_vts(model, it: Dictionary, paths: PackedStringArray) -> Diction
 		"flip": bool(it.get("IsFlipped", false)),
 		"order": int(it.get("Order", 1)),
 		"fps": float(it.get("FPS", 0.0)) if it.get("IsAnimated", false) else 0.0,
+		# between the model's layers: right above this art mesh (VTube Studio's layer special names kept)
+		"layer": _layer(it, "WithinModelPin_ArtMeshID") if it.get("WithinModelPin_On", false) else "",
+		# a Live2D item cut in two: the part up to split at back_layer
+		"split": str(it.get("WithinModelPin_SplitLive2DItemAt", "")) if it.get("WithinModelPin_BackOn", false) and paths[0].ends_with(".model3.json") else "",
+		"back_layer": _layer(it, "WithinModelPin_ArtMeshIDBackLayers") if it.get("WithinModelPin_BackOn", false) else "",
 	}
+
+static func _layer(it: Dictionary, key: String) -> String:
+	var m := str(it.get(key, ""))
+	return "" if m == "<<<LAYER_SPECIAL_TOP>>>" else m
 
 ## VTube Studio's stage is VIEW_UNITS tall (an unpinned item's Position; measured: 10.95 px per unit on a 1316 px
 ## high view) and draws a model at MODEL_VIEW of the view's height per model unit at scale 1 (928 px on 1316)
@@ -210,6 +219,9 @@ static func apply(item: VtItem, model, spec: Dictionary) -> bool:
 	item.pin_rotation = float(spec.get("rotation", 0.0))
 	item.pin_scale = Vector2.ONE * float(spec.get("scale", 1.0))
 	item.mirror = bool(spec.get("flip", false))
+	item.layer_mesh = str(spec.get("layer", ""))
+	item.split_mesh = str(spec.get("split", ""))
+	item.back_layer_mesh = str(spec.get("back_layer", ""))
 	var fps := float(spec.get("fps", 0.0))
 	if fps > 0.0 and item.render is AnimatedSprite2D:
 		var r: AnimatedSprite2D = item.render
@@ -239,6 +251,9 @@ static func spec_of(item: VtItem) -> Dictionary:
 		"flip": item.mirror,
 		"order": item.get_meta("order", 1),
 		"fps": 0.0,
+		"layer": item.layer_mesh,
+		"split": item.split_mesh,
+		"back_layer": item.back_layer_mesh,
 	}
 	if item.render is AnimatedSprite2D:
 		var r: AnimatedSprite2D = item.render

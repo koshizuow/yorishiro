@@ -21,6 +21,7 @@ func _ready() -> void:
 		item_model = item
 	else:
 		item.pin_changed.connect(_update_pin_name)
+		_update_pin_name(item.pinned_to)  # pinned before the row was made (restored, VTube Studio's)
 		%PinToggle.button_pressed = item.pinnable
 		_flip_button()
 		if item.item_type == VtItem.ItemType.IMAGE:
@@ -70,8 +71,35 @@ func _flip_button() -> void:
 	flip.expand_icon = true
 	flip.tooltip_text = "Flip"
 	flip.button_pressed = item.render.scale.x < 0
-	flip.toggled.connect(func (on): item.render.scale.x = -absf(item.render.scale.x) if on else absf(item.render.scale.x))
+	# through mirror, so the flip is saved with a pinned item
+	flip.toggled.connect(func (on): item.mirror = on)
 	%PinToggle.add_sibling(flip)
+	_layer_button()
+
+## between the model's layers: the art mesh the item is drawn right above (lib/items/model_layers.gd)
+func _layer_button() -> void:
+	var b := Button.new()
+	b.name = "LayerTarget"
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(0, 26)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	b.tooltip_text = "Draw the item between the model's layers: right above the art mesh picked here"
+	var show := func ():
+		b.text = tr("Layer: %s") % (item.layer_mesh if item.layer_mesh != "" else tr("above the model"))
+	show.call()
+	b.pressed.connect(func ():
+		var key = "{name}_{uid}_layer".format({"name": item.name, "uid": item.uid})
+		var popup = WindowManager.get_popup(key, func ():
+			var window = load("res://studio/hud/item_panel/pin_selector/pin_selector.tscn").instantiate()
+			window.model = model
+			window.title = tr("Draw above art mesh")
+			window.confirmed.connect(func ():
+				item.layer_mesh = "" if window.mesh == null else str(window.mesh.name)
+				show.call())
+			return window)
+		popup.grab_focus())
+	%PinControls.add_sibling(b)
 
 func _on_pin_toggle_toggled(toggled_on: bool) -> void:
 	item.pinnable = toggled_on

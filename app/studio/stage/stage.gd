@@ -66,11 +66,16 @@ signal model_changed(model: VtModel)
 signal item_added(item: VtItem)
 signal item_removed(item: VtItem)
 
+## the models and items on the stage (not the model's front layer sprites, lib/items/model_layers.gd)
 var objects: Array :
 	get():
-		return canvas.get_children()
+		return canvas.get_children().filter(func (c): return c is VtObject)
 
 func _ready() -> void:
+	var layers = preload("res://lib/items/model_layers.gd").new()
+	layers.name = "ModelLayers"
+	layers.stage = self
+	add_child(layers)
 	_stage_size = Vector2(capture_viewport.size)
 	capture_viewport.size_changed.connect(_on_stage_resized)
 	_setup_camera_view()
@@ -366,4 +371,5 @@ func save_settings(data):
 	
 func _on_model_layer_child_order_changed() -> void:
 	for i in canvas.get_children():
-		i.sort_order = i.get_index()
+		if "sort_order" in i:  # not the model's front layer sprites (lib/items/model_layers.gd)
+			i.sort_order = i.get_index()
