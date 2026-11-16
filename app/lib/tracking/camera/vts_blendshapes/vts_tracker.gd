@@ -7,6 +7,7 @@ extends "../blendshape_tracker.gd"
 const BidirectionalTracker = preload("res://lib/tracking/net/bidirectional_tracker.gd")
 const Serializers = preload("res://lib/utils/serializers.gd")
 const ArkitToVts = preload("../arkit_to_vts.gd")
+const Instance = preload("res://lib/instance.gd")
 
 
 class TrackingData:
@@ -26,7 +27,8 @@ var poller: Timer
 func _ready():
 	server = BidirectionalTracker.new()
 	server.host = "0.0.0.0"
-	server.port = 50650
+	# each copy of the app (--instance=N) listens on its own port, or the second copy cannot bind and gets nothing
+	server.port = 50650 + Instance.number() - 1
 	server.client_port = 21412
 	server.handshake_frequency = 1
 	
