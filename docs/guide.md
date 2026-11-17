@@ -7,6 +7,7 @@
 - [OBS](#obs)
 - [Virtual camera](#virtual-camera)
 - [Left and right](#left-and-right)
+- [Items](#items)
 - [iPhone tracking](#iphone-tracking)
 - [Several people on one computer](#several-people-on-one-computer)
 - [Troubleshooting](#troubleshooting)
@@ -113,6 +114,24 @@ Yorishiro works like a mirror. Look to your right and the model turns to the rig
 OBS, your stream and the people in a call see the same picture as the app's window. Video call apps such as Google Meet
 usually flip **your own preview** only, so your preview can look reversed compared to the app while everyone else sees it
 the right way round.
+
+## Items
+
+The **Models & Items** page of the settings adds items: pictures (PNG, JPG, also animated GIF, APNG and WebP), a folder
+of frames, or a Live2D model (a folder with a `.model3.json`). Items in `~/.local/share/yorishiro/Items/` show up in the
+item library by themselves. Live2D items follow the face tracking too.
+
+- Turn on the item's pin button and drop the item on the model: it is pinned to the art mesh under it and moves with
+  that part. The button next to it picks the mesh directly. Pinned items are saved with the model's settings and come back the next time the model is loaded.
+- Items are drawn above the model. The item's **Layer** button picks an art mesh instead: the item is drawn right above
+  it and under what comes after, for example between a hat and its brim.
+
+**Coming from VTube Studio.** Put the VTube Studio model folder in `Live2DModels/` and the items it uses (the files in
+VTube Studio's `StreamingAssets/Items`) in `Items/`. When the model is loaded, the items VTube Studio pinned to it come
+up at the same place, size and layer, with Live2D items cut front and back and their saved expressions as in VTube
+Studio. Once you change them in Yorishiro, Yorishiro's own settings are used. **Load** under **Item Scene** reads an item
+scene saved by VTube Studio. The size of the scene's unpinned items is an estimate for now and may differ from VTube
+Studio.
 
 ## iPhone tracking
 
