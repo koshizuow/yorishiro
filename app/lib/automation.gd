@@ -81,6 +81,10 @@
 ##                          (the stage, each mask viewport), draw calls and objects per frame, the number of viewports
 ##   --send-outputs         turn on the Yorishiro tracker's outputs to other apps (VTS iPhone, iFacialMocap to 127.0.0.1)
 ##   --phone-host=<ip>      with --tracker=vts-iphone: ask a real phone running VTube Studio there instead of 127.0.0.1
+##   --tracker-port=<n>     with --tracker=vts-iphone or vts-wifi: listen on this port instead of the copy's default
+##                          (vts-wifi prints what came in after 4 s)
+##   --port-panel-test      with --tracker=vts-iphone or vts-wifi: drive the tracker's settings panel: its default port,
+##                          start on another, change it while listening, then a port another program holds
 ##   --trace=<seconds>     print the tracked head, eye and mouth inputs every 0.1 s with the wall clock in ms, for
 ##                          comparing two copies (one sending, one receiving: --instance=2 --tracker=ifacialmocap)
 ##   --quit                 exit after the screenshot
@@ -169,12 +173,18 @@ func _ready() -> void:
 		var tracking = get_tree().get_first_node_in_group("system:tracking")
 		var t = load(TRACKERS[args["tracker"]]).new()
 		tracking.activate_tracker(t)
-		if args["tracker"] == "vts-iphone":
+		if args.has("tracker-port"):
+			t.server.port = int(args["tracker-port"])
+		if args.has("port-panel-test"):
+			await _port_panel_test(t, args["tracker"])
+		elif args["tracker"] == "vts-iphone":
 			t.server.client_host = args.get("phone-host", "127.0.0.1")
 			t.server.start()
-		if args["tracker"] == "vts-wifi":
+		elif args["tracker"] == "vts-wifi":
 			t.server.host = "*"
 			t.server.start()
+			get_tree().create_timer(4.0).timeout.connect(func ():
+				print("[automation] vts-wifi port %d FaceAngleX=%.2f MouthOpen=%.2f" % [t.server.port, t._parameters.get("FaceAngleX", -1.0), t._parameters.get("MouthOpen", -1.0)]))
 		if args["tracker"] == "ifacialmocap":
 			t.server.client_host = "127.0.0.1"
 			t.server.client_port = int(args.get("ifm-phone-port", "49984"))
@@ -1401,6 +1411,46 @@ func _record(args: Dictionary):
 		row.append_array(["%.2f" % mover.position.x, "%.2f" % mover.position.y, "%.4f" % mover.scale.x] if mover else ["0", "0", "1"])
 		csv.store_line(",".join(row))
 	print("[automation] recorded %d frames in %.1f s to %s" % [n, (Time.get_ticks_msec() - start) / 1000.0, dir])
+
+## the port fields of the phone inputs' panels (lib/tracking/camera/vts*/vts_config.gd), as a person would use them
+func _port_panel_test(t, kind: String):
+	var panel: Control = t.create_config()
+	get_tree().root.add_child(panel)  # in the persist group: loads the saved port like the real panel
+	await get_tree().process_frame
+	var field: SpinBox = panel.get_node("%Port") if kind == "vts-wifi" else panel.get_node("%LocalPort")
+	var srv = t.server
+	var up := func () -> bool:
+		return srv.server != null and (srv.server.is_listening() if kind == "vts-wifi" else srv.server.is_bound())
+	var out := PackedStringArray(["default %d" % int(field.value)])
+	field.value = 27100  # not listening yet: only the field changes
+	out.append("set while off: listening=%s" % up.call())
+	panel._on_connect_pressed()
+	await get_tree().process_frame
+	out.append("start: port %d listening=%s shown '%s'" % [srv.port, up.call(), panel.get_node("%ActiveIndicator").text])
+	field.value = 27101  # listening: moves there
+	await get_tree().process_frame
+	await get_tree().process_frame
+	out.append("moved: port %d listening=%s shown '%s'" % [srv.port, up.call(), panel.get_node("%ActiveIndicator").text])
+	var blocker = TCPServer.new() if kind == "vts-wifi" else PacketPeerUDP.new()
+	# the address the input itself binds (on Windows an IPv6 "*" socket and an IPv4 one can share a port)
+	var err = blocker.listen(27102) if kind == "vts-wifi" else blocker.bind(27102, srv.host)
+	field.value = 27102
+	await get_tree().process_frame
+	await get_tree().process_frame
+	out.append("busy (blocker %s): listening=%s shown '%s'" % [error_string(err), up.call(), panel.get_node("%ActiveIndicator").text])
+	if kind == "vts-wifi":
+		blocker.stop()
+	else:
+		blocker.close()
+	panel._on_disconnect_pressed()
+	await get_tree().process_frame
+	out.append("stopped: listening=%s shown '%s'" % [up.call(), panel.get_node("%ActiveIndicator").text])
+	var saved := {}
+	panel.save_settings(saved)
+	out.append("saved %s" % JSON.stringify(saved))
+	print("[automation] port panel %s: %s" % [kind, "; ".join(out)])
+	get_tree().root.remove_child(panel)  # like the camera panel: out of the tree first, so it saves with its fields
+	panel.queue_free()
 
 func _open_panel(which: String):
 	# --open-panel names: model and item open the models page, camera the settings page, others by page id

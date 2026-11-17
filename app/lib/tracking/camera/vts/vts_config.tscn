@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cc8x0bh5hk0sv" path="res://lib/tracking/camera/vts/vts_config.gd" id="1_ahnfl"]
 
-[node name="VBoxContainer" type="VBoxContainer" unique_id=1618521285]
+[node name="VBoxContainer" type="VBoxContainer" unique_id=1618521285 groups=["persist"]]
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 212.0
@@ -55,7 +55,6 @@ min_value = 10000.0
 max_value = 65535.0
 value = 25565.0
 alignment = 2
-editable = false
 
 [node name="HBoxContainer4" type="HBoxContainer" parent="." unique_id=1701620560]
 layout_mode = 2

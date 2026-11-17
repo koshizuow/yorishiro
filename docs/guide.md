@@ -145,9 +145,11 @@ expect those values, for example eyes fully open at 0.5, look as they do there.
 1. In Yorishiro, open the camera panel, choose **VTubeStudio (WiFi)** as the tracking source and press **Start Server**.
    The panel shows this computer's address.
 2. On the iPhone, connect to the same Wi-Fi. In VTube Studio open the settings (the gear), and under the PC connection
-   (Wi-Fi) part enter that address and port 25565, then turn on **Connect to PC**.
+   (Wi-Fi) part enter that address and the panel's port (25565 for the first copy of the app), then turn on
+   **Connect to PC**.
 3. The panel switches to On once the phone is connected. If it stays on Listening, the computer's firewall may be
-   blocking TCP port 25565. With ufw: `sudo ufw allow 25565/tcp`.
+   blocking that TCP port. With ufw: `sudo ufw allow 25565/tcp`. If the panel says the port is in use, another
+   program has it: pick another port in the panel and enter the same one on the phone.
 
 **VSeeFace mode.** The phone sends the raw face shapes (52 ARKit values) and Yorishiro works out the inputs itself.
 That part of the app is free.
@@ -159,8 +161,8 @@ That part of the app is free.
 4. Press **Show IP list** and note the IPv4 address. The port is always 21412.
 5. In Yorishiro, choose **iOS BlendShapes (VTS)** as the tracking source, enter the phone's address as **Hostname
    (Phone)** and press **Connect to Mobile**. The computer appears under **Connected VSF Clients** on the phone.
-6. If nothing arrives, the firewall may be blocking UDP port 50650, which the data comes in on:
-   `sudo ufw allow 50650/udp`.
+6. If nothing arrives, the firewall may be blocking the UDP port the data comes in on, **This computer's port** in
+   the panel (50650 for the first copy): `sudo ufw allow 50650/udp`. It can be changed there; the phone is told.
 
 For both:
 
@@ -175,6 +177,8 @@ Open the app again. Each copy takes the next number, or choose one with `--insta
 
 - Each copy has its own settings and takes a free camera. The model library is shared.
 - OBS streams are named `Yorishiro`, `Yorishiro-2` and so on. Plugin ports are 8001, 8002 and so on.
+- Two iPhones: each copy takes its own phone. With the PC connection each copy listens on its own port (25565,
+  25566 and so on, shown in the panel), so enter that copy's port on its phone. The VSeeFace mode needs nothing extra.
 - Two copies cannot read one camera at the same time. The second shows the camera as busy and keeps running.
 
 Every copy runs its own tracking, so the limit depends on your computer.

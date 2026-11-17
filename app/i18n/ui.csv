@@ -434,3 +434,6 @@ Layer: %s,Layer: %s,圖層：%s,レイヤー：%s
 above the model,above the model,模型最上層,モデルの一番上
 Draw above art mesh,Draw above art mesh,畫在這個網格上面,このアートメッシュの上に描く
 Draw the item between the model's layers: right above the art mesh picked here,Draw the item between the model's layers: right above the art mesh picked here,把道具畫在模型的圖層之間：在這裡選的網格正上方,アイテムをモデルのレイヤーの間に描く：ここで選んだアートメッシュのすぐ上
+Phone port,Phone port,手機的連接埠,スマホのポート
+This computer's port,This computer's port,這台電腦的連接埠,このパソコンのポート
+"The phone sends its frames to this port of this computer. Each copy of the app needs its own.","The phone sends its frames to this port of this computer. Each copy of the app needs its own.",手機把資料送到這台電腦的這個連接埠。每份 app 要用不同的連接埠。,スマホはこのパソコンのこのポートにデータを送ります。アプリのコピーごとに別のポートが必要です。

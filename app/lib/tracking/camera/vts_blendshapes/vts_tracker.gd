@@ -27,8 +27,7 @@ var poller: Timer
 func _ready():
 	server = BidirectionalTracker.new()
 	server.host = "0.0.0.0"
-	# each copy of the app (--instance=N) listens on its own port, or the second copy cannot bind and gets nothing
-	server.port = 50650 + Instance.number() - 1
+	server.port = default_port()
 	server.client_port = 21412
 	server.handshake_frequency = 1
 	
@@ -48,6 +47,11 @@ func _ready():
 	)
 	
 	add_child(server)
+
+## where the phone sends its frames (we tell it in the request): each copy of the app (--instance=N) has its own, or
+## the second copy cannot bind and gets nothing. The panel can change it (saved per copy).
+static func default_port() -> int:
+	return 50650 + Instance.number() - 1
 
 func create_config() -> Node:
 	var panel = preload("./vts_config.tscn").instantiate()

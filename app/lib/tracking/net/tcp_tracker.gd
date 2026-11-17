@@ -3,21 +3,28 @@ extends "./socket_tracker.gd"
 var server: TCPServer
 var peer: StreamPeerTCP
 
+## false when the port could not be opened (another program, or another copy of the app, has it)
 func start():
 	if server != null and server.is_listening():
-		return
+		return true
 	
 	server = TCPServer.new()
 	var err = server.listen(port, host)
 	if err != OK:
-		return
+		server = null
+		return false
 	
 	connection_status.emit(ConnectionStatus.WAIT)
+	return true
 	
 func stop():
 	if server != null and server.is_listening():
 		server.stop()
 	server = null
+	# a connected phone goes too, or a restart on another port would keep reading it
+	if peer != null:
+		peer.disconnect_from_host()
+		peer = null
 	call_deferred_thread_group("emit_signal", "connection_status", ConnectionStatus.OFF)
 
 func _listen():

@@ -1,6 +1,7 @@
 extends "../camera_tracker.gd"
 
 const TCPTracker = preload("res://lib/tracking/net/tcp_tracker.gd")
+const Instance = preload("res://lib/instance.gd")
 
 # for compatibility with VTS and its Stream to PC functionality
 # it's important to maintain exact enum order, as they are serialized by the ordinal
@@ -77,11 +78,16 @@ var poller: Timer
 func _ready():
 	super._ready()
 	server = TCPTracker.new()
-	server.port = 25565
+	server.port = default_port()
 	
 	server.packet_received.connect(_packet_received)
 	
 	add_child(server)
+
+## VTube Studio's own port for the first copy, the next ones for more copies (--instance=N): each phone is set to its
+## copy's port. The panel can change it (saved per copy).
+static func default_port() -> int:
+	return 25565 + Instance.number() - 1
 
 func create_config() -> Node:
 	var panel = preload("./vts_config.tscn").instantiate()
