@@ -11,8 +11,8 @@ REF_DIR: tools/ref_align.py's output (<recording>.csv). OURS_DIR: track_camera's
 replayed with FIT=1920x1080 (<recording>.csv). Not a pass/fail test: the two trackers scale and smooth their values
 differently, so per input it prints the correlation at the best shift (and the shift: positive = ours later), the
 linear map from the reference to ours (ours ~ a * ref + b), and both ranges; and for each eye the blinks: a closing is
-a dip below 40 % of that signal's own open level (its 90th percentile) for at least two frames, matched within 3
-frames, as recall (the reference's blinks we also see) and precision (ours that the reference also sees).
+a dip below 40 % of that signal's own open level (its 90th percentile) for at least two frames, matched when the two
+closings overlap (within 2 frames), as recall (the reference's blinks we also see) and precision (ours that the reference also sees).
 """
 import csv
 import sys
@@ -49,7 +49,7 @@ def best_shift(ref, ours):
 
 
 def closings(x):
-    """frame indices where a closing starts"""
+    """(start, end) frame spans of the closings""" 
     ok = ~np.isnan(x)
     if ok.sum() < 30:
         return []
@@ -63,16 +63,18 @@ def closings(x):
             while j < len(shut) and shut[j]:
                 j += 1
             if j - i >= 2:
-                starts.append(i)
+                starts.append((i, j))
             i = j
         else:
             i += 1
     return starts
 
 
-def match(ref, ours, tol=3):
-    hit = sum(1 for r in ref if any(abs(r - o) <= tol for o in ours))
-    good = sum(1 for o in ours if any(abs(r - o) <= tol for r in ref))
+def match(ref, ours, tol=2):
+    """closings that overlap, give or take tol frames (the trackers close for different lengths)"""
+    near = lambda a, b: a[0] - tol < b[1] and b[0] - tol < a[1]
+    hit = sum(1 for r in ref if any(near(r, o) for o in ours))
+    good = sum(1 for o in ours if any(near(r, o) for r in ref))
     return hit, good
 
 
