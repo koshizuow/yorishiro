@@ -21,7 +21,7 @@ use yorishiro_tracking::inference::LandmarkRuntime;
 use yorishiro_tracking::recording::Recording;
 use yorishiro_tracking::sinks::{IFacialMocapSink, VtsIphoneSink, VTS_REQUEST_PORT};
 use yorishiro_tracking::tracker::{ModelPaths, Tracker};
-use yorishiro_tracking::vts::vts_params;
+use yorishiro_tracking::vts::{vts_params, webcam_eye_open};
 
 #[cfg(feature = "entry")]
 struct YorishiroCoreExtension;
@@ -213,6 +213,11 @@ pub struct YorishiroCore {
     /// also track hands (the Hand* inputs and the preview's hands)
     #[export]
     track_hands: bool,
+    /// the EyeOpen inputs' range: "webcam" as VTube Studio's webcam tracking (open about 0.47), "phone" as an iPhone
+    /// (open 1.0); read on every poll, so it changes without a restart
+    #[export]
+    #[init(val = GString::from("phone"))]
+    eye_open_range: GString,
     shared: Option<Arc<Shared>>,
     worker: Option<JoinHandle<()>>,
     base: Base<Node>,
@@ -321,8 +326,9 @@ impl YorishiroCore {
             }
             if f.found {
                 let mut vts = VarDictionary::new();
+                let webcam = self.eye_open_range.to_string() != "phone";
                 for (k, v) in f.vts {
-                    vts.set(k, v);
+                    vts.set(k, if webcam && k.starts_with("EyeOpen") { webcam_eye_open(v) } else { v });
                 }
                 d.set("vts", &vts);
                 let mut arkit = VarDictionary::new();

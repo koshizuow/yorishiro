@@ -55,6 +55,18 @@ var send_vts_iphone := false
 var send_ifacialmocap := false
 ## also track hands (MediaPipe hands on the CPU beside the face), the Hand* inputs
 var track_hands := false
+## the EyeOpen inputs' range: "webcam" as VTube Studio's webcam tracking (open about 0.47; models rigged for it map
+## about 0..0.5), "phone" as an iPhone (open 1.0), "auto" from the model (model_eye_open_range). Changes without a
+## restart.
+const EYE_OPEN_RANGES = ["auto", "webcam", "phone"]
+const Files = preload("res://lib/utils/files.gd")
+var eye_open_range := "auto":
+	set(v):
+		eye_open_range = v if v in EYE_OPEN_RANGES else EYE_OPEN_RANGES[0]
+		_eye_range_model = "-"
+## the model "auto" last looked at (its .vtube.json) and what it gave
+var _eye_range_model := "-"
+var _eye_range_auto := "phone"
 ## a recording folder to replay instead of the camera (YORISHIRO_RECORDING), empty for the camera
 var replay := ""
 var _core: Node
@@ -104,6 +116,7 @@ func _start_core():
 	_core.send_vts_iphone = send_vts_iphone
 	_core.ifacialmocap_host = "127.0.0.1" if send_ifacialmocap else ""
 	_core.track_hands = track_hands
+	_eye_range_model = "-"
 	var source := ("recording %s" % replay.trim_suffix("/").get_file()) if replay else ("camera %d" % camera if camera >= 0 else "the first free camera")
 	_append_log("tracking core: %s, %s" % [source, runtime])
 	_core.start()
@@ -137,9 +150,37 @@ func _process(delta):
 		for line in _core.take_log():
 			_append_log(line)
 
+## "webcam" when the model's VTube Studio settings map an eye's open input below 0.75 (rigged for webcam tracking,
+## whose open eyes give about half), else "phone": also models without them, whose default bindings take 0..1
+static func model_eye_open_range(vtube_json: String) -> String:
+	if vtube_json.is_empty() or not FileAccess.file_exists(vtube_json):
+		return "phone"
+	for p in Files.read_json(vtube_json).get("ParameterSettings", []):
+		if typeof(p) == TYPE_DICTIONARY and p.get("Input", "") in ["EyeOpenLeft", "EyeOpenRight"] \
+				and float(p.get("InputRangeUpper", 1.0)) < 0.75:
+			return "webcam"
+	return "phone"
+
+## the range in effect, sent to the core when it changes
+func effective_eye_open_range() -> String:
+	if eye_open_range != "auto":
+		return eye_open_range
+	var stage = get_tree().get_first_node_in_group("system:stage") if is_inside_tree() else null
+	var model = stage.active_model if stage and stage.active_model and stage.active_model.modelmeta else null
+	var path: String = model.modelmeta.studio_parameters if model else ""
+	if path != _eye_range_model:
+		_eye_range_model = path
+		_eye_range_auto = model_eye_open_range(path)
+	return _eye_range_auto
+
 func _receive():
 	if not _core:
 		return
+	if "eye_open_range" in _core:  # an extension from before 2026-11-18 has no such property
+		var want := effective_eye_open_range()
+		if _core.eye_open_range != want:
+			_core.eye_open_range = want
+			_append_log("eye openness range: %s%s" % [want, " (from the model)" if eye_open_range == "auto" else ""])
 	var latest_frame = null
 	for msg in _core.poll():
 		if msg.get("type", "frame") == "status":
@@ -230,10 +271,12 @@ func load_settings():
 		send_vts_iphone = bool(data.get("send_vts_iphone", send_vts_iphone))
 		send_ifacialmocap = bool(data.get("send_ifacialmocap", send_ifacialmocap))
 		track_hands = bool(data.get("track_hands", track_hands))
+		eye_open_range = str(data.get("eye_open_range", eye_open_range))
 
 func save_settings():
 	var f = FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"camera": camera, "runtime": runtime, "runtime_picked": runtime_picked,
 			"when_lost": when_lost, "lost_delay": lost_delay, "glasses": glasses,
-			"send_vts_iphone": send_vts_iphone, "send_ifacialmocap": send_ifacialmocap, "track_hands": track_hands}))
+			"send_vts_iphone": send_vts_iphone, "send_ifacialmocap": send_ifacialmocap, "track_hands": track_hands,
+			"eye_open_range": eye_open_range}))

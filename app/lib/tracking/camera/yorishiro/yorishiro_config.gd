@@ -59,6 +59,7 @@ func _ready():
 
 	_lost_options()
 	_glasses_option()
+	_eye_open_option()
 	_output_options()
 
 	for b in [["Restart tracker", _on_restart], ["Recalibrate (look straight, relax)", tracker.calibrate]]:
@@ -178,6 +179,24 @@ func _glasses_option():
 	mode.tooltip_text = "Shown on the preview head. Detection only notices glasses that reflect the screen."
 	mode.item_selected.connect(func (i):
 		tracker.glasses = i
+		tracker.save_settings())
+	row.add_child(mode)
+	add_child(row)
+
+func _eye_open_option():
+	var row = HBoxContainer.new()
+	var label = Label.new()
+	label.text = "Eye openness"
+	row.add_child(label)
+	var mode = OptionButton.new()
+	mode.name = "EyeOpenRange"
+	# items in EYE_OPEN_RANGES' order
+	for t in ["Automatic (from the model)", "Like webcam tracking (VTube Studio, NVIDIA)", "Like iPhone tracking"]:
+		mode.add_item(t)
+	mode.select(maxi(0, tracker.EYE_OPEN_RANGES.find(tracker.eye_open_range)))
+	mode.tooltip_text = "Pick what the model was rigged with. Webcam: open eyes give about half (most models set up for VTube Studio's webcam tracking). iPhone: open eyes give 1. Automatic: webcam when the model's VTube Studio settings take its eyes as open below 0.75, else iPhone."
+	mode.item_selected.connect(func (i):
+		tracker.eye_open_range = tracker.EYE_OPEN_RANGES[i]
 		tracker.save_settings())
 	row.add_child(mode)
 	add_child(row)

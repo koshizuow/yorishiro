@@ -182,6 +182,11 @@ Detect from reflections,Detect from reflections,依反光自動偵測,映り込�
 I wear glasses,I wear glasses,有戴眼鏡,メガネあり
 No glasses,No glasses,沒戴眼鏡,メガネなし
 Shown on the preview head. Detection only notices glasses that reflect the screen.,Shown on the preview head. Detection only notices glasses that reflect the screen.,會顯示在預覽頭上。自動偵測只認得出有反光的眼鏡。,プレビューの頭に表示されます。自動検出で分かるのは、画面が映り込むメガネだけです。
+Eye openness,Eye openness,睜眼範圍,目の開き具合
+Automatic (from the model),Automatic (from the model),自動（依模型）,自動（モデルから判断）
+"Like webcam tracking (VTube Studio, NVIDIA)","Like webcam tracking (VTube Studio, NVIDIA)",同 Webcam 追蹤（VTube Studio、NVIDIA）,Webカメラのトラッキングと同じ（VTube Studio、NVIDIA）
+Like iPhone tracking,Like iPhone tracking,同 iPhone 追蹤,iPhone のトラッキングと同じ
+"Pick what the model was rigged with. Webcam: open eyes give about half (most models set up for VTube Studio's webcam tracking). iPhone: open eyes give 1. Automatic: webcam when the model's VTube Studio settings take its eyes as open below 0.75, else iPhone.","Pick what the model was rigged with. Webcam: open eyes give about half (most models set up for VTube Studio's webcam tracking). iPhone: open eyes give 1. Automatic: webcam when the model's VTube Studio settings take its eyes as open below 0.75, else iPhone.",依模型當初搭配的追蹤選。Webcam：睜眼時數值約一半，照 VTube Studio Webcam 追蹤設定的模型多半是這種。iPhone：睜眼時數值為 1。自動：模型的 VTube Studio 設定把睜眼對應在 0.75 以下時用 Webcam，否則用 iPhone。,モデルを調整したときのトラッキングに合わせて選びます。Webカメラ：目を開けたときの値は約半分で、VTube Studio の Webカメラ用に設定したモデルの多くはこちら。iPhone：目を開けたときの値は 1。自動：モデルの VTube Studio 設定で目の開きが 0.75 未満で全開になっていれば Webカメラ、それ以外は iPhone。
 Blink,Blink,眨眼,まばたき
 Frequency,Frequency,頻率,頻度
 Min,Min,最小,最小

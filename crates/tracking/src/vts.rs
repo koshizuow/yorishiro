@@ -8,6 +8,25 @@ const EYE_FULL_DEG: f64 = 25.0;
 const LIP_GAP_CLOSED: f64 = 0.015;
 const LIP_GAP_OPEN: f64 = 0.22;
 
+/// EyeOpen as VTube Studio's webcam tracking gives it: (ours, theirs) points, linear between them. Ours is 1.0 with
+/// the eyes open as an iPhone has it; VTube Studio's NVIDIA tracker rests near 0.47 and models rigged for it map about
+/// 0..0.5, so with ours as is their eyes only start to close below half open and a blink looks short and shallow.
+/// Fitted to that tracker on our recordings (2026-11-18, testdata/nvidia-ref): held out, the mean difference went
+/// from about 0.45 to 0.04..0.18.
+const WEBCAM_EYE_OPEN: [(f64, f64); 6] = [(0.0, 0.0), (0.2, 0.0), (0.35, 0.25), (0.55, 0.36), (0.75, 0.45), (1.0, 0.47)];
+
+/// An EyeOpen value (iPhone range, 1.0 open) on VTube Studio's webcam range.
+pub fn webcam_eye_open(open: f64) -> f64 {
+    let x = open.clamp(0.0, 1.0);
+    for w in WEBCAM_EYE_OPEN.windows(2) {
+        let ((x0, y0), (x1, y1)) = (w[0], w[1]);
+        if x <= x1 {
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+        }
+    }
+    WEBCAM_EYE_OPEN[WEBCAM_EYE_OPEN.len() - 1].1
+}
+
 /// The inputs in a fixed order, as (name, value).
 pub fn vts_params(frame: &FaceFrame, mirror: bool) -> Vec<(&'static str, f64)> {
     let bs = |n: &str| frame.blendshapes[arkit(n)];
@@ -72,3 +91,22 @@ pub fn vts_params(frame: &FaceFrame, mirror: bool) -> Vec<(&'static str, f64)> {
     ]
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::webcam_eye_open;
+
+    #[test]
+    fn webcam_eye_open_curve() {
+        assert_eq!(webcam_eye_open(1.0), 0.47);
+        assert_eq!(webcam_eye_open(0.1), 0.0);
+        assert!((webcam_eye_open(0.45) - 0.305).abs() < 1e-9);
+        assert_eq!(webcam_eye_open(1.5), 0.47);
+        let mut last = 0.0;
+        for i in 0..=100 {
+            let v = webcam_eye_open(i as f64 / 100.0);
+            assert!(v >= last);
+            last = v;
+        }
+    }
+}
