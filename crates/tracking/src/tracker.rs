@@ -37,7 +37,7 @@ pub struct ModelPaths<'a> {
 
 impl Tracker {
     pub fn open(paths: &ModelPaths, threads: usize) -> Result<Self, Error> {
-        Self::open_on(paths, LandmarkRuntime::OrtCpu, threads)
+        Self::open_on(paths, LandmarkRuntime::Cpu, threads)
     }
 
     /// With the landmark model on the given runtime.

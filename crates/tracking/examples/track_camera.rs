@@ -1,5 +1,5 @@
 //! The core on a live camera: cargo run --release --example track_camera -- <video index|auto> <monorepo> [seconds]
-//! [auto|vulkan|vulkan-fp32|ort-cpu] [width height fps]
+//! [auto|vulkan|vulkan-fp32|cpu] [width height fps]
 //! Prints the camera mode, the landmark runtime, frames per second, faces found, the tracker's time per frame and
 //! some inputs; auto is the first free camera. rec:<recording dir> runs a recording's frames back to back instead
 //! (compute only), TRACK_CSV=<file> writes every frame's inputs, TRACK_SAVE=<png> keeps frame 60.
@@ -17,7 +17,7 @@ fn main() {
     let (mp, fit, eyes) = (root.join("models/mediapipe"), root.join("models/core/fit.npz"),
                            root.join("models/eye_openness.onnx"));
     let runtime = match a.get(4).map(String::as_str).unwrap_or("auto") {
-        "ort-cpu" => LandmarkRuntime::OrtCpu,
+        "cpu" | "ort-cpu" => LandmarkRuntime::Cpu,
         #[cfg(feature = "ncnn")]
         "vulkan" => LandmarkRuntime::Vulkan { fp16: true },
         #[cfg(feature = "ncnn")]

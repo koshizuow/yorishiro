@@ -1,14 +1,14 @@
-//! A network on any of the core's runtimes, by its file stem (<stem>.onnx for ONNX Runtime,
+//! A network on any of the core's runtimes, by its file stem (<stem>.onnx on the CPU through tract,
 //! <stem>.ncnn.param / .bin for ncnn), as the Python tracker's backends.factory.open_model.
 
-use crate::backend::{Error, OrtModel};
+use crate::backend::{Error, CpuModel};
 use std::path::Path;
 
 /// Where a network runs.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Runtime {
-    /// ONNX Runtime CPU (the reference)
-    OrtCpu,
+    /// the CPU through tract (the reference; ONNX Runtime until 2026-11-18)
+    Cpu,
     /// ncnn on the first Vulkan GPU, fp16 or fp32
     #[cfg(feature = "ncnn")]
     Vulkan { fp16: bool },
@@ -18,7 +18,7 @@ pub enum Runtime {
 }
 
 pub enum Net {
-    Ort(OrtModel),
+    Cpu(CpuModel),
     #[cfg(feature = "ncnn")]
     Ncnn(crate::ncnn::NcnnModel),
 }
@@ -27,7 +27,7 @@ impl Net {
     pub fn open(stem: &Path, runtime: &Runtime, threads: usize) -> Result<Self, Error> {
         let onnx = stem.with_extension("onnx");
         Ok(match runtime {
-            Runtime::OrtCpu => Net::Ort(OrtModel::open(&onnx, threads)?),
+            Runtime::Cpu => Net::Cpu(CpuModel::open(&onnx, threads)?),
             #[cfg(feature = "ncnn")]
             Runtime::Vulkan { fp16 } => Net::Ncnn(crate::ncnn::NcnnModel::open(stem, true, *fp16, threads)?),
             #[cfg(feature = "ncnn")]
@@ -35,19 +35,19 @@ impl Net {
         })
     }
 
-    /// e.g. "ort-cpu-fp32", "ncnn-<GPU name>-fp16"
+    /// e.g. "cpu-fp32", "ncnn-<GPU name>-fp16"
     pub fn name(&self) -> String {
         match self {
-            Net::Ort(m) => m.name.clone(),
+            Net::Cpu(m) => m.name.clone(),
             #[cfg(feature = "ncnn")]
             Net::Ncnn(m) => m.name.clone(),
         }
     }
 
-    /// One NCHW image input (c, h, w); the outputs in order (ONNX Runtime's, or ncnn's out0, out1, ...).
+    /// One NCHW image input (c, h, w); the outputs in order (the ONNX model's, or ncnn's out0, out1, ...).
     pub fn run(&mut self, c: usize, h: usize, w: usize, data: Vec<f32>) -> Result<Vec<Vec<f32>>, Error> {
         match self {
-            Net::Ort(m) => m.run(&[1, c as i64, h as i64, w as i64], data),
+            Net::Cpu(m) => m.run(&[1, c as i64, h as i64, w as i64], data),
             #[cfg(feature = "ncnn")]
             Net::Ncnn(m) => {
                 let mut out = m.run(c, h, w, data)?;

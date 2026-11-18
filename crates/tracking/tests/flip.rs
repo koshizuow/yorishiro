@@ -8,7 +8,7 @@ use yorishiro_tracking::inference::{FaceMesh, Roi};
 fn flip_averaging_matches_python() {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     let td = root.join("../testdata/core-golden");
-    if !td.join("crema-d-60-flip.npz").exists() || std::env::var_os("ORT_DYLIB_PATH").is_none() {
+    if !td.join("crema-d-60-flip.npz").exists() {
         eprintln!("skipping");
         return;
     }

@@ -1,12 +1,12 @@
 //! The whole tracker on pictures against the Python tracker (golden <recording>-full.npz on the PNG frames
-//! as OpenCV decoded them, from the retired Python tracker's export_core.py). Needs the private test data and
-//! ORT_DYLIB_PATH, skipped otherwise.
+//! as OpenCV decoded them, from the retired Python tracker's export_core.py). Needs the private test data,
+//! skipped otherwise.
 //!
 //! Two ways: from Python's landmarks (everything after them, with the eye model, MediaPipe's mouth and the
 //! glare from the picture), and fully on our own landmarks. The second only on crema-d-60: on the other
 //! recording a fast head roll around frame 60 makes the landmark loop amplify a 0.1 px crop difference
 //! into a different re-detection (Rust frame 68, Python 70), as any second implementation would.
-//!     ORT_DYLIB_PATH=... cargo test --release --test full -- --nocapture
+//!     cargo test --release --test full -- --nocapture
 
 use std::path::PathBuf;
 use yorishiro_tracking::data::Npz;
@@ -25,8 +25,8 @@ fn testdata() -> PathBuf {
 fn check(name: &str, own_landmarks: bool) -> bool {
     let golden = testdata().join("core-golden").join(format!("{name}-full.npz"));
     let frames = testdata().join("core-golden").join(format!("{name}-frames"));
-    if !golden.exists() || std::env::var_os("ORT_DYLIB_PATH").is_none() {
-        eprintln!("skipping {name}: needs {} and ORT_DYLIB_PATH", golden.display());
+    if !golden.exists() {
+        eprintln!("skipping {name}: needs {}", golden.display());
         return true;
     }
     let (mp, fit, eyes) = (root().join("models/mediapipe"), root().join("models/core/fit.npz"),

@@ -13,7 +13,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
-use yorishiro_tracking::backend::runtime as ort_runtime;
 use yorishiro_tracking::camera::Frame;
 use yorishiro_tracking::frame::ARKIT52;
 use yorishiro_tracking::hands::{hand_params, HandTracker};
@@ -201,9 +200,6 @@ pub struct YorishiroCore {
     /// the eye openness model (models/eye_openness.onnx), empty for the lid gap
     #[export]
     eye_model: GString,
-    /// libonnxruntime.so to load (the official CPU build), empty for ORT_DYLIB_PATH or the system's
-    #[export]
-    ort_library: GString,
     /// the avatar mirrors the user (the VTuber default)
     #[export]
     #[init(val = true)]
@@ -235,7 +231,6 @@ impl YorishiroCore {
             runtime: self.runtime.to_string(),
             models: PathBuf::from(self.models_dir.to_string()),
             eye_model: Some(self.eye_model.to_string()).filter(|s| !s.is_empty()).map(PathBuf::from),
-            ort_library: Some(self.ort_library.to_string()).filter(|s| !s.is_empty()).map(PathBuf::from),
             mirror: self.mirror,
             vts_iphone: self.send_vts_iphone,
             ifacialmocap: Some(self.ifacialmocap_host.to_string()).filter(|s| !s.is_empty()),
@@ -365,7 +360,6 @@ struct Config {
     runtime: String,
     models: PathBuf,
     eye_model: Option<PathBuf>,
-    ort_library: Option<PathBuf>,
     mirror: bool,
     vts_iphone: bool,
     ifacialmocap: Option<String>,
@@ -374,7 +368,8 @@ struct Config {
 
 fn landmark_runtime(name: &str) -> Result<LandmarkRuntime, String> {
     Ok(match name {
-        "ort-cpu" => LandmarkRuntime::OrtCpu,
+        // "ort-cpu": the name before tract replaced ONNX Runtime (2026-11-18), in saved settings
+        "cpu" | "ort-cpu" => LandmarkRuntime::Cpu,
         #[cfg(feature = "ncnn")]
         "vulkan" => LandmarkRuntime::Vulkan { fp16: true },
         #[cfg(feature = "ncnn")]
@@ -425,9 +420,6 @@ fn run(cfg: Config, s: Arc<Shared>) {
     match yorishiro_tracking::keep_clock_up() {
         Ok(()) => s.log("tracking thread: CPU clock kept up while it runs (uclamp)".into()),
         Err(e) => s.log(format!("tracking thread: CPU clock hint not set ({e})")),
-    }
-    if let Err(e) = ort_runtime(cfg.ort_library.as_deref()) {
-        return s.status("error", &format!("ONNX Runtime did not load: {e}"), vec![], texts(&[]));
     }
     let mediapipe = cfg.models.join("mediapipe");
     let runtime = if cfg.runtime == "auto" {

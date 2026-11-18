@@ -4,10 +4,10 @@
 ## YORISHIRO_RECORDING (a recording folder) replays that recording in a loop instead of the camera, for tests.
 extends "../camera_tracker.gd"
 
-## auto (the default): the GPU when its landmarks match the CPU's and it is not much slower, else ONNX Runtime on
+## auto (the default): the GPU when its landmarks match the CPU's and it is not much slower, else tract on
 ## the CPU (Intel's integrated GPUs: wrong in fp16, 7x slower than the CPU in fp32). vulkan: the GPU on any
-## graphics card (ncnn); vulkan-fp32 for drivers with fp16 trouble; ncnn-cpu and ort-cpu without a GPU
-const RUNTIMES = ["auto", "vulkan", "vulkan-fp32", "ncnn-cpu", "ort-cpu"]
+## graphics card (ncnn); vulkan-fp32 for drivers with fp16 trouble; ncnn-cpu and cpu (tract) without a GPU
+const RUNTIMES = ["auto", "vulkan", "vulkan-fp32", "ncnn-cpu", "cpu"]
 const LOG_LINES = 200
 const SETTINGS_PATH = "user://yorishiro_tracker.json"
 
@@ -91,15 +91,6 @@ static func app_dir() -> String:
 func _models_dir() -> String:
 	return app_dir().path_join("models")
 
-## ONNX Runtime beside the extension (build_dependencies.sh fetches it; a release has it beside the executable):
-## libonnxruntime.so.<version>, or onnxruntime.dll in a Windows build
-func _ort_library() -> String:
-	var lib := ProjectSettings.globalize_path("res://addons/yorishiro_tracking/lib") if OS.has_feature("editor") else app_dir()
-	for f in DirAccess.get_files_at(lib):
-		if f.begins_with("libonnxruntime.so.") or f == "onnxruntime.dll":
-			return lib.path_join(f)
-	return ""
-
 func _start_core():
 	_core = ClassDB.instantiate(&"YorishiroCore")
 	_core.name = "YorishiroCore"
@@ -110,12 +101,11 @@ func _start_core():
 	_core.runtime = runtime
 	_core.models_dir = models
 	_core.eye_model = models.path_join("eye_openness.onnx")
-	_core.ort_library = _ort_library()
 	_core.send_vts_iphone = send_vts_iphone
 	_core.ifacialmocap_host = "127.0.0.1" if send_ifacialmocap else ""
 	_core.track_hands = track_hands
 	var source := ("recording %s" % replay.trim_suffix("/").get_file()) if replay else ("camera %d" % camera if camera >= 0 else "the first free camera")
-	_append_log("tracking core: %s, %s, ONNX Runtime %s" % [source, runtime, _core.ort_library.get_file()])
+	_append_log("tracking core: %s, %s" % [source, runtime])
 	_core.start()
 	_set_status({"state": "starting", "message": "starting tracker (first start loads models)"})
 
@@ -228,6 +218,8 @@ func load_settings():
 		camera = int(data.get("camera", camera))
 		runtime = data.get("runtime", runtime)
 		runtime_picked = bool(data.get("runtime_picked", false))
+		if runtime == "ort-cpu":  # ONNX Runtime on the CPU until tract replaced it (2026-11-18)
+			runtime = "cpu"
 		if not runtime in RUNTIMES:  # e.g. cuda or tensorrt from before they were removed
 			runtime = RUNTIMES[0]
 		if runtime == "vulkan" and not runtime_picked:  # the default before auto

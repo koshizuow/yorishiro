@@ -1,6 +1,6 @@
 //! Where the CPU goes, stage by stage, on the PNG frames:
 //! cargo run --release --features ncnn --example cpu_profile -- <frames dir> <monorepo> [runtime] [threads]
-//! runtime: ort-cpu (default), vulkan, ncnn-cpu. Prints wall and process CPU milliseconds per frame for
+//! runtime: cpu (default, tract), vulkan, ncnn-cpu. Prints wall and process CPU milliseconds per frame for
 //! each stage (CPU above wall means several threads worked), so a GPU runtime shows what is still on the CPU.
 use std::time::Instant;
 use yorishiro_tracking::glare::lens_glare;
@@ -37,14 +37,14 @@ fn main() {
     let a: Vec<String> = std::env::args().collect();
     let dir = std::path::Path::new(&a[1]);
     let root = std::path::Path::new(&a[2]);
-    let rt_name = a.get(3).map(String::as_str).unwrap_or("ort-cpu");
+    let rt_name = a.get(3).map(String::as_str).unwrap_or("cpu");
     let threads: usize = a.get(4).and_then(|v| v.parse().ok()).unwrap_or(4);
     let (mp, fit, eyes_path) = (root.join("models/mediapipe"), root.join("models/core/fit.npz"),
                                 root.join("models/eye_openness.onnx"));
     let rt = match rt_name {
         "vulkan" => LandmarkRuntime::Vulkan { fp16: true },
         "ncnn-cpu" => LandmarkRuntime::NcnnCpu,
-        _ => LandmarkRuntime::OrtCpu,
+        _ => LandmarkRuntime::Cpu,
     };
     let frames: Vec<Image> = (0..100).map(|i| Image::load(&dir.join(format!("{i:05}.png"))).unwrap()).collect();
     let (fw, fh) = (frames[0].width, frames[0].height);

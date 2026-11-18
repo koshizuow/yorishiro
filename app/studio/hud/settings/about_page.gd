@@ -17,7 +17,7 @@ const COMPONENTS = [
 	["MediaPipe Face and Hand Landmarker", "Google", "Apache-2.0", "Face and hand tracking models"],
 	["ICT-FaceKit", "USC Institute for Creative Technologies", "MIT", "Expression shapes for face tracking and the 3D head of the tracking preview"],
 	["ncnn", "Tencent", "BSD-3-Clause", "Runs the tracking models on the GPU (Vulkan)"],
-	["ONNX Runtime", "Microsoft", "MIT", "Runs the tracking models on the CPU"],
+	["tract", "Sonos", "MIT or Apache-2.0", "Runs the tracking models on the CPU"],
 ]
 ## license files shown in full, the app's own first
 const LICENSE_FILES = [
@@ -30,7 +30,6 @@ const LICENSE_FILES = [
 	["jf open 粉圓 (Huninn)", "res://ui/fonts/OFL.txt"],
 	["ICT-FaceKit", "res://license/LICENSE.ict-facekit.txt"],
 	["ncnn", "res://license/LICENSE.ncnn.md"],
-	["ONNX Runtime", "res://license/LICENSE.onnxruntime.md"],
 ]
 
 var _texts := RichTextLabel.new()

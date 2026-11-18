@@ -94,14 +94,14 @@ shows the commit and workflow that built the file.
    Linux (x86_64, standard, not .NET). Unzip it into `../tools/godot/` next to the repository, where `run.sh` looks
    for it, or set `GODOT=/path/to/godot`.
 2. **System packages** (Debian / Ubuntu names):
-   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libvulkan-dev unzip`
+   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libvulkan-dev`
 3. **Rust** 1.94 or newer through [rustup](https://rustup.rs) (distribution packages are often older).
 4. **Native addons:**
    ```sh
    cd app && ./build_dependencies.sh && cd ..
    ```
-   The first build also builds [ncnn](https://github.com/Tencent/ncnn) (the GPU runtime, about 5 minutes) and
-   downloads [ONNX Runtime](https://onnxruntime.ai)'s CPU build (from Microsoft's PyPI package).
+   The first build also builds [ncnn](https://github.com/Tencent/ncnn) (the GPU runtime, about 5 minutes). The CPU
+   runtime, [tract](https://github.com/sonos/tract), is a Rust crate built into the tracking node.
 5. **Tracking models** into `models/` (see `models/README.md`): copy the `models/` folder of a release's tar.gz, or
    make them from the upstream files with the research tools ([uv](https://docs.astral.sh/uv/) manages their
    Python 3.12 environment):

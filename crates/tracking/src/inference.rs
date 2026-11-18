@@ -3,7 +3,7 @@
 //! the eye openness model (mediapipe_ncnn/detector.py, landmarks.py, facemesh.py,
 //! adapters/mediapipe_blendshapes.py, adapters/eye_openness.py).
 
-use crate::backend::{Error, OrtModel};
+use crate::backend::{Error, CpuModel};
 use crate::frame::arkit;
 use crate::image::{invert_affine, Affine, Border, Image};
 use crate::P3;
@@ -44,13 +44,13 @@ fn anchors() -> Vec<[f64; 2]> {
 }
 
 pub struct Detector {
-    model: OrtModel,
+    model: CpuModel,
     anchors: Vec<[f64; 2]>,
 }
 
 impl Detector {
     pub fn open(path: &Path) -> Result<Self, Error> {
-        Ok(Self { model: OrtModel::open(path, 1)?, anchors: anchors() })
+        Ok(Self { model: CpuModel::open(path, 1)?, anchors: anchors() })
     }
 
     /// The best face as the landmark model's crop, or None.
@@ -125,7 +125,7 @@ pub fn roi_from_landmarks(px: &[P3]) -> Roi {
 }
 
 /// Which runtime runs the landmark model (the detector, MediaPipe's blendshapes and the eye model stay on
-/// ONNX Runtime CPU: small, and the Python tracker does the same).
+/// the CPU: small, and the Python tracker does the same).
 pub use crate::net::Runtime as LandmarkRuntime;
 
 pub struct FaceMesh {
@@ -163,17 +163,17 @@ pub struct Tracked {
     pub next_roi: Roi,
 }
 
-/// One candidate of the automatic runtime choice: its pass time and how far its landmarks are from ONNX Runtime's
+/// One candidate of the automatic runtime choice: its pass time and how far its landmarks are from the CPU's
 #[derive(Clone, Debug)]
 pub struct RuntimeTrial {
     pub runtime: LandmarkRuntime,
     pub name: String,
     pub pass_ms: f64,
-    /// largest landmark difference from ONNX Runtime CPU on the probe picture, in crop pixels (of 256)
+    /// largest landmark difference from the CPU (tract) on the probe picture, in crop pixels (of 256)
     pub max_diff: f64,
 }
 
-/// A GPU runtime is kept when its landmarks are within this of ONNX Runtime's on the probe picture
+/// A GPU runtime is kept when its landmarks are within this of the CPU's (tract) on the probe picture
 pub const AUTO_MAX_DIFF_PX: f64 = 2.0;
 /// and its pass is no slower than this many times the CPU's: the GPU is preferred, it leaves the CPU to the game and
 /// OBS (user 2026-11-18). An NVIDIA laptop GPU at its idle clock measured 1.95x the CPU (8.2 against 4.2 ms) and
@@ -199,7 +199,7 @@ fn probe_image() -> Image {
     img
 }
 
-/// "auto": tries the GPU (fp16, then fp32) against ONNX Runtime on the CPU and keeps it only when its landmarks
+/// "auto": tries the GPU (fp16, then fp32) against the CPU (tract) and keeps it only when its landmarks
 /// agree and it is not much slower. Intel's integrated GPUs gave wrong landmarks in fp16 (UHD 630: they crashed the
 /// eye crop) and took 46 ms per pass in fp32 against 6 ms on the CPU (user's test machine, 2026-11-02).
 /// Returns the choice and every trial, for the log.
@@ -228,8 +228,8 @@ pub fn auto_runtime(models: &Path, threads: usize) -> (LandmarkRuntime, Vec<Runt
         };
         Some((RuntimeTrial { name: net.name(), runtime, pass_ms: crate::fit::median(&mut times), max_diff }, out))
     };
-    let Some((cpu, reference)) = trial(LandmarkRuntime::OrtCpu, None) else {
-        return (LandmarkRuntime::OrtCpu, vec![]);
+    let Some((cpu, reference)) = trial(LandmarkRuntime::Cpu, None) else {
+        return (LandmarkRuntime::Cpu, vec![]);
     };
     let mut trials = vec![cpu.clone()];
     #[cfg(feature = "ncnn")]
@@ -247,12 +247,12 @@ pub fn auto_runtime(models: &Path, threads: usize) -> (LandmarkRuntime, Vec<Runt
             break;
         }
     }
-    (LandmarkRuntime::OrtCpu, trials)
+    (LandmarkRuntime::Cpu, trials)
 }
 
 impl FaceMesh {
     pub fn open(models: &Path, threads: usize) -> Result<Self, Error> {
-        Self::open_on(models, LandmarkRuntime::OrtCpu, threads)
+        Self::open_on(models, LandmarkRuntime::Cpu, threads)
     }
 
     pub fn open_on(models: &Path, runtime: LandmarkRuntime, threads: usize) -> Result<Self, Error> {
@@ -416,13 +416,13 @@ const BLEND_OUTPUTS: [&str; 51] = [
 ];
 
 pub struct Blendshapes {
-    model: OrtModel,
+    model: CpuModel,
     to_arkit: Vec<usize>,
 }
 
 impl Blendshapes {
     pub fn open(path: &Path) -> Result<Self, Error> {
-        Ok(Self { model: OrtModel::open(path, 1)?, to_arkit: BLEND_OUTPUTS.iter().map(|n| arkit(n)).collect() })
+        Ok(Self { model: CpuModel::open(path, 1)?, to_arkit: BLEND_OUTPUTS.iter().map(|n| arkit(n)).collect() })
     }
 
     /// ARKit 52 from normalized image landmarks.
@@ -486,12 +486,12 @@ pub fn crop_eye(img: &Image, lm: &[P3], side: usize) -> Image {
 }
 
 pub struct Eyes {
-    model: OrtModel,
+    model: CpuModel,
 }
 
 impl Eyes {
     pub fn open(path: &Path) -> Result<Self, Error> {
-        Ok(Self { model: OrtModel::open(path, 1)? })
+        Ok(Self { model: CpuModel::open(path, 1)? })
     }
 
     /// (left, right) openness, subject's sides: 0 closed, about 1 open

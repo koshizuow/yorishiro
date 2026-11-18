@@ -2,7 +2,7 @@
 //! the retired Python tracker's export_core.py): detector runs, crops, landmarks, MediaPipe's blendshapes, eye crops and
 //! openness, frame by frame on the recordings' pictures. Needs the private test data and
 //! ORT_DYLIB_PATH (app/addons/yorishiro_tracking/lib/libonnxruntime.so.*), skipped otherwise.
-//!     ORT_DYLIB_PATH=... cargo test --release --test inference -- --nocapture
+//!     cargo test --release --test inference -- --nocapture
 
 use std::path::PathBuf;
 use yorishiro_tracking::data::Npz;
@@ -21,8 +21,8 @@ fn testdata() -> PathBuf {
 fn check(name: &str, png: bool) -> bool {
     let golden = testdata().join("core-golden").join(format!("{name}-inference.npz"));
     let frames = if png { testdata().join("core-golden").join(format!("{name}-frames")) } else { testdata().join("recordings").join(name).join("frames") };
-    if !golden.exists() || std::env::var_os("ORT_DYLIB_PATH").is_none() {
-        eprintln!("skipping {name}: needs {} and ORT_DYLIB_PATH", golden.display());
+    if !golden.exists() {
+        eprintln!("skipping {name}: needs {}", golden.display());
         return true;
     }
     let models = root().join("models/mediapipe");

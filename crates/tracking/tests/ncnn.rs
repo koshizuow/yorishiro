@@ -1,7 +1,7 @@
 //! The landmark model on ncnn (Vulkan fp16 and fp32, CPU) against the Python tracker's ncnn backend on the
 //! same crops (golden <recording>-ncnn.npz), and against ONNX Runtime. Only with the ncnn feature and the
 //! private test data.
-//!     NCNN_DIR=... ORT_DYLIB_PATH=... cargo test --release --features ncnn --test ncnn -- --nocapture
+//!     NCNN_DIR=... cargo test --release --features ncnn --test ncnn -- --nocapture
 #![cfg(feature = "ncnn")]
 
 use std::path::PathBuf;
@@ -22,7 +22,7 @@ fn check(name: &str) -> bool {
     let golden = testdata().join("core-golden").join(format!("{name}-ncnn.npz"));
     let inference = testdata().join("core-golden").join(format!("{name}-inference.npz"));
     let frames = testdata().join("core-golden").join(format!("{name}-frames"));
-    if !golden.exists() || std::env::var_os("ORT_DYLIB_PATH").is_none() {
+    if !golden.exists() {
         eprintln!("skipping {name}");
         return true;
     }

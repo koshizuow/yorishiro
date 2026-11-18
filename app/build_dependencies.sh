@@ -61,32 +61,8 @@ build_katashiro () {
 	cd $PROJ_ROOT
 }
 
-## ONNX Runtime's official CPU build (MIT), which the core loads at run time. Taken from Microsoft's PyPI wheel (the
-## library is the same as in the C API release: the core's golden tests give identical numbers with both), because
-## github.com/microsoft/onnxruntime and its release assets went offline on 2026-11-18. The wheel is checked against
-## the sha256 PyPI published; ORT_WHEEL_URL can point at a copy.
-ORT_VERSION=1.31.1
-ORT_WHEEL=onnxruntime-$ORT_VERSION-cp312-cp312-manylinux_2_28_x86_64.whl
-ORT_WHEEL_URL=${ORT_WHEEL_URL:-https://files.pythonhosted.org/packages/eb/27/c6a823bac55b2977bea2027c3ec9393a2c1002cb9a09eb40354563e02730/$ORT_WHEEL}
-ORT_SHA256=1f3dea47f2f0e5117c2404cea7d21fd253ae7836a3bf167a501cdfbb2600d536
-
-fetch_onnxruntime () {
-	local lib=$1/libonnxruntime.so.$ORT_VERSION
-	[ -f "$lib" ] && return 0
-	local dl=$PROJ_ROOT/../target/onnxruntime
-	mkdir -p $dl
-	if [ ! -f $dl/$ORT_WHEEL ]; then
-		curl -sSLf -o $dl/$ORT_WHEEL.part "$ORT_WHEEL_URL" || return 1
-		mv $dl/$ORT_WHEEL.part $dl/$ORT_WHEEL
-	fi
-	echo "$ORT_SHA256  $dl/$ORT_WHEEL" | sha256sum -c --quiet || return 1
-	rm -rf $dl/wheel
-	unzip -q -o $dl/$ORT_WHEEL "onnxruntime/capi/libonnxruntime.so.$ORT_VERSION" onnxruntime/LICENSE onnxruntime/ThirdPartyNotices.txt -d $dl/wheel || return 1
-	cp $dl/wheel/onnxruntime/capi/libonnxruntime.so.$ORT_VERSION $lib
-	cat $dl/wheel/onnxruntime/LICENSE - $dl/wheel/onnxruntime/ThirdPartyNotices.txt <<< "" > $PROJ_ROOT/license/LICENSE.onnxruntime.md
-}
-
-## Yorishiro's tracking core as a Godot node (crates/tracking-gd), with ncnn (Vulkan) and ONNX Runtime (CPU) beside it
+## Yorishiro's tracking core as a Godot node (crates/tracking-gd), with ncnn (Vulkan) beside it; the CPU path (tract)
+## is built into the node
 build_core () {
 	echo -e "\n#### Preparing yorishiro-tracking\n\n"
 
@@ -94,9 +70,9 @@ build_core () {
 	build_workspace || return 1
 	mkdir -p $ADDON/lib
 	cp $PROJ_ROOT/../target/release/libyorishiro_tracking_gd.so $ADDON/lib/libyorishiro_tracking_gd.x86_64.so
-	fetch_onnxruntime $ADDON/lib || return 1
 	cp -L $NCNN_DIR/lib/libncnn.so.1 $ADDON/lib/  # found through the node library's $ORIGIN rpath
 	[ -f $NCNN_DIR/LICENSE.txt ] && cp $NCNN_DIR/LICENSE.txt $PROJ_ROOT/license/LICENSE.ncnn.md
+	rm -f $ADDON/lib/libonnxruntime.so.*  # ONNX Runtime before tract (2026-11-18)
 	cat > $ADDON/yorishiro_tracking.gdextension <<GDEXT
 [configuration]
 entry_symbol = "gdext_rust_init"
@@ -109,8 +85,7 @@ linux.release.x86_64 = "res://addons/yorishiro_tracking/lib/libyorishiro_trackin
 
 [dependencies]
 linux.x86_64 = {
-	"res://addons/yorishiro_tracking/lib/libncnn.so.1": "",
-	"res://addons/yorishiro_tracking/lib/libonnxruntime.so.$ORT_VERSION": ""
+	"res://addons/yorishiro_tracking/lib/libncnn.so.1": ""
 }
 GDEXT
 	echo "*" > $ADDON/.gitignore

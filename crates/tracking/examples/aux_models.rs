@@ -5,7 +5,7 @@
 //! and .ncnn.param/.bin (eye model converted with batch 1)>
 use std::path::Path;
 use std::time::{Duration, Instant};
-use yorishiro_tracking::backend::OrtModel;
+use yorishiro_tracking::backend::CpuModel;
 use yorishiro_tracking::ncnn::NcnnModel;
 
 fn time(paced: bool, n: usize, mut f: impl FnMut()) -> f64 {
@@ -31,7 +31,6 @@ fn max_diff(a: &[f32], b: &[f32]) -> f32 {
 fn main() {
     let dir = std::env::args().nth(1).expect("model dir");
     let dir = Path::new(&dir);
-    yorishiro_tracking::backend::runtime(std::env::var("ORT_DYLIB_PATH").ok().as_deref().map(Path::new)).unwrap();
 
     // landmark-like points, deterministic
     let pts: Vec<f32> = (0..146).flat_map(|i| {
@@ -40,16 +39,16 @@ fn main() {
     }).collect();
     let eye: Vec<f32> = (0..3 * 40 * 64).map(|i| ((i * 37 % 251) as f32) / 1.0).collect();
 
-    let mut ort_b = OrtModel::open(&dir.join("face_blendshapes.onnx"), 1).unwrap();
-    let mut ort_e = OrtModel::open(&dir.join("eye_openness.onnx"), 1).unwrap();
-    let ref_b = ort_b.run(&[1, 146, 2], pts.clone()).unwrap()[0].clone();
+    let mut cpu_b = CpuModel::open(&dir.join("face_blendshapes.onnx"), 1).unwrap();
+    let mut cpu_e = CpuModel::open(&dir.join("eye_openness.onnx"), 1).unwrap();
+    let ref_b = cpu_b.run(&[1, 146, 2], pts.clone()).unwrap()[0].clone();
     let two: Vec<f32> = eye.iter().chain(eye.iter()).copied().collect();
-    let ref_e = ort_e.run(&[2, 3, 40, 64], two.clone()).unwrap()[0].clone();
+    let ref_e = cpu_e.run(&[2, 3, 40, 64], two.clone()).unwrap()[0].clone();
     for paced in [false, true] {
         let label = if paced { "paced 30 fps" } else { "back to back" };
-        println!("{label:<13} blendshapes ort-cpu {:6.2} ms   eyes ort-cpu (both) {:6.2} ms",
-                 time(paced, 60, || { ort_b.run(&[1, 146, 2], pts.clone()).unwrap(); }),
-                 time(paced, 60, || { ort_e.run(&[2, 3, 40, 64], two.clone()).unwrap(); }));
+        println!("{label:<13} blendshapes cpu {:6.2} ms   eyes cpu (both) {:6.2} ms",
+                 time(paced, 60, || { cpu_b.run(&[1, 146, 2], pts.clone()).unwrap(); }),
+                 time(paced, 60, || { cpu_e.run(&[2, 3, 40, 64], two.clone()).unwrap(); }));
     }
     for (gpu, fp16) in [(false, false), (true, false), (true, true)] {
         let mut b = NcnnModel::open(&dir.join("face_blendshapes"), gpu, fp16, 1).unwrap();
