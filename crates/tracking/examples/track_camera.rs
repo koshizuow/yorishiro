@@ -2,7 +2,8 @@
 //! [auto|vulkan|vulkan-fp32|cpu] [width height fps]
 //! Prints the camera mode, the landmark runtime, frames per second, faces found, the tracker's time per frame and
 //! some inputs; auto is the first free camera. rec:<recording dir> runs a recording's frames back to back instead
-//! (compute only), TRACK_CSV=<file> writes every frame's inputs, TRACK_SAVE=<png> keeps frame 60.
+//! (compute only; FIT=<w>x<h> fits each frame into w x h like the Windows recording player), TRACK_CSV=<file> writes
+//! every frame's inputs, TRACK_SAVE=<png> keeps frame 60.
 use std::time::Instant;
 use yorishiro_tracking::camera::Camera;
 use yorishiro_tracking::inference::{auto_runtime, LandmarkRuntime};
@@ -40,17 +41,46 @@ fn main() {
         let meta: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(dir.join("meta.json")).unwrap()).unwrap();
         let times: Vec<i64> = meta["timestamps_ms"].as_array().unwrap().iter().map(|v| v.as_i64().unwrap()).collect();
         let (mut busy, mut faces, mut list) = (0.0, 0, vec![]);
+        // FIT=<w>x<h>: each frame fitted into w x h keeping its shape, black around it, as the Windows recording player
+        // hands frames to a virtual camera (the pictures a reference tracker saw)
+        let fit: Option<(u32, u32)> = std::env::var("FIT").ok().and_then(|v| {
+            let (w, h) = v.split_once('x')?;
+            Some((w.parse().ok()?, h.parse().ok()?))
+        });
+        let csv = std::env::var("TRACK_CSV").ok();
+        let (mut csv_names, mut csv_rows): (Vec<String>, Vec<String>) = (vec![], vec![]);
         for (i, ts) in times.iter().enumerate() {
-            let img = image::open(dir.join(format!("frames/{i:05}.jpg"))).unwrap().to_rgb8();
+            let mut rgba = image::open(dir.join(format!("frames/{i:05}.jpg"))).unwrap().to_rgba8();
+            if let Some((w, h)) = fit {
+                rgba = letterbox(&rgba, w, h);
+            }
+            let img = image::DynamicImage::ImageRgba8(rgba).to_rgb8();
             let img = yorishiro_tracking::image::Image { width: img.width() as usize, height: img.height() as usize, rgb: img.into_raw() };
             let t = Instant::now();
             let out = tracker.process(&img, *ts).unwrap();
+            if csv.is_some() {
+                // the header comes from the first frame with a face: rows are kept until then
+                match out.as_ref() {
+                    Some(o) => {
+                        let p = vts_params(&o.final_frame, true);
+                        if csv_names.is_empty() {
+                            csv_names = p.iter().map(|(k, _)| k.to_string()).collect();
+                        }
+                        csv_rows.push(format!("{i},{},1,{}", ts - times[0], p.iter().map(|(_, v)| format!("{v:.4}")).collect::<Vec<_>>().join(",")));
+                    }
+                    None => csv_rows.push(format!("{i},{},0", ts - times[0])),
+                }
+            }
             let ms = t.elapsed().as_secs_f64() * 1000.0;
             if i >= 10 {
                 busy += ms;
                 list.push(ms);
             }
             faces += out.is_some() as usize;
+        }
+        if let Some(path) = &csv {
+            let body = format!("frame,ms,found,{}\n{}\n", csv_names.join(","), csv_rows.join("\n"));
+            std::fs::write(path, body).unwrap();
         }
         list.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let n = list.len().max(1);
@@ -118,4 +148,17 @@ fn main() {
     println!("means: {}", means.join(", "));
     let s = tracker.stage_ms;
     println!("stages (smoothed, ms): landmarks {:.1}, blendshapes {:.1}, eyes {:.1}", s[0], s[1], s[2]);
+}
+
+/// The picture scaled to fit w x h (bilinear), centred on black: what the Windows recording player (vcam_play) sends
+fn letterbox(img: &image::RgbaImage, w: u32, h: u32) -> image::RgbaImage {
+    if img.dimensions() == (w, h) {
+        return img.clone();
+    }
+    let k = (w as f64 / img.width() as f64).min(h as f64 / img.height() as f64);
+    let (sw, sh) = (((img.width() as f64 * k).round() as u32).max(1), ((img.height() as f64 * k).round() as u32).max(1));
+    let small = image::imageops::resize(img, sw, sh, image::imageops::FilterType::Triangle);
+    let mut out = image::RgbaImage::from_pixel(w, h, image::Rgba([0, 0, 0, 255]));
+    image::imageops::overlay(&mut out, &small, ((w - sw) / 2) as i64, ((h - sh) / 2) as i64);
+    out
 }
