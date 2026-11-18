@@ -175,8 +175,10 @@ pub struct RuntimeTrial {
 
 /// A GPU runtime is kept when its landmarks are within this of ONNX Runtime's on the probe picture
 pub const AUTO_MAX_DIFF_PX: f64 = 2.0;
-/// and its pass is no slower than this many times the CPU's (the GPU leaves the CPU to the game and OBS)
-pub const AUTO_GPU_SLOWER: f64 = 1.5;
+/// and its pass is no slower than this many times the CPU's: the GPU is preferred, it leaves the CPU to the game and
+/// OBS (user 2026-11-18). An NVIDIA laptop GPU at its idle clock measured 1.95x the CPU (8.2 against 4.2 ms) and
+/// was passed over at 1.5; Intel's integrated GPUs are wrong in fp16 and about 7x the CPU in fp32, still left out
+pub const AUTO_GPU_SLOWER: f64 = 2.5;
 
 /// The probe picture for the runtime check: smooth gradients and soft blobs, the same everywhere
 fn probe_image() -> Image {
