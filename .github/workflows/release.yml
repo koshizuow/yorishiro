@@ -39,7 +39,10 @@ jobs:
           gh release download "$MODELS_RELEASE" -p "$MODELS_RELEASE.tar.gz" -D "$RUNNER_TEMP"
           mkdir -p "$RUNNER_TEMP/models"
           tar xzf "$RUNNER_TEMP/$MODELS_RELEASE.tar.gz" -C "$RUNNER_TEMP/models"
-          (cd "$RUNNER_TEMP/models" && sha256sum -c --quiet "$GITHUB_WORKSPACE/models/SHA256SUMS")
+          # the set holds what is not in git (models/eye_openness.* are), build.sh checks the whole list again
+          git -C "$GITHUB_WORKSPACE" ls-files models | sed 's|^models/||' > "$RUNNER_TEMP/in_git"
+          grep -v -F -f "$RUNNER_TEMP/in_git" "$GITHUB_WORKSPACE/models/SHA256SUMS" > "$RUNNER_TEMP/SHA256SUMS.set"
+          (cd "$RUNNER_TEMP/models" && sha256sum -c --quiet "$RUNNER_TEMP/SHA256SUMS.set")
 
       # Godot, its export template (1.3 GB download) and ncnn, as build.sh keeps them between builds
       - uses: actions/cache@v4
