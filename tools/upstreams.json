@@ -60,10 +60,13 @@
       "url": "https://github.com/erodozer/godot-keylogger",
       "branch": "main",
       "pin": {
-        "kind": "submodule",
-        "path": "thirdparty/godot-keylogger"
+        "kind": "vendored",
+        "prefix": "crates/keylogger-gd",
+        "path": ".",
+        "commit": "c3e7137"
       },
-      "policy": "bump"
+      "policy": "watch",
+      "note": "Vendored as crates/keylogger-gd (MIT) with our own Windows backend (src/windows.rs); read new commits for fixes."
     }
   ],
   "godot": {

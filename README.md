@@ -98,7 +98,6 @@ shows the commit and workflow that built the file.
 3. **Rust** 1.94 or newer through [rustup](https://rustup.rs) (distribution packages are often older).
 4. **Native addons:**
    ```sh
-   git submodule update --init
    cd app && ./build_dependencies.sh && cd ..
    ```
    The first build also builds [ncnn](https://github.com/Tencent/ncnn) (the GPU runtime, about 5 minutes) and
