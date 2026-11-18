@@ -83,7 +83,7 @@ commit 和 workflow。
    （x86_64，標準版，不是 .NET 版），解壓到 repo 旁邊的 `../tools/godot/`（`run.sh` 預設會到這裡找），
    也可以用 `GODOT=/path/to/godot` 指定位置。
 2. **系統套件**（以 Debian / Ubuntu 的套件名稱為例）：
-   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libvulkan-dev`
+   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libvulkan-dev unzip`
 3. **Rust** 1.94 以上。建議用 [rustup](https://rustup.rs) 安裝，發行版內建的版本通常太舊。
 4. **原生擴充：**
    ```sh
@@ -91,7 +91,7 @@ commit 和 workflow。
    cd app && ./build_dependencies.sh && cd ..
    ```
    第一次建置時也會順便建置 [ncnn](https://github.com/Tencent/ncnn)（顯示卡運算用，大約 5 分鐘），並下載
-   [ONNX Runtime](https://github.com/microsoft/onnxruntime) 的 CPU 版。
+   [ONNX Runtime](https://onnxruntime.ai) 的 CPU 版（取自 Microsoft 在 PyPI 上的套件）。
 5. **追蹤模型**放在 `models/`（說明見 `models/README.md`）：可以直接複製發行版 tar.gz 裡的 `models/` 資料夾，
    或用研究工具從原始檔案產生（Python 3.12 環境由 [uv](https://docs.astral.sh/uv/) 管理）：
    ```sh

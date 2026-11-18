@@ -94,7 +94,7 @@ GitHub でビルドしたリリースにはビルドの来歴証明（attestatio
    （x86_64、standard 版、.NET 版ではない）。リポジトリの隣の `../tools/godot/` に展開すると `run.sh` が見つけます。
    または `GODOT=/path/to/godot` を指定します。
 2. **システムパッケージ**（Debian / Ubuntu の名前）：
-   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libvulkan-dev`
+   `sudo apt install libudev-dev libinput-dev libclang-dev pkg-config cmake ninja-build libpipewire-0.3-dev libgbm-dev libdrm-dev libvulkan-dev unzip`
 3. **Rust** 1.94 以降を [rustup](https://rustup.rs) で（ディストリビューションのパッケージは古いことが多いです）。
 4. **ネイティブ拡張：**
    ```sh
@@ -102,7 +102,7 @@ GitHub でビルドしたリリースにはビルドの来歴証明（attestatio
    cd app && ./build_dependencies.sh && cd ..
    ```
    初回のビルドでは [ncnn](https://github.com/Tencent/ncnn)（GPU ランタイム、約 5 分）もビルドし、
-   [ONNX Runtime](https://github.com/microsoft/onnxruntime) の CPU 版をダウンロードします。
+   [ONNX Runtime](https://onnxruntime.ai) の CPU 版（Microsoft の PyPI パッケージから）をダウンロードします。
 5. **トラッキングモデル**を `models/` に（`models/README.md` を参照）：リリースの tar.gz の `models/` フォルダーを
    コピーするか、研究用ツールで元のファイルから作ります（Python 3.12 の環境は [uv](https://docs.astral.sh/uv/) が管理します）：
    ```sh
