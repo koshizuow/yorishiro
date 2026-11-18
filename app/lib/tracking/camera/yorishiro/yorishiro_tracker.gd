@@ -20,7 +20,7 @@ enum WhenLost { FREEZE, REST }
 const REST = {"FaceAngleX": 0.0, "FaceAngleY": 0.0, "FaceAngleZ": 0.0, "FacePositionX": 0.0, "FacePositionY": 0.0,
 	"FacePositionZ": 0.0, "EyeOpenLeft": 1.0, "EyeOpenRight": 1.0, "EyeLeftX": 0.0, "EyeLeftY": 0.0,
 	"EyeRightX": 0.0, "EyeRightY": 0.0, "MouthOpen": 0.0, "MouthSmile": 0.5, "MouthX": 0.0, "Brows": 0.5,
-	"BrowLeftY": 0.0, "BrowRightY": 0.0, "CheekPuff": 0.0, "TongueOut": 0.0}
+	"BrowLeftY": 0.5, "BrowRightY": 0.5, "CheekPuff": 0.0, "TongueOut": 0.0}
 ## time the model eases back to the resting pose
 const REST_EASE_SEC = 0.8
 

@@ -83,6 +83,7 @@ fn check(name: &str) -> bool {
         let params = vts_params(&out.final_frame, true);
         let at = |e: &str| params.iter().position(|(n, _)| *n == e).unwrap();
         let (eye_x, eye_y, yaw) = (["EyeLeftX", "EyeRightX"].map(at), ["EyeLeftY", "EyeRightY"].map(at), at("FaceAngleX"));
+        let brows = ["BrowLeftY", "BrowRightY"].map(at);
         let vts: Vec<f64> = params.into_iter().map(|(_, v)| v).collect();
         let ours: [Vec<f64>; 9] = [
             flat(&out.smoothed),
@@ -107,6 +108,10 @@ fn check(name: &str) -> bool {
                 let y = gaze_y_trust(theirs[yaw]) * (theirs[eye_y[0]] + theirs[eye_y[1]]) / 2.0;
                 theirs[eye_y[0]] = y;
                 theirs[eye_y[1]] = y;
+                // and each brow on 0..1 resting at 0.5 (2026-11-19)
+                for b in brows {
+                    theirs[b] = (0.5 + 0.5 * theirs[b]).clamp(0.0, 1.0);
+                }
             }
             worst[k].add(i, o, &theirs);
         }

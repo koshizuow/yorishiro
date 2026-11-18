@@ -27,8 +27,9 @@ static func _static_init() -> void:
 	Registry.add_parameter("CheekPuff", Vector2(0, 1))
 	Registry.add_parameter("FaceAngry", Vector2(0, 1))
 	
-	Registry.add_parameter("BrowLeftY", Vector2(-1, 1))
-	Registry.add_parameter("BrowRightY", Vector2(-1, 1))
+	# 0.5 at rest, as VTube Studio has them
+	Registry.add_parameter("BrowLeftY", Vector2(0, 1), 0.5)
+	Registry.add_parameter("BrowRightY", Vector2(0, 1), 0.5)
 	
 	Registry.add_parameter("MouthX", Vector2(-1, 1))
 	

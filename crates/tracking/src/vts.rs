@@ -76,7 +76,9 @@ pub fn vts_params(frame: &FaceFrame, mirror: bool) -> Vec<(&'static str, f64)> {
     }
     // Brows reads the brow values before they are clipped, as the Python code does
     let brows = 0.5 + 0.25 * (brow[0] + brow[1]);
-    let brow = brow.map(|b| b.clamp(-1.0, 1.0));
+    // Each brow on VTube Studio's range, 0..1 with 0.5 at rest like Brows (its NVIDIA tracker rested at 0.5..0.6 on our
+    // recordings, and models rigged for it map about 0.2..0.8); it was -1..1 resting at 0, a lowered brow on those.
+    let brow = brow.map(|b| (0.5 + 0.5 * b).clamp(0.0, 1.0));
     let unit = |x: f64| x.clamp(0.0, 1.0);
     let signed = |x: f64| x.clamp(-1.0, 1.0);
     let t = frame.head_translation;

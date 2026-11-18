@@ -44,8 +44,9 @@ static func params(shapes: Dictionary, head: Array, position: Vector3, eye_left:
 		"EyeLeftY": clampf(eye_y[0], -1, 1),
 		"EyeRightX": clampf(eye_x[1], -1, 1),
 		"EyeRightY": clampf(eye_y[1], -1, 1),
-		"BrowLeftY": clampf(brow[0], -1, 1),
-		"BrowRightY": clampf(brow[1], -1, 1),
+		# VTube Studio's range, 0..1 with 0.5 at rest (vts.rs)
+		"BrowLeftY": clampf(0.5 + 0.5 * brow[0], 0, 1),
+		"BrowRightY": clampf(0.5 + 0.5 * brow[1], 0, 1),
 		"MouthSmile": clampf(0.5 + 0.5 * (smile - frown), 0, 1),
 		"MouthOpen": clampf(bs.call("JawOpen") - bs.call("MouthClose"), 0, 1),
 		"MouthX": clampf(s * (bs.call("MouthLeft") - bs.call("MouthRight")), -1, 1),

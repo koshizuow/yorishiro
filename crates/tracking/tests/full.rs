@@ -105,6 +105,10 @@ fn check(name: &str, own_landmarks: bool) -> bool {
                 let y = gaze_y_trust(theirs[at("FaceAngleX")]) * (theirs[l] + theirs[r]) / 2.0;
                 theirs[l] = y;
                 theirs[r] = y;
+                // and each brow on 0..1 resting at 0.5 (2026-11-19)
+                for b in [at("BrowLeftY"), at("BrowRightY")] {
+                    theirs[b] = (0.5 + 0.5 * theirs[b]).clamp(0.0, 1.0);
+                }
             }
             for (j, (a, b)) in o.iter().zip(&theirs).enumerate() {
                 let eye_value = match stages[k] {
