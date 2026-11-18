@@ -8,9 +8,11 @@
 # MODELS_RELEASE below changes with it.
 name: release
 
+# Three-part version tags only: a four-part one (v0.1.8.1) marks a commit for builds that depend on the core
+# and is not a release.
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*", "!v*.*.*.*"]
 
 permissions:
   contents: write       # the draft release
