@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use yorishiro_tracking::data::Npz;
 use yorishiro_tracking::fit::Fitter;
 use yorishiro_tracking::pipeline::Pipeline;
-use yorishiro_tracking::vts::vts_params;
+use yorishiro_tracking::vts::{gaze_y_trust, vts_params};
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -81,7 +81,8 @@ fn check(name: &str) -> bool {
         }
         let flat = |pts: &[[f64; 3]]| pts.iter().flatten().copied().collect::<Vec<f64>>();
         let params = vts_params(&out.final_frame, true);
-        let eye_x = ["EyeLeftX", "EyeRightX"].map(|e| params.iter().position(|(n, _)| *n == e).unwrap());
+        let at = |e: &str| params.iter().position(|(n, _)| *n == e).unwrap();
+        let (eye_x, eye_y, yaw) = (["EyeLeftX", "EyeRightX"].map(at), ["EyeLeftY", "EyeRightY"].map(at), at("FaceAngleX"));
         let vts: Vec<f64> = params.into_iter().map(|(_, v)| v).collect();
         let ours: [Vec<f64>; 9] = [
             flat(&out.smoothed),
@@ -99,10 +100,13 @@ fn check(name: &str) -> bool {
             let mut theirs = golden[k][i * len..(i + 1) * len].to_vec();
             if STAGES[k].0 == "vts" {
                 // since 2026-11-18 eye X follows VTube Studio's direction (the Python tracker's was the other way) and
-                // both eyes get their mean (vts.rs)
+                // both eyes get their mean, Y fading to level as the head turns (vts.rs)
                 let mean = -(theirs[eye_x[0]] + theirs[eye_x[1]]) / 2.0;
                 theirs[eye_x[0]] = mean;
                 theirs[eye_x[1]] = mean;
+                let y = gaze_y_trust(theirs[yaw]) * (theirs[eye_y[0]] + theirs[eye_y[1]]) / 2.0;
+                theirs[eye_y[0]] = y;
+                theirs[eye_y[1]] = y;
             }
             worst[k].add(i, o, &theirs);
         }

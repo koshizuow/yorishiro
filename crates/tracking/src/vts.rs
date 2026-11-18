@@ -4,6 +4,9 @@
 use crate::frame::{arkit, FaceFrame};
 
 const EYE_FULL_DEG: f64 = 25.0;
+/// Head turn (degrees) up to which the vertical gaze is used as measured, and from which it is level.
+const EYE_Y_TRUST_DEG: f64 = 10.0;
+const EYE_Y_LEVEL_DEG: f64 = 25.0;
 /// Lip gap over face height that counts as closed lips and as a wide open mouth.
 const LIP_GAP_CLOSED: f64 = 0.015;
 const LIP_GAP_OPEN: f64 = 0.22;
@@ -25,6 +28,11 @@ pub fn webcam_eye_open(open: f64) -> f64 {
         }
     }
     WEBCAM_EYE_OPEN[WEBCAM_EYE_OPEN.len() - 1].1
+}
+
+/// How much of the measured vertical gaze is kept at a head turn (degrees), 1 facing the camera to 0 turned away.
+pub fn gaze_y_trust(yaw_deg: f64) -> f64 {
+    ((EYE_Y_LEVEL_DEG - yaw_deg.abs()) / (EYE_Y_LEVEL_DEG - EYE_Y_TRUST_DEG)).clamp(0.0, 1.0)
 }
 
 /// The inputs in a fixed order, as (name, value).
@@ -50,10 +58,16 @@ pub fn vts_params(frame: &FaceFrame, mirror: bool) -> Vec<(&'static str, f64)> {
     }
     // The eyes turn together, but each eye's X from the camera is noisy (an iris moves a few pixels over its whole
     // range): our two eyes correlated -0.33..0.77 where NVIDIA's do 0.9..0.99. Both eyes get their mean, which took
-    // the correlation with NVIDIA from 0.66 to 0.82 over our recordings (2026-11-18). Y gained nothing, left per eye.
+    // the correlation with NVIDIA from 0.66 to 0.82 over our recordings (2026-11-18).
     // each eye within its range first, so one eye's outlier does not pull the other past it
     let gaze_x = (eye_x[0].clamp(-1.0, 1.0) + eye_x[1].clamp(-1.0, 1.0)) / 2.0;
     eye_x = [gaze_x; 2];
+    // Y too, and towards level as the head turns: turned, each eye's Y went wrong the opposite way of the other (up
+    // to 1.6 apart on the phone recordings, following the turn) while NVIDIA's shared Y stays near level. Their mean
+    // has half the error; fading it out from 10 to 25 degrees of turn took the mean difference from NVIDIA from 0.32
+    // to 0.20 over our recordings at the same correlation (2026-11-18). Leaning on the eye nearer the camera did worse.
+    let gaze_y = gaze_y_trust(yaw) * (eye_y[0].clamp(-1.0, 1.0) + eye_y[1].clamp(-1.0, 1.0)) / 2.0;
+    eye_y = [gaze_y; 2];
     let smile = (bs("mouthSmileLeft") + bs("mouthSmileRight")) / 2.0;
     let frown = (bs("mouthFrownLeft") + bs("mouthFrownRight")) / 2.0;
     let mut mouth_open = bs("jawOpen") - bs("mouthClose");
