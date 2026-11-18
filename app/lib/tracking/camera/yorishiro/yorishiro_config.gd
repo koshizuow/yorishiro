@@ -263,7 +263,7 @@ func _list_cameras() -> Array:
 	var dir = DirAccess.open("/sys/class/video4linux")
 	if dir == null:
 		# no sysfs (another system): the tracking extension's capture names its cameras
-		if ClassDB.class_exists(&"YorishiroCore"):
+		if ClassDB.class_exists(&"YorishiroCore") and ClassDB.class_has_method(&"YorishiroCore", &"camera_names"):
 			var names: PackedStringArray = ClassDB.class_call_static(&"YorishiroCore", &"camera_names")
 			for i in names.size():
 				cams.append([i, names[i]])
