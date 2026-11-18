@@ -22,7 +22,9 @@ pub fn vts_params(frame: &FaceFrame, mirror: bool) -> Vec<(&'static str, f64)> {
         let a = if avatar == "Left" { 0 } else { 1 };
         eye_open[a] = 1.0 - bs(&format!("eyeBlink{side}"));
         let eye = if side == "Left" { frame.left_eye_rotation } else { frame.right_eye_rotation };
-        eye_x[a] = s * eye[0].to_degrees() / EYE_FULL_DEG;
+        // VTube Studio's EyeLeftX/EyeRightX run the other way from its FaceAngleX: against its NVIDIA tracker on our
+        // recordings each eye's X was anti-correlated with ours (r -0.3 to -0.85) while the head matched (2026-11-18)
+        eye_x[a] = -s * eye[0].to_degrees() / EYE_FULL_DEG;
         eye_y[a] = eye[1].to_degrees() / EYE_FULL_DEG;
         let up = bs(&format!("browOuterUp{side}")) + 0.5 * bs("browInnerUp");
         brow[a] = up - bs(&format!("browDown{side}"));

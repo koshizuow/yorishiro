@@ -34,6 +34,10 @@ fn main() {
     };
     let paths = ModelPaths { mediapipe: &mp, fit: &fit, eyes: Some(&eyes) };
     let mut tracker = Tracker::open_on(&paths, runtime, 4).unwrap();
+    // NO_FLIP=1: without flip averaging (to see what it does to the outputs)
+    if std::env::var_os("NO_FLIP").is_some() {
+        tracker.mesh.flip_mirror = None;
+    }
     println!("landmarks on {}", tracker.runtime_name());
     // rec:<recording dir>: the recording's frames at its timestamps, back to back (compute only, no camera)
     if let Some(dir) = a[1].strip_prefix("rec:") {
