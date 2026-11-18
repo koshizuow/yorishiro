@@ -66,9 +66,15 @@ fn main() {
                 // the header comes from the first frame with a face: rows are kept until then
                 match out.as_ref() {
                     Some(o) => {
-                        let p = vts_params(&o.final_frame, true);
+                        let mut p: Vec<(String, f64)> = vts_params(&o.final_frame, true).into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+                        // TRACK_ARKIT=1: the ARKit 52 blendshapes too (bs_<name>), for fitting the inputs to a reference
+                        if std::env::var_os("TRACK_ARKIT").is_some() {
+                            for (n, v) in yorishiro_tracking::frame::ARKIT52.iter().zip(o.final_frame.blendshapes.iter()) {
+                                p.push((format!("bs_{n}"), *v));
+                            }
+                        }
                         if csv_names.is_empty() {
-                            csv_names = p.iter().map(|(k, _)| k.to_string()).collect();
+                            csv_names = p.iter().map(|(k, _)| k.clone()).collect();
                         }
                         csv_rows.push(format!("{i},{},1,{}", ts - times[0], p.iter().map(|(_, v)| format!("{v:.4}")).collect::<Vec<_>>().join(",")));
                     }

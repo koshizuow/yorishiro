@@ -92,8 +92,17 @@ fn check(name: &str, own_landmarks: bool) -> bool {
             if o.is_empty() {
                 continue;
             }
-            let theirs = &golden[k][i * o.len()..(i + 1) * o.len()];
-            for (j, (a, b)) in o.iter().zip(theirs).enumerate() {
+            let mut theirs = golden[k][i * o.len()..(i + 1) * o.len()].to_vec();
+            if stages[k] == "vts" {
+                // since 2026-11-18 eye X follows VTube Studio's direction (the Python tracker's was the other way) and
+                // both eyes get their mean (vts.rs)
+                let (l, r) = (vts_names.iter().position(|n| *n == "EyeLeftX").unwrap(),
+                              vts_names.iter().position(|n| *n == "EyeRightX").unwrap());
+                let mean = -(theirs[l] + theirs[r]) / 2.0;
+                theirs[l] = mean;
+                theirs[r] = mean;
+            }
+            for (j, (a, b)) in o.iter().zip(&theirs).enumerate() {
                 let eye_value = match stages[k] {
                     "bs" | "final_bs" => eye_bs.contains(&j),
                     "vts" => vts_names[j].starts_with("EyeOpen"),

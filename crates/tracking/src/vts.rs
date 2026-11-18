@@ -29,6 +29,12 @@ pub fn vts_params(frame: &FaceFrame, mirror: bool) -> Vec<(&'static str, f64)> {
         let up = bs(&format!("browOuterUp{side}")) + 0.5 * bs("browInnerUp");
         brow[a] = up - bs(&format!("browDown{side}"));
     }
+    // The eyes turn together, but each eye's X from the camera is noisy (an iris moves a few pixels over its whole
+    // range): our two eyes correlated -0.33..0.77 where NVIDIA's do 0.9..0.99. Both eyes get their mean, which took
+    // the correlation with NVIDIA from 0.66 to 0.82 over our recordings (2026-11-18). Y gained nothing, left per eye.
+    // each eye within its range first, so one eye's outlier does not pull the other past it
+    let gaze_x = (eye_x[0].clamp(-1.0, 1.0) + eye_x[1].clamp(-1.0, 1.0)) / 2.0;
+    eye_x = [gaze_x; 2];
     let smile = (bs("mouthSmileLeft") + bs("mouthSmileRight")) / 2.0;
     let frown = (bs("mouthFrownLeft") + bs("mouthFrownRight")) / 2.0;
     let mut mouth_open = bs("jawOpen") - bs("mouthClose");

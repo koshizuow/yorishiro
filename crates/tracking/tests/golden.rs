@@ -80,7 +80,9 @@ fn check(name: &str) -> bool {
             calibrations.push(i);
         }
         let flat = |pts: &[[f64; 3]]| pts.iter().flatten().copied().collect::<Vec<f64>>();
-        let vts: Vec<f64> = vts_params(&out.final_frame, true).into_iter().map(|(_, v)| v).collect();
+        let params = vts_params(&out.final_frame, true);
+        let eye_x = ["EyeLeftX", "EyeRightX"].map(|e| params.iter().position(|(n, _)| *n == e).unwrap());
+        let vts: Vec<f64> = params.into_iter().map(|(_, v)| v).collect();
         let ours: [Vec<f64>; 9] = [
             flat(&out.smoothed),
             flat(&out.aligned),
@@ -94,7 +96,15 @@ fn check(name: &str) -> bool {
         ];
         for (k, o) in ours.iter().enumerate() {
             let len = o.len();
-            worst[k].add(i, o, &golden[k][i * len..(i + 1) * len]);
+            let mut theirs = golden[k][i * len..(i + 1) * len].to_vec();
+            if STAGES[k].0 == "vts" {
+                // since 2026-11-18 eye X follows VTube Studio's direction (the Python tracker's was the other way) and
+                // both eyes get their mean (vts.rs)
+                let mean = -(theirs[eye_x[0]] + theirs[eye_x[1]]) / 2.0;
+                theirs[eye_x[0]] = mean;
+                theirs[eye_x[1]] = mean;
+            }
+            worst[k].add(i, o, &theirs);
         }
     }
     let mut ok = calibrations == calibrated_at;
