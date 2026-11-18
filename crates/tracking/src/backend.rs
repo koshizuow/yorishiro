@@ -21,7 +21,9 @@ pub fn runtime(library: Option<&Path>) -> Result<&'static Environment, Error> {
             Some(p) => ort::init_from(p).map_err(|e| e.to_string())?,
             None => ort::init(),
         };
-        builder.with_name("yorishiro").build().map_err(|e| e.to_string())
+        // Microsoft's builds (the ones we load) send telemetry by default (ETW on Windows: model names, operators,
+        // errors, run counts and times); off
+        builder.with_name("yorishiro").with_telemetry(false).build().map_err(|e| e.to_string())
     });
     env.as_ref().map_err(|e| e.clone().into())
 }
