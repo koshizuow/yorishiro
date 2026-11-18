@@ -53,6 +53,7 @@
 ##   --virtual-camera=<dev> send the stage to this v4l2loopback device, for --hold=<s> seconds before going on
 ##   --pipewire-test[=<s>]  send the stage to PipeWire, resize the window twice (s seconds per size, default 2, longer
 ##                          to watch it in OBS) and check the output keeps running
+##   (a platform layer, lib/platform.gd, adds its own options through its automation hook)
 ##   --global-key-test=<s>  minimize the window, then for s seconds count the frames GlobalInput (the keylogger addon)
 ##                          saw F9 pressed (and how many of them without the focus) and whether the mouse moved
 ##   --core-test=<camera>   switch the tracker from the replayed recording to that camera (the development loopback
@@ -365,6 +366,8 @@ func _ready() -> void:
 			await get_tree().create_timer(float(args.get("hold", 0))).timeout
 		if args.has("pipewire-test"):
 			await _pipewire_test(float(args["pipewire-test"]) if str(args["pipewire-test"]).is_valid_float() else 2.0)
+		if Platform.has_hook("automation"):
+			await Platform.layer().automation(self, args)
 		if args.has("global-key-test"):
 			await _global_key_test(float(args["global-key-test"]))
 		if args.has("mic-test"):

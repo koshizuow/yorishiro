@@ -79,9 +79,14 @@ func _ready() -> void:
 	_stage_size = Vector2(capture_viewport.size)
 	capture_viewport.size_changed.connect(_on_stage_resized)
 	_setup_camera_view()
+	# the stage to OBS with alpha: PipeWire on Linux, else what the platform layer (lib/platform.gd) has
 	if OS.has_feature("linux"):
-		_pipewire = PipeWireOutput.new()
-		add_child(_pipewire)
+		_stage_out = PipeWireOutput.new()
+		add_child(_stage_out)
+	else:
+		_stage_out = Platform.call_hook("stage_output")
+		if _stage_out:
+			add_child(_stage_out)
 	# allow items to be dropped onto the window to spawn instantly
 	get_window().files_dropped.connect(
 		func (paths):
@@ -111,9 +116,10 @@ func _on_stage_resized() -> void:
 const HIDDEN_FRAME_MS = 16
 var _next_hidden_draw := 0
 @onready var _camera_view: SubViewport = %CameraView
-@onready var _vcam = _camera_view.get_node_or_null("VirtualCamera")
+# without the virtualcamera addon (builds for other systems) the node loads as a plain Node
+@onready var _vcam = _camera_view.get_node_or_null("VirtualCamera") if ClassDB.class_exists(&"VirtualCamera") else null
 var _camera_bg: CanvasLayer
-var _pipewire
+var _stage_out
 
 ## The virtual camera has no alpha, so it gets the stage over the chosen background, in a view of its own. The other
 ## outputs keep the stage alone with alpha. The transparent mode shows over black.
@@ -144,7 +150,7 @@ func _sync_camera_background() -> void:
 func _process(_delta: float) -> void:
 	var camera_on: bool = _vcam != null and not _vcam.loopback_device.is_empty()
 	_camera_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS if camera_on else SubViewport.UPDATE_DISABLED
-	var outputs: bool = camera_on or (_pipewire != null and _pipewire.running)
+	var outputs: bool = camera_on or (_stage_out != null and _stage_out.running)
 	if not outputs or DisplayServer.window_can_draw(get_window().get_window_id()):
 		return
 	if Time.get_ticks_msec() >= _next_hidden_draw:

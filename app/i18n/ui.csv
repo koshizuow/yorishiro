@@ -437,3 +437,6 @@ Draw the item between the model's layers: right above the art mesh picked here,D
 Phone port,Phone port,手機的連接埠,スマホのポート
 This computer's port,This computer's port,這台電腦的連接埠,このパソコンのポート
 "The phone sends its frames to this port of this computer. Each copy of the app needs its own.","The phone sends its frames to this port of this computer. Each copy of the app needs its own.",手機把資料送到這台電腦的這個連接埠。每份 app 要用不同的連接埠。,スマホはこのパソコンのこのポートにデータを送ります。アプリのコピーごとに別のポートが必要です。
+NVIDIA high performance mode,NVIDIA high performance mode,NVIDIA 高效能模式,NVIDIA 高パフォーマンスモード
+"Keeps the NVIDIA GPU at a high clock while Yorishiro runs: faster tracking with less CPU, but more power use and heat. Takes effect the next time Yorishiro starts.","Keeps the NVIDIA GPU at a high clock while Yorishiro runs: faster tracking with less CPU, but more power use and heat. Takes effect the next time Yorishiro starts.",讓 NVIDIA 顯示卡在 Yorishiro 執行時維持高時脈：追蹤更快、CPU 用量更少，但耗電和發熱會增加。下次啟動 Yorishiro 時生效。,Yorishiro の実行中、NVIDIA GPU を高いクロックに保ちます。トラッキングが速くなり CPU 使用率も下がりますが、消費電力と発熱が増えます。次回の起動から有効になります。
+Restart Yorishiro for this to take effect.,Restart Yorishiro for this to take effect.,重新啟動 Yorishiro 後生效。,Yorishiro を再起動すると有効になります。

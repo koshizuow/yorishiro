@@ -10,6 +10,7 @@ func _enter_tree() -> void:
 	var cfg := ConfigFile.new()
 	cfg.load(PATH)
 	TranslationServer.set_locale(cfg.get_value("ui", "language", DEFAULT))
+	Platform.add_translations()
 
 func set_language(code: String) -> void:
 	TranslationServer.set_locale(code)

@@ -29,9 +29,11 @@ func _ready() -> void:
 	face_trackers.add_item("iOS BlendShapes (VTS)")
 	face_trackers.set_item_metadata(face_trackers.item_count - 1, preload("res://lib/tracking/camera/vts_blendshapes/vts_tracker.gd"))
 
-	# appended last so saved selections (stored by index) keep pointing at the same tracker
-	face_trackers.add_item("Yorishiro tracker")
-	face_trackers.set_item_metadata(face_trackers.item_count - 1, preload("res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd"))
+	# appended last so saved selections (stored by index) keep pointing at the same tracker. Builds without the
+	# tracking core leave it out and start on the iPhone input instead
+	if ClassDB.class_exists(&"YorishiroCore"):
+		face_trackers.add_item("Yorishiro tracker")
+		face_trackers.set_item_metadata(face_trackers.item_count - 1, preload("res://lib/tracking/camera/yorishiro/yorishiro_tracker.gd"))
 
 	# after the Yorishiro tracker for the same reason: an iPhone with the iFacialMocap app
 	face_trackers.add_item("iFacialMocap (iPhone)")
@@ -69,9 +71,11 @@ func _ready() -> void:
 		_virtual_camera_hint()
 		_refresh_virtual_cameras()
 		_pipewire_row.call_deferred()
-		_plugin_row.call_deferred()  # after the PipeWire row
 	else:
-		%VirtualWebcam.queue_free()
+		# the v4l2loopback row is Linux's; hidden, it marks where the platform layer's output rows go
+		%VirtualWebcam.visible = false
+		_platform_rows.call_deferred()
+	_plugin_row.call_deferred()  # after the stage output rows
 		
 	%ProfileName.text = Preferences.active_file.get_file()
 	%ProfileName.tooltip_text = Preferences.active_file
@@ -171,15 +175,19 @@ var _tracker_chosen := false
 func _tracker_name(index: int) -> String:
 	return %TrackingSource.get_item_metadata(index).resource_path.get_file().get_basename()
 
-## new profiles, and a name not in this build, start on the built-in Yorishiro tracker
+## new profiles, and a name not in this build, start on the built-in Yorishiro tracker, or without it on the iPhone
+## input (iOS BlendShapes, VTube Studio's iPhone protocol)
 func _tracker_index(wanted: String) -> int:
-	var fallback := 0
+	var fallback := -1
+	var iphone := 0
 	for i in %TrackingSource.item_count:
 		if _tracker_name(i) == wanted:
 			return i
 		if _tracker_name(i) == "yorishiro_tracker":
 			fallback = i
-	return fallback
+		if %TrackingSource.get_item_metadata(i).resource_path.contains("/vts_blendshapes/"):
+			iphone = i
+	return fallback if fallback >= 0 else iphone
 	
 func save_settings(data: Dictionary):
 	var w = data.get("window", {})
@@ -290,6 +298,12 @@ func _pipewire_row() -> void:
 	parent.add_child(box)
 	parent.move_child(box, _vcam_hint.get_index() + 1)
 
+## the platform layer's output rows (lib/platform.gd), where the v4l2loopback row would be
+var _platform_last: Node
+
+func _platform_rows() -> void:
+	_platform_last = Platform.call_hook("add_output_rows", [self, %VirtualWebcam])
+
 ## switch for the plugin API (lib/plugin_api/plugin_api.gd) and the plugins the user allowed
 func _plugin_row() -> void:
 	var box := VBoxContainer.new()
@@ -332,7 +346,7 @@ func _plugin_row() -> void:
 	PluginApi.approval_finished.connect(refresh)
 	refresh.call()
 	var after: Node = find_child("PipeWireOutputRow", true, false)
-	var anchor: Node = after if after else _vcam_hint
+	var anchor: Node = after if after else (_platform_last if _platform_last else (_vcam_hint if _vcam_hint else %VirtualWebcam))
 	anchor.get_parent().add_child(box)
 	anchor.get_parent().move_child(box, anchor.get_index() + 1)
 

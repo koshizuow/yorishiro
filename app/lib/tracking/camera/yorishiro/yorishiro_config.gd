@@ -55,6 +55,7 @@ func _ready():
 	for r in tracker.RUNTIMES:
 		_runtime.add_item(r)
 	_select_text(_runtime, tracker.runtime)
+	_nvidia_option()
 
 	_lost_options()
 	_glasses_option()
@@ -95,6 +96,39 @@ func _picker(title: String) -> OptionButton:
 	row.add_child(option)
 	add_child(row)
 	return option
+
+## "NVIDIA high performance mode", where a build has the NvidiaProfile class (the platform layer's, for systems whose
+## NVIDIA driver takes per-program profiles): a driver profile for this exe that keeps the GPU's clock up. The
+## tracker is a light load, so the GPU otherwise idles at its lowest clock and the GPU path ends up slower than the
+## CPU's (an RTX 3080 Ti laptop: landmarks 19.5 ms at about 300 MHz, 7.7 ms with the profile, about 8 W more). The
+## driver reads the profile when a program starts.
+func _nvidia_option():
+	if not ClassDB.class_exists("NvidiaProfile"):
+		return
+	var nv = ClassDB.instantiate("NvidiaProfile")
+	if not nv.available():
+		return
+	var exe := OS.get_executable_path().get_file()
+	var check = CheckButton.new()
+	check.name = "NvidiaHighPerformance"
+	check.text = "NVIDIA high performance mode"
+	check.tooltip_text = "Keeps the NVIDIA GPU at a high clock while Yorishiro runs: faster tracking with less CPU, but more power use and heat. Takes effect the next time Yorishiro starts."
+	check.button_pressed = nv.is_enabled(exe)
+	add_child(check)
+	var note = Label.new()
+	note.name = "NvidiaNote"
+	note.theme_type_variation = &"FieldLabel"
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.visible = false
+	add_child(note)
+	check.toggled.connect(func (on: bool):
+		var err: String = nv.set_enabled(exe, on)
+		if err.is_empty():
+			note.text = tr("Restart Yorishiro for this to take effect.")
+		else:
+			note.text = err
+			check.set_pressed_no_signal(not on)
+		note.visible = true)
 
 ## VTS's tracking-lost choice: freeze, or ease back to the resting pose after a delay
 func _lost_options():
