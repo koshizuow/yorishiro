@@ -96,6 +96,7 @@
 ##                          comparing two copies (one sending, one receiving: --instance=2 --tracker=ifacialmocap)
 ##   --quit                 exit after the screenshot
 extends Node
+const Platform = preload("res://lib/platform.gd")
 
 const AnimFrames = preload("res://lib/utils/anim_frames.gd")
 const CameraTracker = preload("res://lib/tracking/camera/camera_tracker.gd")

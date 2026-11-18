@@ -5,7 +5,8 @@
 ##   add_output_rows(panel, anchor) -> Node  rows for those outputs in the camera panel, after anchor; returns the last
 ##   automation(automation, args)         its own automation checks (awaited), after the app's
 ## Translations for its strings go in res://platform/i18n/*.translation, added at start (lib/locale.gd).
-class_name Platform
+## Used through preload (const Platform = preload("res://lib/platform.gd")), not a global class name, so a run
+## from source works before the editor has rescanned the class list.
 
 const PATH := "res://platform/platform.gd"
 const I18N := "res://platform/i18n"

@@ -5,6 +5,7 @@ extends Node
 
 const PATH = "user://locale.cfg"
 const DEFAULT = "zh_TW"
+const Platform = preload("res://lib/platform.gd")
 
 func _enter_tree() -> void:
 	var cfg := ConfigFile.new()

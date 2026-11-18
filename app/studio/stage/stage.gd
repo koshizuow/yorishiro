@@ -8,6 +8,7 @@ const VtModel = preload("res://lib/model/vt_model.gd")
 const VtItem = preload("res://lib/items/vt_item.gd")
 const AnimFrames = preload("res://lib/utils/anim_frames.gd")
 const PipeWireOutput = preload("res://lib/output/pipewire_output.gd")
+const Platform = preload("res://lib/platform.gd")
 const VtsPins = preload("res://lib/items/vts_pins.gd")
 
 const INDEX_RANGE = 30

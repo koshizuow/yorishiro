@@ -1,4 +1,5 @@
 extends "res://studio/hud/side_panel.gd"
+const Platform = preload("res://lib/platform.gd")
 
 const Tracker = preload("res://lib/tracking/tracker.gd")
 const TrackingSystem = preload("res://lib/tracking/tracking_system.gd")
