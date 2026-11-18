@@ -91,11 +91,12 @@ static func app_dir() -> String:
 func _models_dir() -> String:
 	return app_dir().path_join("models")
 
-## ONNX Runtime beside the extension (build_dependencies.sh fetches it; a release has it beside the executable)
+## ONNX Runtime beside the extension (build_dependencies.sh fetches it; a release has it beside the executable):
+## libonnxruntime.so.<version>, or onnxruntime.dll in a Windows build
 func _ort_library() -> String:
 	var lib := ProjectSettings.globalize_path("res://addons/yorishiro_tracking/lib") if OS.has_feature("editor") else app_dir()
 	for f in DirAccess.get_files_at(lib):
-		if f.begins_with("libonnxruntime.so."):
+		if f.begins_with("libonnxruntime.so.") or f == "onnxruntime.dll":
 			return lib.path_join(f)
 	return ""
 

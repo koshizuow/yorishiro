@@ -262,6 +262,11 @@ func _list_cameras() -> Array:
 	var cams = []
 	var dir = DirAccess.open("/sys/class/video4linux")
 	if dir == null:
+		# no sysfs (another system): the tracking extension's capture names its cameras
+		if ClassDB.class_exists(&"YorishiroCore"):
+			var names: PackedStringArray = ClassDB.class_call_static(&"YorishiroCore", &"camera_names")
+			for i in names.size():
+				cams.append([i, names[i]])
 		return cams
 	for dev in dir.get_directories():
 		var base = "/sys/class/video4linux/%s/" % dev

@@ -2,6 +2,10 @@
 //! ({found, vts, arkit, glare, hands}) as dictionaries, the messages the Python tracker process once sent
 //! over UDP, for the app's tracker input (yorishiro_tracker.gd). Camera (or a replayed recording),
 //! inference and fit run in a thread.
+//!
+//! Camera frames come from the core's V4L2 capture on Linux. A build for another system brings its own capture: its
+//! extension depends on this crate (rlib, without the "entry" feature, so it has the only #[gdextension]) and calls
+//! set_capture() when it loads.
 
 use godot::prelude::*;
 use std::path::PathBuf;
@@ -10,7 +14,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
 use yorishiro_tracking::backend::runtime as ort_runtime;
-use yorishiro_tracking::camera::{first_free, Camera, Frame};
+use yorishiro_tracking::camera::Frame;
 use yorishiro_tracking::frame::ARKIT52;
 use yorishiro_tracking::hands::{hand_params, HandTracker};
 use yorishiro_tracking::image::Image;
@@ -20,10 +24,58 @@ use yorishiro_tracking::sinks::{IFacialMocapSink, VtsIphoneSink, VTS_REQUEST_POR
 use yorishiro_tracking::tracker::{ModelPaths, Tracker};
 use yorishiro_tracking::vts::vts_params;
 
+#[cfg(feature = "entry")]
 struct YorishiroCoreExtension;
 
+#[cfg(feature = "entry")]
 #[gdextension]
 unsafe impl ExtensionLibrary for YorishiroCoreExtension {}
+
+/// A camera as the worker reads it: the newest frame after a sequence number, and what the camera agreed to
+pub trait FrameSource: Send {
+    fn next(&mut self, after: u64) -> Result<Frame, String>;
+    fn mode(&self) -> String;
+}
+
+/// A system's camera capture: open camera <index> or the first free one at width x height and rate, and the cameras'
+/// names in index order (for the settings; empty where the app lists them itself, as from sysfs on Linux)
+pub struct Capture {
+    pub open: fn(usize, u32, u32, u32) -> std::io::Result<Box<dyn FrameSource>>,
+    pub first_free: fn(u32, u32, u32) -> std::io::Result<(usize, Box<dyn FrameSource>)>,
+    pub names: fn() -> Vec<String>,
+}
+
+static CAPTURE: std::sync::OnceLock<Capture> = std::sync::OnceLock::new();
+
+/// Another system's capture, set once when its extension loads
+pub fn set_capture(c: Capture) {
+    let _ = CAPTURE.set(c);
+}
+
+#[cfg(target_os = "linux")]
+impl FrameSource for yorishiro_tracking::camera::Camera {
+    fn next(&mut self, after: u64) -> Result<Frame, String> {
+        yorishiro_tracking::camera::Camera::next(self, after)
+    }
+    fn mode(&self) -> String {
+        self.mode.clone()
+    }
+}
+
+fn capture() -> Option<&'static Capture> {
+    #[cfg(target_os = "linux")]
+    {
+        use yorishiro_tracking::camera::{first_free, Camera};
+        static LINUX: std::sync::OnceLock<Capture> = std::sync::OnceLock::new();
+        return Some(CAPTURE.get().unwrap_or_else(|| LINUX.get_or_init(|| Capture {
+            open: |i, w, h, fps| Camera::open(i, w, h, fps).map(|c| Box::new(c) as Box<dyn FrameSource>),
+            first_free: |w, h, fps| first_free(w, h, fps).map(|(i, c)| (i, Box::new(c) as Box<dyn FrameSource>)),
+            names: Vec::new,
+        })));
+    }
+    #[cfg(not(target_os = "linux"))]
+    CAPTURE.get()
+}
 
 /// Plain values only (Variant is not Send), turned into dictionaries in poll().
 #[derive(Clone)]
@@ -213,6 +265,16 @@ impl YorishiroCore {
         }
     }
 
+    /// The cameras' names in index order, from the capture (empty where the app lists them itself, as on Linux)
+    #[func]
+    fn camera_names() -> PackedStringArray {
+        let mut out = PackedStringArray::new();
+        for n in capture().map(|c| (c.names)()).unwrap_or_default() {
+            out.push(&GString::from(n.as_str()));
+        }
+        out
+    }
+
     #[func]
     fn is_running(&self) -> bool {
         self.worker.as_ref().map(|w| !w.is_finished()).unwrap_or(false)
@@ -335,7 +397,7 @@ fn cpu_threads(runtime: &LandmarkRuntime) -> usize {
 }
 
 enum Source {
-    Camera(Camera),
+    Camera(Box<dyn FrameSource>),
     Recording(Recording),
 }
 
@@ -402,13 +464,13 @@ fn run(cfg: Config, s: Arc<Shared>) {
             }
             Err(e) => return s.status("error", &format!("cannot replay: {e}"), vec![], texts(&[])),
         },
-        None => match if cfg.camera < 0 {
-            first_free(1280, 720, 30).map(|(i, c)| (i as i32, c))
-        } else {
-            Camera::open(cfg.camera as usize, 1280, 720, 30).map(|c| (cfg.camera, c))
+        None => match match capture() {
+            None => Err(std::io::Error::other("this build has no camera capture")),
+            Some(cap) if cfg.camera < 0 => (cap.first_free)(1280, 720, 30).map(|(i, c)| (i as i32, c)),
+            Some(cap) => (cap.open)(cfg.camera as usize, 1280, 720, 30).map(|c| (cfg.camera, c)),
         } {
             Ok((i, c)) => {
-                s.log(format!("camera {i}: {}", c.mode));
+                s.log(format!("camera {i}: {}", c.mode()));
                 camera_used = i;
                 Source::Camera(c)
             }

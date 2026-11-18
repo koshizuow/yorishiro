@@ -7,9 +7,12 @@ description = "Godot node for Yorishiro's tracking core (Phase B4)"
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [features]
+# the #[gdextension] entry: off in an extension for another system that builds on this crate (set_capture)
+default = ["entry"]
+entry = []
 ncnn = ["yorishiro-tracking/ncnn"]
 
 [dependencies]
