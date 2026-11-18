@@ -16,6 +16,8 @@ fn main() {
         println!("cargo:rustc-link-search=native={}", lib.display());
         println!("cargo:rustc-link-lib=dylib=ncnn");
         // found at run time without LD_LIBRARY_PATH while developing; packaging (B6) ships it beside the app
-        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib.display());
+        if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
+            println!("cargo:rustc-link-arg=-Wl,-rpath,{}", lib.display());
+        }
     }
 }

@@ -52,14 +52,21 @@ extern "C" {
 }
 
 /// ncnn's GPU type for a CPU (software Vulkan such as llvmpipe), never picked
+#[allow(dead_code)]
 const GPU_TYPE_CPU: c_int = 3;
 
 /// The first real GPU ncnn sees, with its name.
 pub fn pick_vulkan_device() -> Option<(i32, String)> {
+    // a discrete card before an integrated one (a laptop with both lists the integrated first on Windows), any
+    // other non-CPU device last; YORISHIRO_VULKAN_DEVICE=<index> picks one by hand
+    const ORDER: [i32; 3] = [0, 1, 2]; // ncnn: 0 discrete, 1 integrated, 2 virtual, 3 CPU
     unsafe {
-        (0..yori_ncnn_gpu_count()).find(|&i| yori_ncnn_gpu_type(i) != GPU_TYPE_CPU).map(|i| {
-            (i, CStr::from_ptr(yori_ncnn_gpu_name(i)).to_string_lossy().into_owned())
-        })
+        let n = yori_ncnn_gpu_count();
+        let name = |i: i32| CStr::from_ptr(yori_ncnn_gpu_name(i)).to_string_lossy().into_owned();
+        if let Some(i) = std::env::var("YORISHIRO_VULKAN_DEVICE").ok().and_then(|v| v.parse::<i32>().ok()) {
+            return (0..n).contains(&i).then(|| (i, name(i)));
+        }
+        ORDER.iter().find_map(|&t| (0..n).find(|&i| yori_ncnn_gpu_type(i) == t)).map(|i| (i, name(i)))
     }
 }
 

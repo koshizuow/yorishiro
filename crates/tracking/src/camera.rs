@@ -6,11 +6,18 @@ use crate::image::Image;
 use std::sync::{Arc, Condvar, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
+#[cfg(target_os = "linux")]
 use v4l::buffer::Type;
+#[cfg(target_os = "linux")]
 use v4l::io::traits::CaptureStream;
+#[cfg(target_os = "linux")]
 use v4l::prelude::*;
+#[cfg(target_os = "linux")]
 use v4l::video::Capture;
+#[cfg(target_os = "linux")]
 use v4l::FourCC;
+
+// Other systems bring their own capture (a separate crate): Frame and the decoders below are public for it.
 
 pub struct Frame {
     pub image: Image,
@@ -58,11 +65,13 @@ pub fn yuyv_to_rgb(data: &[u8], width: usize, height: usize) -> Image {
     img
 }
 
-fn decode_mjpg(data: &[u8]) -> Option<Image> {
+/// A JPEG frame (MJPG) to RGB
+pub fn decode_mjpg(data: &[u8]) -> Option<Image> {
     let img = image::load_from_memory_with_format(data, image::ImageFormat::Jpeg).ok()?.to_rgb8();
     Some(Image { width: img.width() as usize, height: img.height() as usize, rgb: img.into_raw() })
 }
 
+#[cfg(target_os = "linux")]
 /// The first real camera that opens: the ones another program holds are busy, loopback devices are outputs (Yorishiro's
 /// own virtual camera among them). With the /dev/video index. For a new copy of the app, several people on one computer.
 pub fn first_free(width: u32, height: u32, fps: u32) -> std::io::Result<(usize, Camera)> {
@@ -87,6 +96,7 @@ pub fn first_free(width: u32, height: u32, fps: u32) -> std::io::Result<(usize, 
     Err(last)
 }
 
+#[cfg(target_os = "linux")]
 impl Camera {
     /// /dev/video<index>, asking for width x height at fps.
     pub fn open(index: usize, width: u32, height: u32, fps: u32) -> std::io::Result<Self> {
@@ -144,6 +154,9 @@ impl Camera {
         Ok(Self { shared, thread: Some(thread), mode })
     }
 
+}
+
+impl Camera {
     /// The newest frame after `after` (a sequence number), waiting for one; None when the camera stopped,
     /// with the reason.
     pub fn next(&self, after: u64) -> Result<Frame, String> {

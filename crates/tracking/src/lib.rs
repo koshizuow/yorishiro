@@ -40,6 +40,12 @@ pub(crate) fn f32r(x: f64) -> f64 {
 /// on the low-end reference the eye model on a new thread took 12.5 ms instead of 4.6. Needs no privileges; no
 /// effect under governors that ignore it (intel_pstate, amd-pstate active). YORISHIRO_NO_CLOCK_HINT turns it
 /// off, for measuring.
+#[cfg(not(target_os = "linux"))]
+pub fn keep_clock_up() -> Result<(), String> {
+    Err("Linux only".into())
+}
+
+#[cfg(target_os = "linux")]
 pub fn keep_clock_up() -> Result<(), String> {
     if std::env::var_os("YORISHIRO_NO_CLOCK_HINT").is_some() {
         return Err("YORISHIRO_NO_CLOCK_HINT".into());
