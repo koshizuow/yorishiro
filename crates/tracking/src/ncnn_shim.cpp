@@ -17,4 +17,10 @@ const char* yori_ncnn_gpu_name(int i) {
     return ncnn::get_gpu_info(i).device_name();
 }
 
+// The Vulkan instance down now, not in ncnn's static destructor: on Windows that runs while the DLL unloads, under
+// the loader lock, and the GPU driver's teardown waited there for ever (the app never exited).
+void yori_ncnn_release_gpu() {
+    ncnn::destroy_gpu_instance();
+}
+
 }

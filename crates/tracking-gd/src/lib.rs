@@ -28,7 +28,22 @@ struct YorishiroCoreExtension;
 
 #[cfg(feature = "entry")]
 #[gdextension]
-unsafe impl ExtensionLibrary for YorishiroCoreExtension {}
+unsafe impl ExtensionLibrary for YorishiroCoreExtension {
+    fn on_stage_deinit(stage: InitStage) {
+        if stage == InitStage::Scene {
+            release_gpu();
+        }
+    }
+}
+
+/// Call when the extension unloads (InitStage::Scene deinit, after the nodes are gone): ncnn's GPU released before
+/// the library goes, or a Windows app hung on exit (see yorishiro_tracking::ncnn::release_gpu).
+pub fn release_gpu() {
+    #[cfg(feature = "ncnn")]
+    if !yorishiro_tracking::ncnn::release_gpu() {
+        godot_warn!("tracking core: a net is still alive at exit, ncnn's GPU left to its own teardown");
+    }
+}
 
 /// A camera as the worker reads it: the newest frame after a sequence number, and what the camera agreed to
 pub trait FrameSource: Send {

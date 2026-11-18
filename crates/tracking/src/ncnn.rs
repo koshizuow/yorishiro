@@ -6,6 +6,10 @@
 use crate::backend::Error;
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Nets alive, so the GPU is not released under one.
+static NETS: AtomicUsize = AtomicUsize::new(0);
 
 #[allow(non_camel_case_types)]
 type ncnn_net_t = *mut c_void;
@@ -49,6 +53,7 @@ extern "C" {
     fn yori_ncnn_gpu_count() -> c_int;
     fn yori_ncnn_gpu_type(i: c_int) -> c_int;
     fn yori_ncnn_gpu_name(i: c_int) -> *const c_char;
+    fn yori_ncnn_release_gpu();
 }
 
 /// ncnn's GPU type for a CPU (software Vulkan such as llvmpipe), never picked
@@ -56,6 +61,16 @@ extern "C" {
 const GPU_TYPE_CPU: c_int = 3;
 
 /// The first real GPU ncnn sees, with its name.
+/// Releases ncnn's Vulkan instance when no net is left (true if it did, or there was none to release). Call it when
+/// the library is about to unload: left to ncnn's static destructor, a Windows app hung on exit with the GPU in use.
+pub fn release_gpu() -> bool {
+    if NETS.load(Ordering::SeqCst) > 0 {
+        return false;
+    }
+    unsafe { yori_ncnn_release_gpu() };
+    true
+}
+
 pub fn pick_vulkan_device() -> Option<(i32, String)> {
     // a discrete card before an integrated one (a laptop with both lists the integrated first on Windows), any
     // other non-CPU device last; YORISHIRO_VULKAN_DEVICE=<index> picks one by hand
@@ -115,6 +130,7 @@ impl NcnnModel {
             let _ = ncnn_net_get_input_count(net);
             let outputs = (0..ncnn_net_get_output_count(net)).map(|i| name_of(ncnn_net_get_output_name(net, i))).collect();
             let kind = device.map(|d| d.1).unwrap_or_else(|| "cpu".into());
+            NETS.fetch_add(1, Ordering::SeqCst);
             Ok(Self { net, input, outputs, name: format!("ncnn-{kind}-{}", if fp16 { "fp16" } else { "fp32" }) })
         }
     }
@@ -172,5 +188,6 @@ impl NcnnModel {
 impl Drop for NcnnModel {
     fn drop(&mut self) {
         unsafe { ncnn_net_destroy(self.net) }
+        NETS.fetch_sub(1, Ordering::SeqCst);
     }
 }
