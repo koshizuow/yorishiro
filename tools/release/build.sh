@@ -20,10 +20,16 @@ GODOT_TPZ_SHA512=ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e
 GLIBC_MAX=2.38
 
 echo "== models"
-(cd "$MODELS" && sha256sum -c --quiet "$ROOT/models/SHA256SUMS") || { echo "the models do not match models/SHA256SUMS"; exit 1; }
+# the models set (MODELS_DIR, e.g. models-v1) brings what is not in git; files kept in git (models/eye_openness.*,
+# .gitignore) come with the checkout. Each listed file must match from one or the other.
 if [ "$(realpath "$MODELS")" != "$ROOT/models" ]; then
-	(cd "$MODELS" && cp --parents $(awk '{print $2}' "$ROOT/models/SHA256SUMS") "$ROOT/models/")
+	for f in $(awk '{print $2}' "$ROOT/models/SHA256SUMS"); do
+		if [ -f "$MODELS/$f" ] && ! git -C "$ROOT" ls-files --error-unmatch "models/$f" > /dev/null 2>&1; then
+			(cd "$MODELS" && cp --parents "$f" "$ROOT/models/")
+		fi
+	done
 fi
+(cd "$ROOT/models" && sha256sum -c --quiet SHA256SUMS) || { echo "the models do not match models/SHA256SUMS"; exit 1; }
 
 # the official Godot editor and Linux release template, self-contained (_sc_) so the template sits beside it
 echo "== Godot $GODOT_VERSION"

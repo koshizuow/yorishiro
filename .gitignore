@@ -5,4 +5,6 @@
 /models/*
 !/models/README.md
 !/models/eye_openness.onnx
+!/models/eye_openness.ncnn.param
+!/models/eye_openness.ncnn.bin
 !/models/SHA256SUMS

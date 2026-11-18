@@ -11,4 +11,4 @@ are made from upstream files by the research tools and come with the releases (t
 | `mediapipe/face_blendshapes.onnx` | MediaPipe's blendshapes, used for mouth and jaw | MediaPipe Face Landmarker, Apache-2.0 |
 | `mediapipe/hands/palm_detection_full.*`, `hand_landmark_full.*` | Hand tracking | MediaPipe Hand Landmarker, Apache-2.0 |
 | `core/fit.npz` | Landmark to ARKit 52 fit data | Computed from ICT-FaceKit, MIT (Copyright (c) 2020 USC Institute for Creative Technologies) |
-| `eye_openness.onnx` | Eye openness | Yorishiro, Apache-2.0, trained only on renders of the ICT-FaceKit head |
+| `eye_openness.onnx`, `.ncnn.param`, `.ncnn.bin` | Eye openness (ncnn on the CPU, converted with pnnx at batch 1, or tract) | Yorishiro, Apache-2.0, trained only on renders of the ICT-FaceKit head |

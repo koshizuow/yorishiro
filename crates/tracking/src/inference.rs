@@ -202,6 +202,7 @@ fn probe_image() -> Image {
 /// "auto": tries the GPU (fp16, then fp32) against the CPU (tract) and keeps it only when its landmarks
 /// agree and it is not much slower. Intel's integrated GPUs gave wrong landmarks in fp16 (UHD 630: they crashed the
 /// eye crop) and took 46 ms per pass in fp32 against 6 ms on the CPU (user's test machine, 2026-11-02).
+/// Without a GPU that wins, ncnn's CPU path when its landmarks agree and it is faster than tract, else tract.
 /// Returns the choice and every trial, for the log.
 pub fn auto_runtime(models: &Path, threads: usize) -> (LandmarkRuntime, Vec<RuntimeTrial>) {
     let probe = probe_image().to_nchw(1.0 / 255.0, 0.0);
@@ -245,6 +246,15 @@ pub fn auto_runtime(models: &Path, threads: usize) -> (LandmarkRuntime, Vec<Runt
                 return (t.runtime, trials);
             }
             break;
+        }
+    }
+    // on the CPU: ncnn's CPU path when it is right and faster than tract (on the low-end reference tract's pass is
+    // 60 ms against ncnn's about 30)
+    #[cfg(feature = "ncnn")]
+    if let Some((t, _)) = trial(LandmarkRuntime::NcnnCpu, Some(&reference)) {
+        trials.push(t.clone());
+        if t.max_diff <= AUTO_MAX_DIFF_PX && t.pass_ms < cpu.pass_ms {
+            return (t.runtime, trials);
         }
     }
     (LandmarkRuntime::Cpu, trials)
@@ -485,13 +495,36 @@ pub fn crop_eye(img: &Image, lm: &[P3], side: usize) -> Image {
     if mirror { out.flip_horizontal() } else { out }
 }
 
+/// The eye model on ncnn's CPU path when its .ncnn files are there (exact in fp32 and about five times faster than
+/// tract on this small net: both eyes 0.74 ms against 3.7 back to back, 4 against 18 paced like a camera; on the GPU
+/// it is slower, the clock drops between frames), else on tract.
+enum EyeNet {
+    Cpu(CpuModel),
+    #[cfg(feature = "ncnn")]
+    Ncnn(crate::ncnn::NcnnModel),
+}
+
 pub struct Eyes {
-    model: CpuModel,
+    model: EyeNet,
 }
 
 impl Eyes {
+    /// path: eye_openness.onnx; eye_openness.ncnn.param / .bin beside it are used when present
     pub fn open(path: &Path) -> Result<Self, Error> {
-        Ok(Self { model: CpuModel::open(path, 1)? })
+        #[cfg(feature = "ncnn")]
+        if path.with_extension("ncnn.param").exists() {
+            return Ok(Self { model: EyeNet::Ncnn(crate::ncnn::NcnnModel::open(&path.with_extension(""), false, false, 1)?) });
+        }
+        Ok(Self { model: EyeNet::Cpu(CpuModel::open(path, 1)?) })
+    }
+
+    /// "cpu-fp32" or "ncnn-cpu-fp32"
+    pub fn runtime(&self) -> String {
+        match &self.model {
+            EyeNet::Cpu(m) => m.name.clone(),
+            #[cfg(feature = "ncnn")]
+            EyeNet::Ncnn(m) => m.name.clone(),
+        }
     }
 
     /// (left, right) openness, subject's sides: 0 closed, about 1 open
@@ -509,8 +542,22 @@ impl Eyes {
             }
             data.extend(chw);
         }
-        let out = self.model.run(&[2, 3, EYE_H as i64, EYE_W as i64], data)?;
-        Ok([out[0][0] as f64, out[0][1] as f64])
+        match &mut self.model {
+            EyeNet::Cpu(m) => {
+                let out = m.run(&[2, 3, EYE_H as i64, EYE_W as i64], data)?;
+                Ok([out[0][0] as f64, out[0][1] as f64])
+            }
+            #[cfg(feature = "ncnn")]
+            EyeNet::Ncnn(m) => {
+                // ncnn runs one picture at a time: an eye per run
+                let n = 3 * EYE_W * EYE_H;
+                let mut open = [0.0; 2];
+                for (side, chw) in data.chunks_exact(n).enumerate() {
+                    open[side] = m.run(3, EYE_H, EYE_W, chw.to_vec())?[0].1[0] as f64;
+                }
+                Ok(open)
+            }
+        }
     }
 }
 
