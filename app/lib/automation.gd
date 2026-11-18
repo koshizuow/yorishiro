@@ -7,6 +7,10 @@
 ##   --burst-every=<n>      frames between burst shots, default 60
 ##   --poses=<json>         instead of a camera, hold each named pose ({"name": {"FaceAngleX": 30}}) and
 ##                          save <name>_<pose>.png after --pose-frames (default 90) frames
+##   --input-csv=<csv>      instead of a camera, drive the model with recorded tracking inputs (a unix_ms column and
+##                          VTube Studio input names, as track_camera's TRACK_CSV or a VTS API log), interpolated at
+##                          --input-fps (default 30) from --input-from (unix ms) for --input-seconds, saving every frame
+##                          as <--frames-out>_00000.png ...; for comparing trackers on the same model and renderer
 ##   --hotkeys              after the screenshot, toggle each expression hotkey and save <name>_hotkey_<expression>.png
 ##   --expressions-all      after the screenshot, turn each of the model's expressions on alone (with or without a
 ##                          hotkey) and save <name>_expr_<expression>.png
@@ -139,7 +143,7 @@ func _ready() -> void:
 
 	if model:
 		print("[automation] model %s at %s scale %.4f" % [model.display_name, model.position, model.scale.x])
-	if args.has("poses"):
+	if args.has("poses") or args.has("input-csv"):
 		# hold the model still from the start, the saved tracker could still be feeding it otherwise
 		_pose_tracker = get_tree().get_first_node_in_group("system:tracking").activate_tracker(CameraTracker.new())
 
@@ -199,7 +203,7 @@ func _ready() -> void:
 				print("[automation] ifacialmocap %s head=%s" % [" ".join(shown), t.tracker.get_joint_transform(XRBodyTracker.JOINT_HEAD).basis.get_euler() * 180.0 / PI]))
 		print("[automation] tracker %s" % args["tracker"])
 
-	if args.has("screenshot") or args.has("screenshot-window"):
+	if args.has("screenshot") or args.has("screenshot-window") or args.has("input-csv"):
 		if args.has("open-panel"):
 			# the HUD restores its own state over the first frames, open the panel after that
 			for i in 15:
@@ -307,6 +311,8 @@ func _ready() -> void:
 			if args.has("poses") and not args.has("screenshot"):  # poses of the whole window, e.g. the face preview
 				await _shoot_poses(args, get_viewport(), args["screenshot-window"])
 		var viewport = stage.capture_viewport if stage else get_viewport()
+		if args.has("input-csv"):
+			await _play_input_csv(args, viewport)
 		var path: String = args.get("screenshot", "")
 		if path:
 			var err = viewport.get_texture().get_image().save_png(path)
@@ -1578,6 +1584,48 @@ func _shoot_poses(args: Dictionary, viewport: Viewport, path: String):
 			func (q): return "%s %s" % [q, model.get("parameters/%s" % q) if model else null]))])
 		_debug_meshes_after(args, model)
 		tracker.reset()
+
+
+const _CSV_INPUTS := ["FaceAngleX", "FaceAngleY", "FaceAngleZ", "FacePositionX", "FacePositionY", "FacePositionZ",
+	"EyeOpenLeft", "EyeOpenRight", "EyeLeftX", "EyeLeftY", "EyeRightX", "EyeRightY", "BrowLeftY", "BrowRightY", "Brows",
+	"MouthSmile", "MouthOpen", "MouthX", "CheekPuff", "TongueOut"]
+
+## recorded inputs played into the fixed tracker one output frame at a time, every frame saved
+func _play_input_csv(args: Dictionary, viewport: Viewport) -> void:
+	var lines := FileAccess.get_file_as_string(args["input-csv"]).split("\n", false)
+	var head := lines[0].strip_edges().split(",")
+	var tc := head.find("unix_ms")
+	var cols := {}
+	for k in _CSV_INPUTS:
+		if head.has(k):
+			cols[k] = head.find(k)
+	var rows := []
+	for i in range(1, lines.size()):
+		var f := lines[i].strip_edges().split(",")
+		if f.size() == head.size():
+			rows.append(f)
+	var fps := float(args.get("input-fps", "30"))
+	var t0 := float(args["input-from"])
+	var n := int(float(args["input-seconds"]) * fps)
+	var prefix: String = args["frames-out"]
+	var j := 0
+	var t_start := Time.get_ticks_msec()
+	for k in n:
+		var t := t0 + k * 1000.0 / fps
+		while j + 2 < rows.size() and float(rows[j + 1][tc]) <= t:
+			j += 1
+		var a: PackedStringArray = rows[j]
+		var b: PackedStringArray = rows[mini(j + 1, rows.size() - 1)]
+		var ta := float(a[tc])
+		var w := clampf((t - ta) / maxf(float(b[tc]) - ta, 1.0), 0.0, 1.0)
+		var pose := {}
+		for key in cols:
+			pose[key] = lerpf(float(a[cols[key]]), float(b[cols[key]]), w)
+		_pose_tracker.update(pose)
+		await RenderingServer.frame_post_draw
+		viewport.get_texture().get_image().save_png("%s_%05d.png" % [prefix, k])
+	print("[automation] input csv %s: %d frames (%d inputs, %d rows) in %.1f s" % [str(args["input-csv"]).get_file(), n, cols.size(),
+		rows.size(), (Time.get_ticks_msec() - t_start) / 1000.0])
 
 
 func _set_background(value: String) -> void:
